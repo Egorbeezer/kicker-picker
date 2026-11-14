@@ -302,7 +302,15 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(btn.web_app).toBeUndefined();
 
     await messageHandler({ chat: { id: 99 }, text: '/start', from: { id: 99, first_name: 'Test' } });
+    const startText = sendMessage.mock.calls[1][0].text as string;
+    expect(startText).toContain('Кикер Пикер');
+    expect(startText).not.toContain('Kicker Picker');
+    expect(startText).toContain('Monster DYP');
+    expect(startText).toContain('Швейцарка');
+    expect(startText).toContain('Last One Standing');
+    expect(startText).toContain('Сразу Плей-офф');
     const startBtn = sendMessage.mock.calls[1][0].reply_markup.inline_keyboard[0][0];
+    expect(startBtn.text).toContain('Кикер Пикер');
     expect(startBtn.url).toBe('https://t.me/kickerpickerbot?startapp=open');
     expect(startBtn.web_app).toBeUndefined();
 
@@ -413,5 +421,86 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       expect(width).toBe(500);
       expect(height).toBe(500);
     }
+  });
+
+  it('unifies AdminSettingsView and CreateTournamentView with radio controls, light/dark vars, and submit-spam lock', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const { AdminSettingsView } = await import('../src/components/AdminSettingsView');
+    const { CreateTournamentView } = await import('../src/components/CreateTournamentView');
+    const { callMutatingEndpoint } = await import('../src/api/client');
+
+    // 1. AdminSettingsView uses unified radio groups, theme vars, and "Удалить турнир"
+    const cAdmin = document.createElement('div');
+    document.body.appendChild(cAdmin);
+    const rAdmin = createRoot(cAdmin);
+    await act(async () => {
+      rAdmin.render(
+        <AdminSettingsView
+          snapshot={makePlayoffSnapshot({ isAdmin: true })}
+          onBack={() => {}}
+          onSave={async () => {}}
+          onToggleLive={async () => {}}
+          onTransferAdmin={async () => {}}
+          onDelete={async () => {}}
+          busy={false}
+        />
+      );
+    });
+    expect(cAdmin.querySelectorAll('input[type="checkbox"]').length).toBe(0);
+    expect(cAdmin.querySelectorAll('[role="radio"]').length).toBeGreaterThanOrEqual(8);
+    expect(cAdmin.textContent).toContain('Удалить турнир');
+    expect(cAdmin.textContent).not.toContain('Удалить дип');
+    expect(cAdmin.innerHTML).not.toContain('#2c2c2e');
+
+    // 2. CreateTournamentView replaces checkboxes with radio buttons and blocks double submit
+    let resolveSubmit: () => void = () => {};
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSubmit = resolve;
+        })
+    );
+    const cCreate = document.createElement('div');
+    document.body.appendChild(cCreate);
+    const rCreate = createRoot(cCreate);
+    await act(async () => {
+      rCreate.render(<CreateTournamentView defaultName="Тест" busy={false} onSubmit={onSubmit} />);
+    });
+    expect(cCreate.querySelectorAll('input[type="checkbox"]').length).toBe(0);
+    expect(cCreate.querySelectorAll('[role="radio"]').length).toBeGreaterThanOrEqual(8);
+
+    const form = cCreate.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveSubmit();
+    });
+
+    // 3. callMutatingEndpoint deduplicates identical concurrent calls
+    const callSpy = vi.fn((_ep: string, _inp: Record<string, unknown>, cb: (e: null, r: unknown) => void) => {
+      setTimeout(() => cb(null, { ok: true }), 15);
+    });
+    (window as unknown as { Telegram: { WebApp: { initData: string; Serverless: { call: typeof callSpy } } } }).Telegram = {
+      WebApp: {
+        initData: 'auth_date=1&hash=abc',
+        Serverless: { call: callSpy },
+      },
+    };
+    const [p1, p2] = await Promise.all([
+      callMutatingEndpoint('submitScore', { matchId: 10, score1: 5, score2: 3 }),
+      callMutatingEndpoint('submitScore', { matchId: 10, score1: 5, score2: 3 }),
+    ]);
+    expect(callSpy).toHaveBeenCalledTimes(1);
+    expect(p1).toEqual({ ok: true });
+    expect(p2).toEqual({ ok: true });
+
+    await act(async () => {
+      rAdmin.unmount();
+      rCreate.unmount();
+    });
   });
 });

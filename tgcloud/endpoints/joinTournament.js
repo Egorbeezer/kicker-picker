@@ -48,17 +48,33 @@ export default async function (input, ctx) {
       .where(eq(tournamentPlayers.tournamentId, tournament.id))
       .all();
     const maxSort = curPlayers.reduce((m, p) => Math.max(m, p.sortOrder || 0), curPlayers.length);
-    await db.insert(tournamentPlayers).values({
-      tournamentId: tournament.id,
-      tgId: tgUser.id,
-      name: displayName,
-      initials: makeInitials(displayName),
-      isActive: true,
-      isGuest: false,
-      byesCount: 0,
-      sortOrder: maxSort + 1,
-      livesLeft: tournament.dypMode === 'last_one_standing' ? tournament.losLives || 3 : null,
-    });
+    const [inserted] = await db
+      .insert(tournamentPlayers)
+      .values({
+        tournamentId: tournament.id,
+        tgId: tgUser.id,
+        name: displayName,
+        initials: makeInitials(displayName),
+        isActive: true,
+        isGuest: false,
+        byesCount: 0,
+        sortOrder: maxSort + 1,
+        livesLeft: tournament.dypMode === 'last_one_standing' ? tournament.losLives || 3 : null,
+      })
+      .returning();
+
+    // Protect against concurrent double-join inserts for the same Telegram user
+    const sameUserRows = await db
+      .select({ id: tournamentPlayers.id })
+      .from(tournamentPlayers)
+      .where(and(eq(tournamentPlayers.tournamentId, tournament.id), eq(tournamentPlayers.tgId, tgUser.id)))
+      .all();
+    if (sameUserRows.length > 1) {
+      const minId = Math.min(...sameUserRows.map((r) => r.id));
+      if (inserted && inserted.id !== minId) {
+        await db.delete(tournamentPlayers).where(eq(tournamentPlayers.id, inserted.id));
+      }
+    }
   } else if (!existing.isActive) {
     await db
       .update(tournamentPlayers)

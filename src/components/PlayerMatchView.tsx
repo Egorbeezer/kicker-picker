@@ -346,9 +346,10 @@ export const PlayerMatchView: React.FC<Props> = ({
               type="button"
               disabled={busy}
               onClick={() => onRemindConfirm(myCurrentMatch.id)}
-              className="flex items-center gap-2 bg-[#1c1c1d] border border-[#3a3a3c] text-white px-5 py-3 rounded-xl text-sm font-semibold active:scale-95"
+              className="flex items-center gap-2 bg-[#1c1c1d] border border-[#3a3a3c] text-white px-5 py-3 rounded-xl text-sm font-semibold active:scale-95 disabled:opacity-50"
             >
-              <Bell size={16} className="text-yellow-500" /> Напомнить еще раз
+              <Bell size={16} className="text-yellow-500" />
+              {busy ? 'Отправка...' : 'Напомнить еще раз'}
             </button>
           </div>
 
@@ -456,17 +457,17 @@ export const PlayerMatchView: React.FC<Props> = ({
                 type="button"
                 disabled={busy}
                 onClick={() => onConfirmScore(myCurrentMatch.id, 'dispute')}
-                className="flex-1 bg-[#1c1c1d] border border-[#3a3a3c] text-white py-3.5 rounded-xl font-semibold active:scale-95"
+                className="flex-1 bg-[#1c1c1d] border border-[#3a3a3c] text-white py-3.5 rounded-xl font-semibold active:scale-95 disabled:opacity-50"
               >
-                Оспорить
+                {busy ? 'Обработка...' : 'Оспорить'}
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => onConfirmScore(myCurrentMatch.id, 'confirm')}
-                className="flex-1 bg-[#2ea6ff] text-white py-3.5 rounded-xl font-semibold shadow-[0_4px_20px_rgba(46,166,255,0.4)] active:scale-95"
+                className="flex-1 bg-[#2ea6ff] text-white py-3.5 rounded-xl font-semibold shadow-[0_4px_20px_rgba(46,166,255,0.4)] active:scale-95 disabled:opacity-50"
               >
-                Подтвердить
+                {busy ? 'Обработка...' : 'Подтвердить'}
               </button>
             </div>
           </div>

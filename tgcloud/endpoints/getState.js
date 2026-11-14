@@ -12,6 +12,28 @@ import {
 } from '../lib/helpers.js';
 import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
 
+const SQLITE_IN_CHUNK = 300;
+
+/** Загружает строки по большому списку ID порциями, чтобы не упереться в лимит переменных SQLite. */
+async function selectAllByIds(table, column, ids, extraOrder) {
+  if (!ids.length) return [];
+  if (ids.length <= SQLITE_IN_CHUNK) {
+    const q = db.select().from(table).where(inArray(column, ids));
+    return extraOrder ? await q.orderBy(extraOrder).all() : await q.all();
+  }
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += SQLITE_IN_CHUNK) {
+    chunks.push(ids.slice(i, i + SQLITE_IN_CHUNK));
+  }
+  const results = await Promise.all(
+    chunks.map((chunk) => {
+      const q = db.select().from(table).where(inArray(column, chunk));
+      return extraOrder ? q.orderBy(extraOrder).all() : q.all();
+    })
+  );
+  return results.flat();
+}
+
 export default async function (input, ctx) {
   const tgUser = ctx.initData?.user;
   if (!tgUser?.id) {
@@ -105,14 +127,7 @@ export default async function (input, ctx) {
       ...myAdminLinks.map((a) => a.tournamentId),
     ]),
   ];
-  const joined = linkedIds.length
-    ? await db
-        .select()
-        .from(tournaments)
-        .where(inArray(tournaments.id, linkedIds))
-        .orderBy(desc(tournaments.id))
-        .all()
-    : [];
+  const joined = await selectAllByIds(tournaments, tournaments.id, linkedIds, desc(tournaments.id));
 
   const mergedMap = new Map();
   for (const t of [...created, ...joined]) {
@@ -121,20 +136,10 @@ export default async function (input, ctx) {
   const myTournaments = Array.from(mergedMap.values()).sort((a, b) => b.id - a.id);
 
   const myIds = myTournaments.map((t) => t.id);
-  const allPlayers = myIds.length
-    ? await db
-        .select()
-        .from(tournamentPlayers)
-        .where(inArray(tournamentPlayers.tournamentId, myIds))
-        .all()
-    : [];
-  const allMatches = myIds.length
-    ? await db
-        .select()
-        .from(matches)
-        .where(inArray(matches.tournamentId, myIds))
-        .all()
-    : [];
+  const [allPlayers, allMatches] = await Promise.all([
+    selectAllByIds(tournamentPlayers, tournamentPlayers.tournamentId, myIds),
+    selectAllByIds(matches, matches.tournamentId, myIds),
+  ]);
 
   const playersByTournament = new Map();
   for (const p of allPlayers) {

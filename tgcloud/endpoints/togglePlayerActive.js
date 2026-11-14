@@ -1,5 +1,5 @@
 import { db, EndpointError } from 'sdk';
-import { eq } from 'sdk/db';
+import { eq, and } from 'sdk/db';
 import { tournaments, tournamentPlayers } from '../schema.js';
 import { getTournamentSnapshot, isTournamentAdmin } from '../lib/helpers.js';
 import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
@@ -30,10 +30,17 @@ export default async function (input, ctx) {
     throw new EndpointError('Игрок не найден', { code: 'NOT_FOUND' });
   }
 
-  await db
+  const updated = await db
     .update(tournamentPlayers)
     .set({ isActive: !player.isActive })
-    .where(eq(tournamentPlayers.id, playerId));
+    .where(and(eq(tournamentPlayers.id, playerId), eq(tournamentPlayers.isActive, player.isActive)))
+    .returning();
+
+  if (!Array.isArray(updated) || updated.length === 0) {
+    throw new EndpointError('Статус игрока уже изменён другим организатором', {
+      code: 'CONFLICT',
+    });
+  }
 
   await syncPublicLiveIfEnabled(tournamentId);
 

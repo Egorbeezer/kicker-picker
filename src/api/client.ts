@@ -117,6 +117,8 @@ export function getStartTournamentId(): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+const inFlightMutations = new Map<string, Promise<unknown>>();
+
 export async function callEndpoint<T>(name: string, input: Record<string, unknown> = {}): Promise<T> {
   const serverless = window.Telegram?.WebApp?.Serverless;
   if (!serverless || !window.Telegram?.WebApp?.initData) {
@@ -134,17 +136,34 @@ export async function callEndpoint<T>(name: string, input: Record<string, unknow
   });
 }
 
+/** Вызов мутирующего эндпоинта с дедупликацией одновременных одинаковых запросов. */
+export function callMutatingEndpoint<T>(
+  name: string,
+  input: Record<string, unknown> = {}
+): Promise<T> {
+  const key = `${name}:${JSON.stringify(input)}`;
+  const existing = inFlightMutations.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+  const promise = callEndpoint<T>(name, input).finally(() => {
+    inFlightMutations.delete(key);
+  });
+  inFlightMutations.set(key, promise);
+  return promise;
+}
+
 export const apiClient = {
   getState: (params: { tournamentId?: number; light?: boolean } = {}) =>
     callEndpoint<AppStateResponse>('getState', params),
   reportClientError: (params: { message: string; stack?: string }) =>
     callEndpoint<{ ok: boolean; deduplicated?: boolean }>('reportClientError', params),
   createTournament: (input: Record<string, unknown>) =>
-    callEndpoint<TournamentSnapshot>('createTournament', input),
+    callMutatingEndpoint<TournamentSnapshot>('createTournament', input),
   joinTournament: (tournamentId: number) =>
-    callEndpoint<TournamentSnapshot>('joinTournament', { tournamentId }),
+    callMutatingEndpoint<TournamentSnapshot>('joinTournament', { tournamentId }),
   leaveTournament: (tournamentId: number) =>
-    callEndpoint<{ ok: boolean; softPaused: boolean }>('leaveTournament', { tournamentId }),
+    callMutatingEndpoint<{ ok: boolean; softPaused: boolean }>('leaveTournament', { tournamentId }),
   addGuestPlayer: (
     tournamentId: number,
     payload:
@@ -158,7 +177,7 @@ export const apiClient = {
           saveToClub?: boolean;
         }
   ) =>
-    callEndpoint<TournamentSnapshot>(
+    callMutatingEndpoint<TournamentSnapshot>(
       'addGuestPlayer',
       typeof payload === 'string'
         ? { tournamentId, name: payload }
@@ -180,51 +199,54 @@ export const apiClient = {
     replacementName?: string;
     replacementTgId?: number | null;
     direction?: 'up' | 'down';
-  }) => callEndpoint<TournamentSnapshot>('managePlayer', params),
+  }) => callMutatingEndpoint<TournamentSnapshot>('managePlayer', params),
   manageClubPlayer: (params: {
     action: 'list' | 'add' | 'delete';
     id?: number;
     name?: string;
     tgId?: number | null;
     dypRole?: DypRole;
-  }) => callEndpoint<{ clubPlayers: ClubPlayer[] }>('manageClubPlayer', params),
+  }) =>
+    params.action === 'list'
+      ? callEndpoint<{ clubPlayers: ClubPlayer[] }>('manageClubPlayer', params)
+      : callMutatingEndpoint<{ clubPlayers: ClubPlayer[] }>('manageClubPlayer', params),
   togglePlayerActive: (tournamentId: number, playerId: number) =>
-    callEndpoint<TournamentSnapshot>('togglePlayerActive', { tournamentId, playerId }),
+    callMutatingEndpoint<TournamentSnapshot>('togglePlayerActive', { tournamentId, playerId }),
   startRound: (tournamentId: number, opts: { preserveOrder?: boolean; regenerateFirst?: boolean } = {}) =>
-    callEndpoint<TournamentSnapshot>('startRound', { tournamentId, ...opts }),
+    callMutatingEndpoint<TournamentSnapshot>('startRound', { tournamentId, ...opts }),
   deleteLastRound: (tournamentId: number) =>
-    callEndpoint<TournamentSnapshot>('deleteLastRound', { tournamentId }),
+    callMutatingEndpoint<TournamentSnapshot>('deleteLastRound', { tournamentId }),
   adminManageMatch: (params: {
     matchId: number;
     action: 'set_table' | 'reset' | 'toggle_cancel';
     tableNumber?: number;
-  }) => callEndpoint<TournamentSnapshot>('adminManageMatch', params),
+  }) => callMutatingEndpoint<TournamentSnapshot>('adminManageMatch', params),
   publishLive: (tournamentId: number, enabled = true) =>
-    callEndpoint<TournamentSnapshot>('publishLive', { tournamentId, enabled }),
+    callMutatingEndpoint<TournamentSnapshot>('publishLive', { tournamentId, enabled }),
   submitScore: (params: { matchId: number; score1: number; score2: number; forceAdmin?: boolean }) =>
-    callEndpoint<TournamentSnapshot & { notifiedCount?: number }>('submitScore', params),
+    callMutatingEndpoint<TournamentSnapshot & { notifiedCount?: number; alreadySubmitted?: boolean }>('submitScore', params),
   confirmScore: (params: { matchId: number; action: 'confirm' | 'dispute' }) =>
-    callEndpoint<TournamentSnapshot>('confirmScore', params),
+    callMutatingEndpoint<TournamentSnapshot>('confirmScore', params),
   remindConfirm: (matchId: number) =>
-    callEndpoint<{ ok: boolean; sentCount: number }>('remindConfirm', { matchId }),
+    callMutatingEndpoint<{ ok: boolean; sentCount: number }>('remindConfirm', { matchId }),
   startPlayoff: (
     tournamentId: number,
     options?: boolean | { cancel?: boolean; playoffSize?: number; thirdPlaceMatch?: boolean }
   ) =>
-    callEndpoint<TournamentSnapshot>(
+    callMutatingEndpoint<TournamentSnapshot>(
       'startPlayoff',
       typeof options === 'boolean'
         ? { tournamentId, cancel: options }
         : { tournamentId, ...(options || {}) }
     ),
   finishTournament: (tournamentId: number, reopen = false) =>
-    callEndpoint<TournamentSnapshot>('finishTournament', { tournamentId, reopen }),
+    callMutatingEndpoint<TournamentSnapshot>('finishTournament', { tournamentId, reopen }),
   updateTournament: (input: Record<string, unknown>) =>
-    callEndpoint<TournamentSnapshot>('updateTournament', input),
+    callMutatingEndpoint<TournamentSnapshot>('updateTournament', input),
   transferAdmin: (tournamentId: number, playerId: number) =>
-    callEndpoint<TournamentSnapshot>('transferAdmin', { tournamentId, playerId }),
+    callMutatingEndpoint<TournamentSnapshot>('transferAdmin', { tournamentId, playerId }),
   deleteTournament: (tournamentId: number) =>
-    callEndpoint<{ ok: boolean; deletedId: number }>('deleteTournament', { tournamentId }),
+    callMutatingEndpoint<{ ok: boolean; deletedId: number }>('deleteTournament', { tournamentId }),
   shareLeaderboard: (params: {
     tournamentId: number;
     imageBase64: string;

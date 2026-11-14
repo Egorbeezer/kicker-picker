@@ -585,11 +585,12 @@ export const ProfileView: React.FC<Props> = ({
           onClose={() => setConfirmLeaveOpen(false)}
           hideClose
           footer={
-            <div className="btn-row">
+          <div className="btn-row">
               <button
                 type="button"
+                disabled={busy}
                 onClick={() => setConfirmLeaveOpen(false)}
-                className="btn btn-ghost"
+                className="btn btn-ghost disabled:opacity-50"
               >
                 Отмена
               </button>
@@ -600,9 +601,9 @@ export const ProfileView: React.FC<Props> = ({
                   setConfirmLeaveOpen(false);
                   await onLeave();
                 }}
-                className="btn bg-red-600 text-white font-bold"
+                className="btn bg-red-600 text-white font-bold disabled:opacity-50"
               >
-                Выписаться
+                {busy ? 'Выписываем...' : 'Выписаться'}
               </button>
             </div>
           }

@@ -88,6 +88,16 @@ export default async function (input, ctx) {
   }
 
   const submittedByTeam = inTeam1 ? 1 : 2;
+  if (
+    match.status === 'WAITING_CONFIRM' &&
+    match.submittedByTeam === submittedByTeam &&
+    match.score1 === score1 &&
+    match.score2 === score2
+  ) {
+    const snapshot = await getTournamentSnapshot(tournament.id, tgUser.id);
+    return { ...snapshot, notifiedCount: 0, alreadySubmitted: true };
+  }
+
   const opponentPlayers =
     submittedByTeam === 1
       ? [playersById.get(match.team2Player1Id), playersById.get(match.team2Player2Id)].filter(Boolean)

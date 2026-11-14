@@ -1,5 +1,5 @@
 import { db, EndpointError } from 'sdk';
-import { eq } from 'sdk/db';
+import { eq, and, inArray } from 'sdk/db';
 import { tournaments, matches } from '../schema.js';
 import { getTournamentSnapshot, isTournamentAdmin } from '../lib/helpers.js';
 import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
@@ -39,7 +39,8 @@ export default async function (input, ctx) {
         status: hasPlayoff ? 'PLAYOFF' : tournament.currentRound > 0 ? 'QUALIFICATION' : 'REGISTRATION',
         finishedAt: null,
       })
-      .where(eq(tournaments.id, tournamentId));
+      .where(and(eq(tournaments.id, tournamentId), eq(tournaments.status, 'FINISHED')))
+      .returning();
 
     await syncPublicLiveIfEnabled(tournamentId);
     return await getTournamentSnapshot(tournamentId, tgUser.id);
@@ -107,7 +108,8 @@ export default async function (input, ctx) {
       finishedAt: new Date(),
       pendingPlayoff: false,
     })
-    .where(eq(tournaments.id, tournamentId));
+    .where(and(eq(tournaments.id, tournamentId), inArray(tournaments.status, ['QUALIFICATION', 'PLAYOFF'])))
+    .returning();
 
   await syncPublicLiveIfEnabled(tournamentId);
   return await getTournamentSnapshot(tournamentId, tgUser.id);

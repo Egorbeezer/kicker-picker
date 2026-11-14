@@ -74,13 +74,18 @@ export default async function (input, ctx) {
   }
 
   const existingPlayers = await db
-    .select({ sortOrder: tournamentPlayers.sortOrder })
+    .select({ sortOrder: tournamentPlayers.sortOrder, tgId: tournamentPlayers.tgId })
     .from(tournamentPlayers)
     .where(eq(tournamentPlayers.tournamentId, tournamentId))
     .all();
+  const existingTgIds = new Set(
+    existingPlayers.map((p) => Number(p.tgId)).filter((id) => Number.isInteger(id) && id > 0)
+  );
   let nextSort = existingPlayers.reduce((max, p) => Math.max(max, p.sortOrder || 0), existingPlayers.length) + 1;
 
   for (const item of entries) {
+    if (item.tgId && existingTgIds.has(Number(item.tgId))) continue;
+    if (item.tgId) existingTgIds.add(Number(item.tgId));
     await db.insert(tournamentPlayers).values({
       tournamentId,
       tgId: item.tgId ?? null,

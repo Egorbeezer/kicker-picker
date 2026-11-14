@@ -515,9 +515,10 @@ export const AdminPlayersView: React.FC<Props> = ({
                         {onManageClubPlayer && (
                           <button
                             type="button"
+                            disabled={busy}
                             onClick={() => onManageClubPlayer({ action: 'delete', id: cp.id })}
                             aria-label={`Удалить ${cp.name} из базы`}
-                            className="p-0.5 opacity-60 hover:opacity-100"
+                            className="p-0.5 opacity-60 hover:opacity-100 disabled:opacity-30"
                           >
                             <X size={11} />
                           </button>

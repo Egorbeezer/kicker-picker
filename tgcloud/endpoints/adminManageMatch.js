@@ -1,5 +1,5 @@
 import { db, EndpointError } from 'sdk';
-import { eq, and } from 'sdk/db';
+import { eq, and, inArray } from 'sdk/db';
 import { tournaments, matches } from '../schema.js';
 import {
   clearConfirmMessages,
@@ -77,7 +77,7 @@ export default async function (input, ctx) {
     }
 
     if (match.status === 'CANCELLED') {
-      await db
+      const restored = await db
         .update(matches)
         .set({
           status: 'PLAYING',
@@ -91,13 +91,13 @@ export default async function (input, ctx) {
           confirmMessages: null,
           finishedAt: null,
         })
-        .where(eq(matches.id, match.id));
+        .where(and(eq(matches.id, match.id), eq(matches.status, 'CANCELLED')))
+        .returning();
+      if (!Array.isArray(restored) || restored.length === 0) {
+        throw new EndpointError('Матч уже восстановлен другим организатором', { code: 'CONFLICT' });
+      }
     } else {
-      await clearConfirmMessages({
-        match,
-        replacementText: `🚫 Организатор отменил матч (Стол ${match.tableNumber}).`,
-      });
-      await db
+      const cancelled = await db
         .update(matches)
         .set({
           status: 'CANCELLED',
@@ -111,7 +111,15 @@ export default async function (input, ctx) {
           confirmMessages: null,
           finishedAt: new Date(),
         })
-        .where(eq(matches.id, match.id));
+        .where(and(eq(matches.id, match.id), inArray(matches.status, ['PLAYING', 'WAITING_CONFIRM'])))
+        .returning();
+      if (!Array.isArray(cancelled) || cancelled.length === 0) {
+        throw new EndpointError('Матч уже отменён или завершён', { code: 'CONFLICT' });
+      }
+      await clearConfirmMessages({
+        match,
+        replacementText: `🚫 Организатор отменил матч (Стол ${match.tableNumber}).`,
+      });
 
       if (
         match.stage === 'QUALIFICATION' &&

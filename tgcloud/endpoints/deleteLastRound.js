@@ -28,6 +28,65 @@ export default async function (input, ctx) {
     tournament.status === 'QUALIFICATION' ? 'QUALIFICATION' : 'PLAYOFF';
   const roundToDelete = tournament.currentRound;
 
+  let nextStatusAfterDelete;
+  let nextRoundAfterDelete;
+  let nextStartedAt = tournament.startedAt;
+
+  if (stageToDelete === 'QUALIFICATION') {
+    nextRoundAfterDelete = Math.max(0, roundToDelete - 1);
+    nextStatusAfterDelete = nextRoundAfterDelete === 0 ? 'REGISTRATION' : 'QUALIFICATION';
+    if (nextRoundAfterDelete === 0) nextStartedAt = null;
+  } else {
+    const prevPlayoffRound = roundToDelete - 1;
+    if (prevPlayoffRound >= 1) {
+      nextStatusAfterDelete = 'PLAYOFF';
+      nextRoundAfterDelete = prevPlayoffRound;
+    } else {
+      const qualMatches = await db
+        .select({ roundNumber: matches.roundNumber })
+        .from(matches)
+        .where(
+          and(
+            eq(matches.tournamentId, tournamentId),
+            eq(matches.stage, 'QUALIFICATION')
+          )
+        )
+        .all();
+      const maxQualRound = qualMatches.reduce(
+        (max, m) => Math.max(max, Number(m.roundNumber) || 0),
+        0
+      );
+      nextStatusAfterDelete = maxQualRound > 0 ? 'QUALIFICATION' : 'REGISTRATION';
+      nextRoundAfterDelete = maxQualRound;
+    }
+  }
+
+  // Claim round rollback atomically before deleting matches to avoid double-delete races
+  const claimedRollback = await db
+    .update(tournaments)
+    .set({
+      status: nextStatusAfterDelete,
+      currentRound: nextRoundAfterDelete,
+      ...(stageToDelete === 'QUALIFICATION' ? { lastRoundByes: null, pendingPlayoff: false } : {}),
+      ...(stageToDelete === 'PLAYOFF' && roundToDelete <= 1 ? { pendingPlayoff: false } : {}),
+      finishedAt: null,
+      ...(stageToDelete === 'QUALIFICATION' && nextRoundAfterDelete === 0 ? { startedAt: nextStartedAt } : {}),
+    })
+    .where(
+      and(
+        eq(tournaments.id, tournamentId),
+        eq(tournaments.status, tournament.status),
+        eq(tournaments.currentRound, roundToDelete)
+      )
+    )
+    .returning();
+
+  if (!Array.isArray(claimedRollback) || claimedRollback.length === 0) {
+    throw new EndpointError('Раунд уже удалён или изменён другим организатором', {
+      code: 'CONFLICT',
+    });
+  }
+
   const targetMatches = await db
     .select()
     .from(matches)
@@ -60,55 +119,6 @@ export default async function (input, ctx) {
         .update(tournamentPlayers)
         .set({ byesCount: sql`MAX(0, ${tournamentPlayers.byesCount} - 1)` })
         .where(inArray(tournamentPlayers.id, prevByes));
-    }
-
-    const prevRound = Math.max(0, roundToDelete - 1);
-    await db
-      .update(tournaments)
-      .set({
-        status: prevRound === 0 ? 'REGISTRATION' : 'QUALIFICATION',
-        currentRound: prevRound,
-        lastRoundByes: null,
-        pendingPlayoff: false,
-        finishedAt: null,
-        ...(prevRound === 0 ? { startedAt: null } : {}),
-      })
-      .where(eq(tournaments.id, tournamentId));
-  } else {
-    const prevPlayoffRound = roundToDelete - 1;
-    if (prevPlayoffRound >= 1) {
-      await db
-        .update(tournaments)
-        .set({
-          status: 'PLAYOFF',
-          currentRound: prevPlayoffRound,
-          finishedAt: null,
-        })
-        .where(eq(tournaments.id, tournamentId));
-    } else {
-      const qualMatches = await db
-        .select({ roundNumber: matches.roundNumber })
-        .from(matches)
-        .where(
-          and(
-            eq(matches.tournamentId, tournamentId),
-            eq(matches.stage, 'QUALIFICATION')
-          )
-        )
-        .all();
-      const maxQualRound = qualMatches.reduce(
-        (max, m) => Math.max(max, Number(m.roundNumber) || 0),
-        0
-      );
-      await db
-        .update(tournaments)
-        .set({
-          status: maxQualRound > 0 ? 'QUALIFICATION' : 'REGISTRATION',
-          currentRound: maxQualRound,
-          pendingPlayoff: false,
-          finishedAt: null,
-        })
-        .where(eq(tournaments.id, tournamentId));
     }
   }
 

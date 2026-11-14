@@ -1,5 +1,5 @@
 import { db, EndpointError } from 'sdk';
-import { eq } from 'sdk/db';
+import { eq, and, inArray } from 'sdk/db';
 import { tournaments, tournamentPlayers, matches } from '../schema.js';
 import { createPlayoffFirstRound, getTournamentSnapshot, isTournamentAdmin } from '../lib/helpers.js';
 import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
@@ -67,7 +67,7 @@ export default async function (input, ctx) {
 
   if (hasActiveMatches) {
     // Schedule transition to playoff after current round finishes and disable autoRounds
-    await db
+    const scheduled = await db
       .update(tournaments)
       .set({
         autoRounds: false,
@@ -75,7 +75,12 @@ export default async function (input, ctx) {
         ...(overrides.playoffSize !== undefined ? { playoffSize: overrides.playoffSize } : {}),
         ...(overrides.thirdPlaceMatch !== undefined ? { thirdPlaceMatch: overrides.thirdPlaceMatch } : {}),
       })
-      .where(eq(tournaments.id, tournamentId));
+      .where(and(eq(tournaments.id, tournamentId), inArray(tournaments.status, ['REGISTRATION', 'QUALIFICATION'])))
+      .returning();
+
+    if (!Array.isArray(scheduled) || scheduled.length === 0) {
+      throw new EndpointError('Статус турнира уже изменён', { code: 'CONFLICT' });
+    }
 
     await syncPublicLiveIfEnabled(tournamentId);
     return await getTournamentSnapshot(tournamentId, tgUser.id);

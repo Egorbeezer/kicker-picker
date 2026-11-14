@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
+import { performance } from 'node:perf_hooks';
 
 let sqlite = new DatabaseSync(':memory:');
 
@@ -114,6 +115,12 @@ function initSqliteSchema(conn) {
       stack TEXT,
       created_at INTEGER DEFAULT (unixepoch())
     );
+    CREATE INDEX IF NOT EXISTS idx_tournaments_creator ON tournaments (creator_tg_id);
+    CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments (status);
+    CREATE INDEX IF NOT EXISTS idx_tp_tournament ON tournament_players (tournament_id);
+    CREATE INDEX IF NOT EXISTS idx_tp_tg_id ON tournament_players (tg_id);
+    CREATE INDEX IF NOT EXISTS idx_matches_tournament_round ON matches (tournament_id, stage, round_number);
+    CREATE INDEX IF NOT EXISTS idx_ta_tg_id ON tournament_admins (tg_id);
   `);
 }
 
@@ -380,6 +387,7 @@ vi.mock('sdk', () => {
       deleteMessage: (...args) => deleteMessageSpy(...args),
       editMessageText: vi.fn().mockResolvedValue(true),
       editMessageReplyMarkup: vi.fn().mockResolvedValue(true),
+      answerCallbackQuery: vi.fn().mockResolvedValue(true),
       savePreparedInlineMessage: vi.fn().mockResolvedValue({ id: 'prep_1' }),
     },
     InputFile: class InputFile {
@@ -449,8 +457,12 @@ const joinTournament = (await import('../tgcloud/endpoints/joinTournament.js')).
 const leaveTournament = (await import('../tgcloud/endpoints/leaveTournament.js')).default;
 const startRound = (await import('../tgcloud/endpoints/startRound.js')).default;
 const startPlayoff = (await import('../tgcloud/endpoints/startPlayoff.js')).default;
+const deleteLastRound = (await import('../tgcloud/endpoints/deleteLastRound.js')).default;
 const submitScore = (await import('../tgcloud/endpoints/submitScore.js')).default;
 const confirmScore = (await import('../tgcloud/endpoints/confirmScore.js')).default;
+const togglePlayerActive = (await import('../tgcloud/endpoints/togglePlayerActive.js')).default;
+const finishTournament = (await import('../tgcloud/endpoints/finishTournament.js')).default;
+const callbackQueryHandler = (await import('../tgcloud/handlers/callback_query.js')).default;
 const managePlayer = (await import('../tgcloud/endpoints/managePlayer.js')).default;
 const getState = (await import('../tgcloud/endpoints/getState.js')).default;
 const transferAdmin = (await import('../tgcloud/endpoints/transferAdmin.js')).default;
@@ -722,5 +734,326 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
       { initData: { user: { id: 302, first_name: 'Орг2' } } }
     );
     expect(stateReg.activeTournament.tournament.status).toBe('REGISTRATION');
+  });
+
+  it('prevents duplicate player rows on concurrent joinTournament, duplicate deletes on deleteLastRound, and double toggles on togglePlayerActive', async () => {
+    const snap = await createTournament(
+      { name: 'Гонка кликов', dypMode: 'monster', targetScore: 5 },
+      { initData: { user: { id: 500, first_name: 'Орг' } } }
+    );
+    const tid = snap.tournament.id;
+
+    // 5 concurrent join requests from the same Telegram user -> still exactly 1 row
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        joinTournament({ tournamentId: tid }, { initData: { user: { id: 501, first_name: 'Игрок1' } } })
+      )
+    );
+    const p501Rows = sqlite
+      .prepare('SELECT id FROM tournament_players WHERE tournament_id = ? AND tg_id = ?')
+      .all(tid, 501);
+    expect(p501Rows).toHaveLength(1);
+
+    await joinTournament({ tournamentId: tid }, { initData: { user: { id: 502, first_name: 'Игрок2' } } });
+    await joinTournament({ tournamentId: tid }, { initData: { user: { id: 503, first_name: 'Игрок3' } } });
+
+    // Co-admin added
+    const p501 = sqlite
+      .prepare('SELECT id FROM tournament_players WHERE tournament_id = ? AND tg_id = ?')
+      .get(tid, 501);
+    await managePlayer(
+      { tournamentId: tid, playerId: p501.id, action: 'toggle_coadmin' },
+      { initData: { user: { id: 500, first_name: 'Орг' } } }
+    );
+
+    // Concurrent togglePlayerActive by admin and co-admin -> exactly 1 succeeds, 1 CONFLICT
+    const toggleRes = await Promise.allSettled([
+      togglePlayerActive({ tournamentId: tid, playerId: p501.id }, { initData: { user: { id: 500, first_name: 'Орг' } } }),
+      togglePlayerActive({ tournamentId: tid, playerId: p501.id }, { initData: { user: { id: 501, first_name: 'Игрок1' } } }),
+    ]);
+    expect(toggleRes.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(toggleRes.filter((r) => r.status === 'rejected')).toHaveLength(1);
+
+    // Activate back, start round, then concurrent deleteLastRound -> 1 succeeds, 1 CONFLICT
+    const curActive = sqlite.prepare('SELECT is_active FROM tournament_players WHERE id = ?').get(p501.id).is_active;
+    if (!curActive) {
+      await togglePlayerActive({ tournamentId: tid, playerId: p501.id }, { initData: { user: { id: 500, first_name: 'Орг' } } });
+    }
+    await startRound({ tournamentId: tid }, { initData: { user: { id: 500, first_name: 'Орг' } } });
+
+    const delRes = await Promise.allSettled([
+      deleteLastRound({ tournamentId: tid }, { initData: { user: { id: 500, first_name: 'Орг' } } }),
+      deleteLastRound({ tournamentId: tid }, { initData: { user: { id: 501, first_name: 'Игрок1' } } }),
+    ]);
+    expect(delRes.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(delRes.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    expect(sqlite.prepare('SELECT status, current_round FROM tournaments WHERE id = ?').get(tid)).toEqual({
+      status: 'REGISTRATION',
+      current_round: 0,
+    });
+  });
+
+  it('keeps submitScore idempotent and protects inline Telegram callback_query confirm vs dispute races', async () => {
+    const snap = await createTournament(
+      { name: 'Чат гонка', dypMode: 'monster', targetScore: 5 },
+      { initData: { user: { id: 600, first_name: 'Админ' } } }
+    );
+    for (const [id, name] of [
+      [601, 'Аня'],
+      [602, 'Боря'],
+      [603, 'Витя'],
+    ]) {
+      await joinTournament({ tournamentId: snap.tournament.id }, { initData: { user: { id, first_name: name } } });
+    }
+    const rSnap = await startRound({ tournamentId: snap.tournament.id }, { initData: { user: { id: 600, first_name: 'Админ' } } });
+    const m = rSnap.currentRoundMatches[0];
+    const pAdmin = rSnap.players.find((p) => p.tgId === 600);
+    const adminTeam1 = m.team1Players.some((p) => p.id === pAdmin.id);
+    const oppIds = new Set((adminTeam1 ? m.team2Players : m.team1Players).map((p) => p.id));
+    const oppPlayers = rSnap.players.filter((p) => oppIds.has(p.id) && p.tgId);
+
+    const s1 = await submitScore({ matchId: m.id, score1: 5, score2: 1 }, { initData: { user: { id: 600, first_name: 'Админ' } } });
+    expect(s1.alreadySubmitted).toBeFalsy();
+    const sentBeforeDup = sendMessageSpy.mock.calls.length;
+
+    const s2 = await submitScore({ matchId: m.id, score1: 5, score2: 1 }, { initData: { user: { id: 600, first_name: 'Админ' } } });
+    expect(s2.alreadySubmitted).toBe(true);
+    expect(sendMessageSpy.mock.calls.length).toBe(sentBeforeDup);
+
+    // Concurrent confirm & dispute via Telegram bot inline callback buttons
+    const oppA = oppPlayers[0];
+    const oppB = oppPlayers[1] || oppPlayers[0];
+    await Promise.all([
+      callbackQueryHandler({
+        id: 'cb1',
+        data: `confirm:${m.id}:5:1`,
+        from: { id: oppA.tgId, first_name: oppA.name },
+        message: { chat: { id: oppA.tgId }, message_id: 10 },
+      }),
+      callbackQueryHandler({
+        id: 'cb2',
+        data: `dispute:${m.id}:5:1`,
+        from: { id: oppB.tgId, first_name: oppB.name },
+        message: { chat: { id: oppB.tgId }, message_id: 11 },
+      }),
+    ]);
+
+    const finalMatchRow = sqlite.prepare('SELECT status, score1, score2 FROM matches WHERE id = ?').get(m.id);
+    expect(['FINISHED', 'PLAYING']).toContain(finalMatchRow.status);
+  });
+
+  it('DOOMSDAY SCALE: handles 350 tournaments (>300 SQL chunking), 3500 players, 7000 matches, and 200 concurrent polls smoothly', async () => {
+    const heroTgId = 9001;
+    const insertUser = sqlite.prepare('INSERT OR IGNORE INTO users (tg_id, first_name) VALUES (?, ?)');
+    insertUser.run(heroTgId, 'СуперАдмин');
+    for (let k = 1; k <= 12; k++) {
+      insertUser.run(9100 + k, `Игрок${k}`);
+    }
+
+    const insertTourney = sqlite.prepare(
+      `INSERT INTO tournaments (name, creator_tg_id, status, current_round, tables_count, dyp_mode, target_score, finished_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    const insertPlayer = sqlite.prepare(
+      `INSERT INTO tournament_players (tournament_id, tg_id, name, initials, is_active, is_guest, sort_order)
+       VALUES (?, ?, ?, ?, 1, ?, ?)`
+    );
+    const insertMatch = sqlite.prepare(
+      `INSERT INTO matches (tournament_id, stage, round_number, table_number, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status, score1, score2)
+       VALUES (?, 'QUALIFICATION', ?, ?, ?, ?, ?, ?, 'FINISHED', 5, 3)`
+    );
+
+    const tIds = [];
+    sqlite.exec('BEGIN');
+    const modes = ['monster', 'classic', 'swiss', 'round_robin', 'whist'];
+    const nowSec = Math.floor(Date.now() / 1000);
+    for (let t = 0; t < 350; t++) {
+      const isLast = t === 349;
+      const res = insertTourney.run(
+        `Турнир #${t + 1}`,
+        heroTgId,
+        isLast ? 'QUALIFICATION' : 'FINISHED',
+        4,
+        2,
+        modes[t % modes.length],
+        5,
+        isLast ? null : nowSec - t * 3600
+      );
+      const tid = Number(res.lastInsertRowid);
+      tIds.push(tid);
+
+      const pIds = [];
+      for (let p = 0; p < 10; p++) {
+        const tg = p === 0 ? heroTgId : 9101 + p;
+        const pRes = insertPlayer.run(tid, tg, `Игрок_${p}`, `И${p}`, 0, p + 1);
+        pIds.push(Number(pRes.lastInsertRowid));
+      }
+      for (let r = 1; r <= 4; r++) {
+        for (let g = 0; g < 5; g++) {
+          const i = (g * 2 + r) % 10;
+          insertMatch.run(
+            tid,
+            r,
+            (g % 2) + 1,
+            pIds[i % 10],
+            pIds[(i + 1) % 10],
+            pIds[(i + 2) % 10],
+            pIds[(i + 3) % 10]
+          );
+        }
+      }
+    }
+    sqlite.exec('COMMIT');
+
+    const activeTid = tIds[tIds.length - 1];
+
+    // 1. 200 concurrent light polls (typical live evening peak for active clubs)
+    const tPollStart = performance.now();
+    const pollTimings = [];
+    const lightResults = await Promise.all(
+      Array.from({ length: 200 }, async (_, idx) => {
+        const s = performance.now();
+        const res = await getState(
+          { tournamentId: tIds[idx % tIds.length], light: true },
+          { initData: { user: { id: 9101 + (idx % 9), first_name: 'Игрок' } } }
+        );
+        pollTimings.push(performance.now() - s);
+        return res;
+      })
+    );
+    const lightTotalMs = performance.now() - tPollStart;
+    pollTimings.sort((a, b) => a - b);
+    const lightP95Ms = pollTimings[Math.floor(pollTimings.length * 0.95)] || 0;
+    expect(lightResults).toHaveLength(200);
+    expect(lightResults.every((r) => Boolean(r.activeTournament))).toBe(true);
+
+    // 2. Full getState across 350 tournaments (7000 matches, 3500 players -> >300 ID SQLite chunking!)
+    const tFullStart = performance.now();
+    const fullState = await getState(
+      { tournamentId: activeTid },
+      { initData: { user: { id: heroTgId, first_name: 'СуперАдмин' } } }
+    );
+    const fullMs = performance.now() - tFullStart;
+
+    expect(fullState.tournaments).toHaveLength(350);
+    expect(fullState.tournamentHistory).toHaveLength(350);
+    expect(fullState.playerProfile.tournamentsPlayed).toBe(350);
+    expect(fullState.playerProfile.totalMatches).toBeGreaterThan(1000);
+
+    console.info(
+      `[DOOMSDAY SCALE] 350 tournaments / 3500 players / 7000 matches | ` +
+        `200 light polls total=${lightTotalMs.toFixed(1)}ms (p95=${lightP95Ms.toFixed(1)}ms) | ` +
+        `full getState(350)=${fullMs.toFixed(1)}ms`
+    );
+    expect(lightTotalMs).toBeLessThan(5000);
+    expect(fullMs).toBeLessThan(5000);
+  });
+
+  it('DOOMSDAY CONCURRENCY: 32 parallel tournaments x 12 players x 3 rounds with score/confirm/double-click storms stay 100% consistent', async () => {
+    const startMs = performance.now();
+    const T_COUNT = 32;
+    const contexts = [];
+    for (let t = 0; t < T_COUNT; t++) {
+      const adminId = 20000 + t * 20;
+      const snap = await createTournament(
+        { name: `Шторм #${t + 1}`, autoRounds: true, tables: 3, targetScore: 5, playoffSize: 4 },
+        { initData: { user: { id: adminId, first_name: `Орг${t}` } } }
+      );
+      const guestNames = Array.from({ length: 11 }, (_, i) => `Уч_${t}_${i + 1}`);
+      await addGuestPlayer(
+        { tournamentId: snap.tournament.id, names: guestNames },
+        { initData: { user: { id: adminId, first_name: `Орг${t}` } } }
+      );
+      // Intentional double-click burst on startRound for every tournament simultaneously
+      const rBurst = await Promise.allSettled([
+        startRound({ tournamentId: snap.tournament.id }, { initData: { user: { id: adminId, first_name: `Орг${t}` } } }),
+        startRound({ tournamentId: snap.tournament.id }, { initData: { user: { id: adminId, first_name: `Орг${t}` } } }),
+      ]);
+      expect(rBurst.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect(rBurst.filter((r) => r.status === 'rejected')).toHaveLength(1);
+      contexts.push({ tid: snap.tournament.id, adminId });
+    }
+
+    // Play 3 full qualification rounds across all 32 tournaments in parallel bursts
+    for (let round = 1; round <= 3; round++) {
+      await Promise.all(
+        contexts.map(async ({ tid, adminId }) => {
+          const openMatches = sqlite
+            .prepare("SELECT id FROM matches WHERE tournament_id = ? AND stage = 'QUALIFICATION' AND round_number = ? AND status != 'FINISHED'")
+            .all(tid, round);
+          expect(openMatches.length).toBeGreaterThan(0);
+
+          // Force parallel score save bursts on every match in the round simultaneously
+          await Promise.all(
+            openMatches.map((m, idx) =>
+              submitScore(
+                { matchId: m.id, score1: 5, score2: idx % 4, forceAdmin: true },
+                { initData: { user: { id: adminId, first_name: `Орг` } } }
+              )
+            )
+          );
+        })
+      );
+    }
+
+    // Transition all 32 tournaments to playoff concurrently (scheduling pendingPlayoff then finishing active round -> auto-playoff -> finals)
+    await Promise.all(
+      contexts.map(async ({ tid, adminId }) => {
+        await startPlayoff(
+          { tournamentId: tid, playoffSize: 4, thirdPlaceMatch: false },
+          { initData: { user: { id: adminId, first_name: 'Орг' } } }
+        );
+        // If autoRounds created round 4, finish its open matches to trigger pendingPlayoff -> PLAYOFF
+        const qualOpen = sqlite
+          .prepare("SELECT id FROM matches WHERE tournament_id = ? AND stage = 'QUALIFICATION' AND status != 'FINISHED'")
+          .all(tid);
+        if (qualOpen.length > 0) {
+          await Promise.all(
+            qualOpen.map((m) =>
+              submitScore(
+                { matchId: m.id, score1: 5, score2: 1, forceAdmin: true },
+                { initData: { user: { id: adminId, first_name: 'Орг' } } }
+              )
+            )
+          );
+        }
+        // Play semifinals + final
+        for (let step = 0; step < 3; step++) {
+          const poOpen = sqlite
+            .prepare("SELECT id FROM matches WHERE tournament_id = ? AND stage = 'PLAYOFF' AND status != 'FINISHED'")
+            .all(tid);
+          if (poOpen.length === 0) break;
+          await Promise.all(
+            poOpen.map((m) =>
+              submitScore(
+                { matchId: m.id, score1: 5, score2: 2, forceAdmin: true },
+                { initData: { user: { id: adminId, first_name: 'Орг' } } }
+              )
+            )
+          );
+        }
+        await finishTournament(
+          { tournamentId: tid },
+          { initData: { user: { id: adminId, first_name: 'Орг' } } }
+        );
+      })
+    );
+
+    const elapsedMs = performance.now() - startMs;
+    const finishedCount = sqlite.prepare("SELECT COUNT(*) as c FROM tournaments WHERE status = 'FINISHED' AND name LIKE 'Шторм #%'").get().c;
+    const totalMatchesPlayed = sqlite.prepare("SELECT COUNT(*) as c FROM matches WHERE status = 'FINISHED'").get().c;
+    const dupRounds = sqlite
+      .prepare("SELECT tournament_id, stage, round_number, COUNT(*) as cnt FROM matches GROUP BY tournament_id, stage, round_number HAVING cnt > 3")
+      .all();
+
+    expect(finishedCount).toBe(T_COUNT);
+    expect(totalMatchesPlayed).toBeGreaterThanOrEqual(T_COUNT * (9 + 3));
+    expect(dupRounds).toHaveLength(0);
+
+    console.info(
+      `[DOOMSDAY CONCURRENCY] 32 parallel tournaments x 12 players finished through playoff in ${elapsedMs.toFixed(1)}ms ` +
+        `(${totalMatchesPlayed} matches total, 0 duplicate rounds)`
+    );
+    expect(elapsedMs).toBeLessThan(8000);
   });
 });

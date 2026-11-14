@@ -12,6 +12,7 @@ import {
   Sun,
   Moon,
   ArrowLeft,
+  Loader2,
 } from 'lucide-react';
 import { apiClient, getLivePathFromUrl, getStartTournamentId, isTelegramEnv } from './api/client';
 import { getTournamentInviteLink, shareTournamentInTelegram } from './utils/share';
@@ -44,6 +45,7 @@ export default function App() {
   const livePath = getLivePathFromUrl();
   const [loading, setLoading] = useState(!livePath);
   const [busy, setBusy] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => currentTheme());
   const [appState, setAppState] = useState<AppStateResponse | null>(null);
   const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
@@ -56,6 +58,7 @@ export default function App() {
   const [adminTab, setAdminTab] = useState<'dashboard' | 'players' | 'table' | 'settings'>('dashboard');
 
   const startHandledRef = useRef(false);
+  const actionLockRef = useRef(false);
   const supersededRef = useRef(false);
   const singleInstanceRef = useRef<SingleInstanceController | null>(null);
   const selectedTournamentIdRef = useRef<number | null>(selectedTournamentId);
@@ -243,9 +246,27 @@ export default function App() {
     });
   };
 
-  const handleCreateTournament = async (form: CreateTournamentForm) => {
-    setBusy(true);
-    try {
+  const runLocked = useCallback(
+    async (statusText: string, fn: () => Promise<void>) => {
+      if (actionLockRef.current) return;
+      actionLockRef.current = true;
+      setBusy(true);
+      setPendingStatus(statusText);
+      try {
+        await fn();
+      } catch (err) {
+        showError(err);
+      } finally {
+        actionLockRef.current = false;
+        setBusy(false);
+        setPendingStatus(null);
+      }
+    },
+    [showError]
+  );
+
+  const handleCreateTournament = (form: CreateTournamentForm) =>
+    runLocked('Создаём турнир...', async () => {
       const snap = await apiClient.createTournament({ ...form, joinAsPlayer: true });
       applySnapshot(snap);
       setIsCreating(false);
@@ -253,40 +274,29 @@ export default function App() {
       setMode('ADMIN');
       setAdminTab('players');
       setCreatedInvite({ id: snap.tournament.id, name: snap.tournament.name });
-    } catch (err) {
-      showError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
+      notify('Турнир создан');
+    });
 
-  const runAction = async (fn: () => Promise<TournamentSnapshot>) => {
-    setBusy(true);
-    try {
+  const runAction = (
+    fn: () => Promise<TournamentSnapshot>,
+    statusText = 'Выполняем действие...',
+    successToast?: string
+  ) =>
+    runLocked(statusText, async () => {
       const snap = await fn();
       applySnapshot(snap);
-    } catch (err) {
-      showError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
+      if (successToast) notify(successToast);
+    });
 
-  const handleManageClubPlayer = async (params: {
+  const handleManageClubPlayer = (params: {
     action: 'list' | 'add' | 'delete';
     id?: number;
     name?: string;
-  }) => {
-    setBusy(true);
-    try {
+  }) =>
+    runLocked('Обновляем список клуба...', async () => {
       const res = await apiClient.manageClubPlayer(params);
       setAppState((prev) => (prev ? { ...prev, clubPlayers: res.clubPlayers } : prev));
-    } catch (err) {
-      showError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   const snapshot = appState?.activeTournament ?? null;
   const hideBottomNav = Boolean(
@@ -317,6 +327,15 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col items-center justify-center p-6 text-center">
         <ToastHost />
+      {pendingStatus && (
+        <div
+          data-testid="action-status-banner"
+          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
+        >
+          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
+          <span>{pendingStatus}</span>
+        </div>
+      )}
         <Trophy size={56} className="text-[#2ea6ff] mb-4" />
         <h1 className="text-2xl mb-2">
           <Brand />
@@ -346,6 +365,15 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col items-center justify-center gap-3">
         <ToastHost />
+      {pendingStatus && (
+        <div
+          data-testid="action-status-banner"
+          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
+        >
+          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
+          <span>{pendingStatus}</span>
+        </div>
+      )}
         <span className="loading loading-spinner text-[#2ea6ff]" />
         <Brand className="text-lg mt-1" />
         <span className="text-xs text-[var(--muted)]">Загрузка турнира...</span>
@@ -358,6 +386,15 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
         <ToastHost />
+      {pendingStatus && (
+        <div
+          data-testid="action-status-banner"
+          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
+        >
+          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
+          <span>{pendingStatus}</span>
+        </div>
+      )}
         <div className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
           <button
             type="button"
@@ -405,6 +442,15 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
         <ToastHost />
+      {pendingStatus && (
+        <div
+          data-testid="action-status-banner"
+          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
+        >
+          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
+          <span>{pendingStatus}</span>
+        </div>
+      )}
         <div
           data-testid="home-header"
           className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
@@ -555,6 +601,15 @@ export default function App() {
   return (
     <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col relative overflow-hidden">
       <ToastHost />
+      {pendingStatus && (
+        <div
+          data-testid="action-status-banner"
+          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
+        >
+          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
+          <span>{pendingStatus}</span>
+        </div>
+      )}
 
       {/* Top bar: home + support button + role / finished tabs */}
       <div
@@ -648,24 +703,39 @@ export default function App() {
                   setShowHome(true);
                 }}
                 onSubmitScore={(matchId, score1, score2) =>
-                  runAction(async () => {
-                    const res = await apiClient.submitScore({ matchId, score1, score2 });
-                    if (res.notifiedCount === 0 && res.myCurrentMatch?.status === 'WAITING_CONFIRM') {
-                      showError(
-                        new Error(
-                          'Соперники ещё не разрешили сообщения от бота @kickerpickerbot. Нажмите «Напомнить» после запуска бота или подтвердите счёт на экране соперника.'
-                        )
-                      );
-                    }
-                    return res;
-                  })
+                  runAction(
+                    async () => {
+                      const res = await apiClient.submitScore({ matchId, score1, score2 });
+                      if (res.alreadySubmitted) {
+                        notify('Этот счёт уже отправлен и ждёт подтверждения');
+                      } else if (
+                        res.notifiedCount === 0 &&
+                        res.myCurrentMatch?.status === 'WAITING_CONFIRM'
+                      ) {
+                        showError(
+                          new Error(
+                            'Соперники ещё не разрешили сообщения от бота @kickerpickerbot. Нажмите «Напомнить» после запуска бота или подтвердите счёт на экране соперника.'
+                          )
+                        );
+                      } else if (res.myCurrentMatch?.status === 'WAITING_CONFIRM') {
+                        notify('Счёт отправлен на подтверждение');
+                      } else {
+                        notify('Счёт сохранён');
+                      }
+                      return res;
+                    },
+                    'Отправляем счёт...'
+                  )
                 }
                 onConfirmScore={(matchId, action) =>
-                  runAction(() => apiClient.confirmScore({ matchId, action }))
+                  runAction(
+                    () => apiClient.confirmScore({ matchId, action }),
+                    action === 'confirm' ? 'Подтверждаем счёт...' : 'Оспариваем счёт...',
+                    action === 'confirm' ? 'Счёт подтверждён' : 'Спор отправлен — матч возвращён в игру'
+                  )
                 }
-                onRemindConfirm={async (matchId) => {
-                  setBusy(true);
-                  try {
+                onRemindConfirm={(matchId) =>
+                  runLocked('Отправляем напоминание...', async () => {
                     const res = await apiClient.remindConfirm(matchId);
                     if (res.sentCount === 0) {
                       showError(
@@ -673,13 +743,11 @@ export default function App() {
                           'Бот не может написать сопернику: попросите его открыть @kickerpickerbot и нажать /start.'
                         )
                       );
+                    } else {
+                      notify('Напоминание отправлено');
                     }
-                  } catch (err) {
-                    showError(err);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
+                  })
+                }
               />
             )}
             {playerTab === 'table' && (
@@ -704,21 +772,17 @@ export default function App() {
                   setPlayerTab('match');
                   fetchState(tId);
                 }}
-                onLeave={async () => {
-                  setBusy(true);
-                  try {
+                onLeave={() =>
+                  runLocked('Выписываем из турнира...', async () => {
                     await apiClient.leaveTournament(snapshot.tournament.id);
                     setSelectedTournamentId(null);
                     setMode('PLAYER');
                     setPlayerTab('match');
                     setShowHome(true);
                     await fetchState(null);
-                  } catch (err) {
-                    showError(err);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
+                    notify('Вы выписались из турнира');
+                  })
+                }
               />
             )}
           </>
@@ -729,27 +793,47 @@ export default function App() {
                 snapshot={snapshot}
                 busy={busy}
                 onStartRound={() =>
-                  runAction(() => apiClient.startRound(snapshot.tournament.id))
+                  runAction(
+                    () => apiClient.startRound(snapshot.tournament.id),
+                    'Запускаем раунд...',
+                    'Раунд запущен'
+                  )
                 }
                 onStartPlayoff={(options) =>
-                  runAction(() => apiClient.startPlayoff(snapshot.tournament.id, options))
+                  runAction(
+                    () => apiClient.startPlayoff(snapshot.tournament.id, options),
+                    'Запускаем плей-офф...'
+                  )
                 }
                 onCancelPendingPlayoff={() =>
-                  runAction(() => apiClient.startPlayoff(snapshot.tournament.id, true))
+                  runAction(
+                    () => apiClient.startPlayoff(snapshot.tournament.id, true),
+                    'Отменяем переход в плей-офф...'
+                  )
                 }
                 onFinishTournament={(reopen) =>
-                  runAction(() => apiClient.finishTournament(snapshot.tournament.id, reopen))
+                  runAction(
+                    () => apiClient.finishTournament(snapshot.tournament.id, reopen),
+                    reopen ? 'Возвращаем турнир в игру...' : 'Завершаем турнир...',
+                    reopen ? 'Турнир возобновлён' : 'Турнир завершён'
+                  )
                 }
                 onDeleteLastRound={() =>
-                  runAction(() => apiClient.deleteLastRound(snapshot.tournament.id))
+                  runAction(
+                    () => apiClient.deleteLastRound(snapshot.tournament.id),
+                    'Удаляем раунд...',
+                    'Последний раунд удалён'
+                  )
                 }
                 onAdminSaveMatch={(matchId, score1, score2) =>
-                  runAction(() =>
-                    apiClient.submitScore({ matchId, score1, score2, forceAdmin: true })
+                  runAction(
+                    () => apiClient.submitScore({ matchId, score1, score2, forceAdmin: true }),
+                    'Сохраняем счёт...',
+                    'Счёт сохранён'
                   )
                 }
                 onAdminManageMatch={(params) =>
-                  runAction(() => apiClient.adminManageMatch(params))
+                  runAction(() => apiClient.adminManageMatch(params), 'Обновляем матч...')
                 }
                 onToggleDisabledTable={(tNum) => {
                   const current = Array.isArray(snapshot.tournament.disabledTables)
@@ -833,29 +917,31 @@ export default function App() {
                 busy={busy}
                 onBack={() => setAdminTab('dashboard')}
                 onSave={(payload) =>
-                  runAction(() => apiClient.updateTournament(payload))
+                  runAction(
+                    () => apiClient.updateTournament(payload),
+                    'Сохраняем настройки...',
+                    'Настройки сохранены'
+                  )
                 }
                 onToggleLive={(enabled) =>
-                  runAction(() => apiClient.publishLive(snapshot.tournament.id, enabled))
+                  runAction(
+                    () => apiClient.publishLive(snapshot.tournament.id, enabled),
+                    enabled ? 'Включаем Live-ссылку...' : 'Выключаем Live-ссылку...'
+                  )
                 }
-                onTransferAdmin={async (playerId) => {
-                  setBusy(true);
-                  try {
+                onTransferAdmin={(playerId) =>
+                  runLocked('Передаём права организатора...', async () => {
                     const snap = await apiClient.transferAdmin(snapshot.tournament.id, playerId);
                     applySnapshot(snap);
                     if (!snap.isAdmin) {
                       setMode('PLAYER');
                       setPlayerTab('match');
                     }
-                  } catch (err) {
-                    showError(err);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-                onDelete={async () => {
-                  setBusy(true);
-                  try {
+                    notify('Права организатора переданы');
+                  })
+                }
+                onDelete={() =>
+                  runLocked('Удаляем турнир...', async () => {
                     await apiClient.deleteTournament(snapshot.tournament.id);
                     setSelectedTournamentId(null);
                     setMode('PLAYER');
@@ -863,12 +949,9 @@ export default function App() {
                     setShowHome(true);
                     setAdminTab('dashboard');
                     await fetchState(null);
-                  } catch (err) {
-                    showError(err);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
+                    notify('Турнир удалён');
+                  })
+                }
               />
             )}
           </>

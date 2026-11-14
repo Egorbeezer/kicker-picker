@@ -1,5 +1,5 @@
 import { db, api } from 'sdk';
-import { eq } from 'sdk/db';
+import { eq, and } from 'sdk/db';
 import { tournaments, tournamentPlayers, matches } from '../schema.js';
 import {
   applyMatchFinish,
@@ -132,7 +132,7 @@ export default async function (callbackQuery) {
   const scorePair = `${match.score1}:${match.score2}`;
 
   if (action === 'dispute') {
-    await db
+    const claimedDispute = await db
       .update(matches)
       .set({
         status: 'PLAYING',
@@ -140,7 +140,17 @@ export default async function (callbackQuery) {
         submittedByTgId: null,
         confirmMessages: null,
       })
-      .where(eq(matches.id, match.id));
+      .where(and(eq(matches.id, match.id), eq(matches.status, 'WAITING_CONFIRM')))
+      .returning();
+
+    if (!Array.isArray(claimedDispute) || claimedDispute.length === 0) {
+      await api.answerCallbackQuery({
+        callback_query_id: callbackQuery.id,
+        text: 'Матч уже обработан другим игроком',
+        show_alert: true,
+      });
+      return;
+    }
 
     const disputedText =
       `❌ <b>Счет ${scorePair} оспорен</b> (${actorName})\n` +
@@ -173,13 +183,27 @@ export default async function (callbackQuery) {
     return;
   }
 
-  // Confirm
-  const finishRes = await applyMatchFinish({
-    tournament,
-    match,
-    score1: match.score1,
-    score2: match.score2,
-  });
+  // Confirm (with CAS on WAITING_CONFIRM to block simultaneous duplicate clicks)
+  let finishRes;
+  try {
+    finishRes = await applyMatchFinish({
+      tournament,
+      match,
+      score1: match.score1,
+      score2: match.score2,
+      expectedStatuses: ['WAITING_CONFIRM'],
+    });
+  } catch (err) {
+    if (err?.parameters?.code === 'CONFLICT' || err?.code === 'CONFLICT') {
+      await api.answerCallbackQuery({
+        callback_query_id: callbackQuery.id,
+        text: 'Матч уже обработан другим игроком',
+        show_alert: true,
+      });
+      return;
+    }
+    throw err;
+  }
 
   const confirmedHeader = finishRes?.seriesOver
     ? `✅ <b>Счет ${scorePair} подтвержден!</b> (${actorName})`
