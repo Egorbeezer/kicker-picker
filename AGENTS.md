@@ -152,3 +152,18 @@ The platform manages the bot's webhook for you, derived from your deployed
 `handlers/*`, and refreshes it on `push`. If it ever drifts — e.g. someone called
 `setWebhook` with the raw bot token — `npx tgcloud webhook` shows the mismatch and
 `npx tgcloud webhook sync` repairs it.
+
+## Project Git, Test & Auto-Deploy Workflow
+
+After every task/change in this repository (`kicker-picker`), the assistant MUST automatically, without waiting for an extra prompt:
+
+1. Run full local verification:
+   ```
+   npm run lint && npm run typecheck && npm test && npm run build
+   ```
+2. Stage, commit, and push to GitHub (`origin/main`):
+   - **Commit messages MUST be strictly in Russian** (Conventional Commits prefix like `feat:`, `fix:`, `chore:`, `docs:` is allowed, description and body in Russian: what changed, why, and verification results).
+   - Never force-push or amend published commits; always create a new commit and run `git push origin main`.
+3. Deploy to `tgcloud` when runtime files (`src/` or `tgcloud/`) changed:
+   - Run `npx tgcloud push` (and verify with `npx tgcloud fetch && npx tgcloud status` if Bot API reports a transient error).
+   - If `tgcloud/schema.js` changed, apply migrations (`npx tgcloud migrate --yes`) and verify `--dry-run` is clean.

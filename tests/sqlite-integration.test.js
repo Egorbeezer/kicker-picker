@@ -494,42 +494,30 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
       { initData: { user: { id: 10, first_name: 'Админ' } } }
     );
     await joinTournament({ tournamentId: snap.tournament.id }, { initData: { user: { id: 20, first_name: 'Борис' } } });
-    await addGuestPlayer(
-      { tournamentId: snap.tournament.id, names: ['Вова', 'Дима'] },
-      { initData: { user: { id: 10, first_name: 'Админ' } } }
-    );
+    await joinTournament({ tournamentId: snap.tournament.id }, { initData: { user: { id: 30, first_name: 'Вова' } } });
+    await joinTournament({ tournamentId: snap.tournament.id }, { initData: { user: { id: 40, first_name: 'Дима' } } });
     const roundSnap = await startRound(
       { tournamentId: snap.tournament.id },
       { initData: { user: { id: 10, first_name: 'Админ' } } }
     );
     const m = roundSnap.currentRoundMatches[0];
-    // Find player belonging to team1 and player belonging to team2
     const pAdmin = roundSnap.players.find((p) => p.tgId === 10);
-    const pBoris = roundSnap.players.find((p) => p.tgId === 20);
     const adminInT1 = m.team1Players.some((p) => p.id === pAdmin.id);
-    const borisInT1 = m.team1Players.some((p) => p.id === pBoris.id);
+    const oppIds = new Set((adminInT1 ? m.team2Players : m.team1Players).map((p) => p.id));
+    const oppPlayer = roundSnap.players.find((p) => oppIds.has(p.id) && p.tgId);
+    expect(oppPlayer?.tgId).toBeTruthy();
 
     await submitScore(
       { matchId: m.id, score1: 5, score2: 2 },
       { initData: { user: { id: 10, first_name: 'Админ' } } }
     );
 
-    if (adminInT1 === borisInT1) {
-      // Both telegram users ended up on same team -> admin confirms twice concurrently
-      const confRes = await Promise.allSettled([
-        confirmScore({ matchId: m.id, action: 'confirm' }, { initData: { user: { id: 10, first_name: 'Админ' } } }),
-        confirmScore({ matchId: m.id, action: 'confirm' }, { initData: { user: { id: 10, first_name: 'Админ' } } }),
-      ]);
-      expect(confRes.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
-      expect(confRes.filter((r) => r.status === 'rejected')).toHaveLength(1);
-    } else {
-      const confRes = await Promise.allSettled([
-        confirmScore({ matchId: m.id, action: 'confirm' }, { initData: { user: { id: 20, first_name: 'Борис' } } }),
-        confirmScore({ matchId: m.id, action: 'confirm' }, { initData: { user: { id: 20, first_name: 'Борис' } } }),
-      ]);
-      expect(confRes.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
-      expect(confRes.filter((r) => r.status === 'rejected')).toHaveLength(1);
-    }
+    const confRes = await Promise.allSettled([
+      confirmScore({ matchId: m.id, action: 'confirm' }, { initData: { user: { id: oppPlayer.tgId, first_name: oppPlayer.name } } }),
+      confirmScore({ matchId: m.id, action: 'confirm' }, { initData: { user: { id: oppPlayer.tgId, first_name: oppPlayer.name } } }),
+    ]);
+    expect(confRes.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(confRes.filter((r) => r.status === 'rejected')).toHaveLength(1);
 
     const afterState = await getState(
       { tournamentId: snap.tournament.id, light: true },

@@ -248,11 +248,17 @@ describe('Playoff share & PNG export', () => {
 
     await act(async () => {
       shareBtn!.click();
-      await new Promise((r) => setTimeout(r, 10));
     });
-
-    expect(apiCalls.some((c) => c.name === 'shareLeaderboard' && c.input.kind === 'playoff')).toBe(true);
-    expect(shareMessageMock).toHaveBeenCalledWith('prep_playoff_1', expect.any(Function));
+    await vi.waitFor(
+      () => {
+        expect(apiCalls.some((c) => c.name === 'shareLeaderboard' && c.input.kind === 'playoff')).toBe(true);
+        expect(shareMessageMock).toHaveBeenCalledWith('prep_playoff_1', expect.any(Function));
+      },
+      { timeout: 3000 }
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     // Switch to Group tab and confirm "Поделиться" still exists and switches to kind="standings"
     const groupBtn = Array.from(container.querySelectorAll('button')).find((b) =>
@@ -271,10 +277,16 @@ describe('Playoff share & PNG export', () => {
 
     await act(async () => {
       shareStandingsBtn!.click();
-      await new Promise((r) => setTimeout(r, 10));
     });
-
-    expect(apiCalls.some((c) => c.name === 'shareLeaderboard' && c.input.kind === 'standings')).toBe(true);
+    await vi.waitFor(
+      () => {
+        expect(apiCalls.some((c) => c.name === 'shareLeaderboard' && c.input.kind === 'standings')).toBe(true);
+      },
+      { timeout: 3000 }
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     await act(async () => {
       root.unmount();
