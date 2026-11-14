@@ -1,4 +1,5 @@
 import { MatchItem, MatchPlayerInfo, TournamentSnapshot } from '../types';
+import { loadCanvasImage } from './canvasImage';
 import { formatDateRu } from './date';
 import { currentTheme, Theme } from './theme';
 
@@ -114,23 +115,6 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number):
     trimmed = trimmed.slice(0, -1);
   }
   return `${trimmed}…`;
-}
-
-function loadImage(url: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    const timer = window.setTimeout(() => resolve(null), 1800);
-    img.onload = () => {
-      window.clearTimeout(timer);
-      resolve(img);
-    };
-    img.onerror = () => {
-      window.clearTimeout(timer);
-      resolve(null);
-    };
-    img.src = url;
-  });
 }
 
 function formatMatchOutcome(match: MatchItem | undefined, prefix: string): string {
@@ -286,7 +270,7 @@ export async function renderPodiumToPng(
   const loadedImages = new Map<string, HTMLImageElement | null>();
   await Promise.all(
     Array.from(avatarUrls).map(async (url) => {
-      loadedImages.set(url, await loadImage(url));
+      loadedImages.set(url, await loadCanvasImage(url));
     }),
   );
 

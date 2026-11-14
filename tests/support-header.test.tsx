@@ -165,13 +165,30 @@ describe('Support header button (@kickerpickersupportbot)', () => {
       expect(container.querySelector('[data-testid="header-support-btn"]')).not.toBeNull();
     });
 
-    // Click Home button -> still has header-support-btn
-    const homeBtn = container.querySelector('button[aria-label="Главный экран"]') as HTMLButtonElement | null;
+    // Active tournament header with admin tabs:
+    // Home is 62x40 same as Support; Support sits inside header-right-group immediately before Игрок/Админ tabs
+    const appHeader = container.querySelector('[data-testid="app-header"]');
+    expect(appHeader).not.toBeNull();
+    const homeBtn = appHeader!.querySelector('button[aria-label="Главный экран"]') as HTMLButtonElement | null;
     expect(homeBtn).not.toBeNull();
+    expect(homeBtn!.className).toContain('min-w-[62px]');
+    expect(homeBtn!.className).toContain('h-10');
+
+    const rightGroup = appHeader!.querySelector('[data-testid="header-right-group"]');
+    expect(rightGroup).not.toBeNull();
+    const supportInRightGroup = rightGroup!.querySelector('[data-testid="header-support-btn"]');
+    expect(supportInRightGroup).not.toBeNull();
+    expect(rightGroup!.textContent).toContain('Игрок');
+    expect(rightGroup!.textContent).toContain('Админ');
+
+    // Click Home button -> on Home screen Support sits in header-right-group (at the right edge)
     await act(async () => {
       homeBtn!.click();
     });
-    expect(container.querySelector('[data-testid="header-support-btn"]')).not.toBeNull();
+    const homeHeader = container.querySelector('[data-testid="home-header"]');
+    expect(homeHeader).not.toBeNull();
+    const homeRightGroup = homeHeader!.querySelector('[data-testid="header-right-group"]');
+    expect(homeRightGroup?.querySelector('[data-testid="header-support-btn"]')).not.toBeNull();
 
     // Open Create Tournament -> still has header-support-btn
     const createBtn = Array.from(container.querySelectorAll('button')).find((b) =>
@@ -188,6 +205,32 @@ describe('Support header button (@kickerpickersupportbot)', () => {
 
     await act(async () => {
       root.unmount();
+    });
+
+    // 3. Inside Telegram Mini App as non-admin active player (no tabs): Support stays flush right in header-right-group
+    const firstState = await getStateSpy.mock.results[0].value;
+    getStateSpy.mockResolvedValue({
+      ...firstState,
+      activeTournament: {
+        ...firstState.activeTournament,
+        isAdmin: false,
+      },
+    });
+    const c3 = document.createElement('div');
+    document.body.appendChild(c3);
+    const r3 = createRoot(c3);
+    await act(async () => {
+      r3.render(<App />);
+    });
+    await vi.waitFor(() => {
+      expect(c3.querySelector('[data-testid="app-header"]')).not.toBeNull();
+    });
+    const playerRightGroup = c3.querySelector('[data-testid="app-header"] [data-testid="header-right-group"]');
+    expect(playerRightGroup?.querySelector('[data-testid="header-support-btn"]')).not.toBeNull();
+    expect(playerRightGroup?.textContent).not.toContain('Игрок');
+
+    await act(async () => {
+      r3.unmount();
     });
   });
 });

@@ -1,4 +1,5 @@
 import type { TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
+import { loadCanvasImage } from './canvasImage';
 import { currentTheme } from './theme';
 
 const COLUMN_META: Record<TableColumnKey, { label: string; width: number }> = {
@@ -17,15 +18,6 @@ const COLUMN_META: Record<TableColumnKey, { label: string; width: number }> = {
   sonnebornBerger: { label: 'SB', width: 58 },
   name: { label: 'Игрок', width: 0 },
 };
-
-function loadImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
-}
 
 function formatTodayRu(): string {
   const now = new Date();
@@ -131,12 +123,12 @@ export async function renderLeaderboardToPng(params: {
 
   ctx.scale(scale, scale);
 
-  // Preload unique avatar data URLs
+  // Preload unique avatar URLs safely (CORS + timeout)
   const avatarCache = new Map<number, HTMLImageElement | null>();
   await Promise.all(
     leaderboard.map(async (row) => {
       if (row.avatarUrl) {
-        avatarCache.set(row.playerId, await loadImage(row.avatarUrl));
+        avatarCache.set(row.playerId, await loadCanvasImage(row.avatarUrl));
       }
     })
   );
@@ -268,9 +260,16 @@ export async function renderLeaderboardToPng(params: {
       ctx.arc(avCenterX, midY, avSize / 2, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
+      let drawnAvatar = false;
       if (avImg) {
-        ctx.drawImage(avImg, avX, midY - avSize / 2, avSize, avSize);
-      } else {
+        try {
+          ctx.drawImage(avImg, avX, midY - avSize / 2, avSize, avSize);
+          drawnAvatar = true;
+        } catch {
+          drawnAvatar = false;
+        }
+      }
+      if (!drawnAvatar) {
         ctx.fillStyle = isMe ? palette.accent : palette.badgeBg;
         ctx.fillRect(avX, midY - avSize / 2, avSize, avSize);
         ctx.fillStyle = isMe ? '#ffffff' : palette.text;

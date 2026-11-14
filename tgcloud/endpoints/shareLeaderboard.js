@@ -133,14 +133,15 @@ export default async function (input, ctx) {
       }
     }
 
-    // Не оставляем временное фото в диалоге с ботом
-    let sentToPm = false;
-    if (sent?.message_id) {
+    // Удаляем временное фото из ЛС только если удалось подготовить inline-сообщение для shareMessage
+    let sentToPm = Boolean(sent?.message_id);
+    if (preparedMessageId && sent?.message_id) {
       try {
         await api.deleteMessage({
           chat_id: tgUser.id,
           message_id: sent.message_id,
         });
+        sentToPm = false;
       } catch (delErr) {
         console.warn('deleteMessage after share skipped:', delErr?.description || delErr?.message);
         sentToPm = true;

@@ -390,4 +390,171 @@ describe('Playoff share & PNG export', () => {
       message_id: 991,
     });
   });
+
+  it('keeps PM photo when savePreparedInlineMessage fails so sentToPm=true', async () => {
+    const sendPhoto = vi.fn().mockResolvedValue({
+      message_id: 992,
+      photo: [{ file_id: 'small' }, { file_id: 'large_id' }],
+    });
+    const savePreparedInlineMessage = vi.fn().mockRejectedValue(new Error('BOT_INLINE_DISABLED'));
+    const deleteMessage = vi.fn();
+
+    class MockInputFile {
+      bytes: Uint8Array;
+      filename: string;
+      opts?: Record<string, unknown>;
+      constructor(bytes: Uint8Array, filename: string, opts?: Record<string, unknown>) {
+        this.bytes = bytes;
+        this.filename = filename;
+        this.opts = opts;
+      }
+    }
+    class MockEndpointError extends Error {}
+
+    vi.doMock('sdk', () => ({
+      db: {
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              get: async () => ({
+                id: 77,
+                creatorTgId: 12345,
+                name: 'Кубок Пикера',
+                status: 'QUALIFICATION',
+                currentRound: 2,
+              }),
+            }),
+          }),
+        }),
+      },
+      api: { sendPhoto, savePreparedInlineMessage, deleteMessage },
+      InputFile: MockInputFile,
+      EndpointError: MockEndpointError,
+    }));
+    vi.doMock('sdk/db', () => ({ eq: vi.fn(), and: vi.fn(), desc: vi.fn(), inArray: vi.fn(), sql: vi.fn() }));
+    vi.doMock('../tgcloud/schema.js', () => ({ tournaments: { id: 'id' }, tournamentPlayers: {} }));
+
+    const { default: shareLeaderboard } = await import('../tgcloud/endpoints/shareLeaderboard.js');
+    const res = await shareLeaderboard(
+      { tournamentId: 77, imageBase64: 'A'.repeat(200), kind: 'standings' },
+      { initData: { user: { id: 12345 } } }
+    );
+
+    expect(res).toEqual({ sentToPm: true, preparedMessageId: null });
+    expect(deleteMessage).not.toHaveBeenCalled();
+  });
+
+  it('opens preview modal with formed screenshot even if shareLeaderboard fails, and sets crossOrigin on external avatar URLs', async () => {
+    const env = installTestDom();
+    const assignedImages: Array<{ crossOrigin: string | null; src: string }> = [];
+    const OriginalImage = globalThis.Image;
+    class TrackingImage {
+      crossOrigin: string | null = null;
+      naturalWidth = 64;
+      naturalHeight = 64;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      private _src = '';
+      get src() {
+        return this._src;
+      }
+      set src(v: string) {
+        this._src = v;
+        assignedImages.push({ crossOrigin: this.crossOrigin, src: v });
+        setTimeout(() => this.onload?.(), 0);
+      }
+    }
+    (globalThis as unknown as { Image: typeof TrackingImage }).Image = TrackingImage;
+
+    try {
+      const { loadCanvasImage } = await import('../src/utils/canvasImage');
+      await loadCanvasImage('https://t.me/i/userpic/avatar.jpg');
+      expect(assignedImages[0]).toEqual({
+        crossOrigin: 'anonymous',
+        src: 'https://t.me/i/userpic/avatar.jpg',
+      });
+
+      const ctxStub = {
+        scale: vi.fn(),
+        fillRect: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        arcTo: vi.fn(),
+        lineTo: vi.fn(),
+        quadraticCurveTo: vi.fn(),
+        closePath: vi.fn(),
+        fill: vi.fn(),
+        stroke: vi.fn(),
+        fillText: vi.fn(),
+        setLineDash: vi.fn(),
+        save: vi.fn(),
+        restore: vi.fn(),
+        clip: vi.fn(),
+        arc: vi.fn(),
+        drawImage: vi.fn(),
+        measureText: (t: string) => ({ width: t.length * 8 }),
+        fillStyle: '',
+        strokeStyle: '',
+        lineWidth: 1,
+        globalAlpha: 1,
+        font: '',
+        textAlign: 'left',
+        textBaseline: 'alphabetic',
+      };
+      const origCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        if (tag === 'canvas') {
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ctxStub,
+            toDataURL: () => 'data:image/png;base64,' + 'A'.repeat(200),
+            toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(['png'], { type: 'image/png' })),
+          } as unknown as HTMLCanvasElement;
+        }
+        return origCreate(tag);
+      });
+
+      (window as unknown as { Telegram: unknown }).Telegram = {
+        WebApp: {
+          initData: 'hash=test',
+          Serverless: {
+            call: (_name: string, _input: unknown, cb: (err: Error | null) => void) => {
+              cb(new Error('Network error'));
+            },
+          },
+        },
+      };
+
+      const { LeaderboardView } = await import('../src/components/LeaderboardView');
+      const container = origCreate('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(<LeaderboardView snapshot={makePlayoffSnapshot()} busy={false} />);
+      });
+
+      const btn = container.querySelector('[data-testid="share-table-screenshot-btn"]') as HTMLButtonElement;
+      expect(btn).not.toBeNull();
+      await act(async () => {
+        btn.click();
+      });
+
+      await vi.waitFor(
+        () => {
+          expect(container.textContent).toContain('Фото плей-офф');
+          expect(container.querySelector('img[src^="data:image/png;base64,"]')).not.toBeNull();
+        },
+        { timeout: 3000 }
+      );
+
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      (globalThis as unknown as { Image: typeof OriginalImage }).Image = OriginalImage;
+      env.cleanup();
+    }
+  });
 });

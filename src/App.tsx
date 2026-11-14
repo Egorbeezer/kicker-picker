@@ -379,8 +379,11 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
         <ToastHost />
-        <div className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
-          <div className="flex items-center gap-2 shrink-0">
+        <div
+          data-testid="home-header"
+          className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
+        >
+          <div className="flex items-center gap-2 min-w-0">
             {snapshot && (
               <button
                 type="button"
@@ -395,25 +398,26 @@ export default function App() {
                 <ArrowLeft size={18} />
               </button>
             )}
-            <SupportHeaderButton />
+            <Brand className="text-base truncate" />
           </div>
 
-          <Brand className="text-base" />
-
-          <button
-            type="button"
-            onClick={() => {
-              haptic('light');
-              const next = theme === 'dark' ? 'light' : 'dark';
-              setTheme(next);
-              applyTheme(next);
-            }}
-            className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
-            aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <div className="flex items-center gap-2 shrink-0" data-testid="header-right-group">
+            <button
+              type="button"
+              onClick={() => {
+                haptic('light');
+                const next = theme === 'dark' ? 'light' : 'dark';
+                setTheme(next);
+                applyTheme(next);
+              }}
+              className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
+              aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+              title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <SupportHeaderButton />
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pt-4 pb-6">
@@ -527,74 +531,78 @@ export default function App() {
       <ToastHost />
 
       {/* Top bar: home + support button + role / finished tabs */}
-      <div className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              haptic('light');
-              setShowHome(true);
-            }}
-            className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
-            aria-label="Главный экран"
-            title="Главный экран"
-          >
-            <Home size={19} />
-          </button>
-          <SupportHeaderButton />
-        </div>
+      <div
+        data-testid="app-header"
+        className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
+      >
+        <button
+          type="button"
+          onClick={() => {
+            haptic('light');
+            setShowHome(true);
+          }}
+          className="min-w-[62px] h-10 px-2.5 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] inline-flex items-center justify-center text-[var(--text)] active:scale-95 transition-transform shrink-0"
+          aria-label="Главный экран"
+          title="Главный экран"
+        >
+          <Home size={20} />
+        </button>
 
-        {snapshot.isAdmin ? (
-          <div className="flex bg-[#2c2c2e] rounded-full p-1 border border-[#3a3a3c] text-sm font-bold shrink-0">
-            <button
-              type="button"
-              onClick={() => setMode('PLAYER')}
-              className={`px-3.5 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
-                mode === 'PLAYER' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
-              }`}
-            >
-              Игрок
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('ADMIN')}
-              className={`px-3.5 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
-                mode === 'ADMIN' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
-              }`}
-            >
-              Админ
-            </button>
-          </div>
-        ) : (
-          hideBottomNav && (
-            <div className="flex bg-[#2c2c2e] rounded-full p-1 border border-[#3a3a3c] text-xs font-bold shrink-0">
+        <div className="flex items-center gap-2 shrink-0" data-testid="header-right-group">
+          <SupportHeaderButton />
+
+          {snapshot.isAdmin ? (
+            <div className="flex bg-[#2c2c2e] rounded-full p-1 border border-[#3a3a3c] text-sm font-bold shrink-0">
               <button
                 type="button"
-                onClick={() => {
-                  haptic('light');
-                  setPlayerTab('match');
-                }}
-                className={`px-3.5 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
-                  playerTab === 'match' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                onClick={() => setMode('PLAYER')}
+                className={`px-3 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
+                  mode === 'PLAYER' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
                 }`}
               >
-                Итоги
+                Игрок
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  haptic('light');
-                  setPlayerTab('table');
-                }}
-                className={`px-3.5 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
-                  playerTab === 'table' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                onClick={() => setMode('ADMIN')}
+                className={`px-3 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
+                  mode === 'ADMIN' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
                 }`}
               >
-                Таблица
+                Админ
               </button>
             </div>
-          )
-        )}
+          ) : (
+            hideBottomNav && (
+              <div className="flex bg-[#2c2c2e] rounded-full p-1 border border-[#3a3a3c] text-xs font-bold shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic('light');
+                    setPlayerTab('match');
+                  }}
+                  className={`px-3 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
+                    playerTab === 'match' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                  }`}
+                >
+                  Итоги
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic('light');
+                    setPlayerTab('table');
+                  }}
+                  className={`px-3 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
+                    playerTab === 'table' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                  }`}
+                >
+                  Таблица
+                </button>
+              </div>
+            )
+          )}
+        </div>
       </div>
 
       {/* Main Content */}
