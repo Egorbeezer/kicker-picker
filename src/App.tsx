@@ -17,6 +17,7 @@ import { apiClient, getLivePathFromUrl, getStartTournamentId, isTelegramEnv } fr
 import { getTournamentInviteLink, shareTournamentInTelegram } from './utils/share';
 import { openTelegramChat, SUPPORT_BUTTON } from './support';
 import { haptic, installFullscreenInsets, installKeyboardInset, notify } from './utils/telegram';
+import { installSingleInstanceSync, type SingleInstanceController } from './utils/singleInstance';
 import { applyTheme, currentTheme, hydrateSavedTheme, type Theme } from './utils/theme';
 import { formatDateRu } from './utils/date';
 import type {
@@ -60,6 +61,10 @@ export default function App() {
   const [adminTab, setAdminTab] = useState<'dashboard' | 'players' | 'table' | 'settings'>('dashboard');
 
   const startHandledRef = useRef(false);
+  const supersededRef = useRef(false);
+  const singleInstanceRef = useRef<SingleInstanceController | null>(null);
+  const selectedTournamentIdRef = useRef<number | null>(selectedTournamentId);
+  selectedTournamentIdRef.current = selectedTournamentId;
 
   const showError = useCallback((err: unknown) => {
     const msg = err instanceof Error ? err.message : 'Произошла ошибка';
@@ -160,17 +165,46 @@ export default function App() {
       }
     }
     fetchState();
+
+    const sync = installSingleInstanceSync({
+      onSuperseded: () => {
+        supersededRef.current = true;
+      },
+      onActivate: (latestTournamentId) => {
+        supersededRef.current = false;
+        const targetId =
+          latestTournamentId && latestTournamentId !== selectedTournamentIdRef.current
+            ? latestTournamentId
+            : selectedTournamentIdRef.current;
+        if (latestTournamentId && latestTournamentId !== selectedTournamentIdRef.current) {
+          setSelectedTournamentId(latestTournamentId);
+          setShowHome(false);
+        }
+        if (isTelegramEnv()) {
+          void fetchState(targetId);
+        }
+      },
+    });
+    singleInstanceRef.current = sync;
+    sync.announce(getStartTournamentId() ?? selectedTournamentIdRef.current);
+
     return () => {
+      sync.cleanup();
+      singleInstanceRef.current = null;
       stopInsets();
       stopKeyboard();
     };
   }, [fetchState, livePath]);
 
+  useEffect(() => {
+    singleInstanceRef.current?.announce(selectedTournamentId);
+  }, [selectedTournamentId]);
+
   // 2.5s serverless live polling when tab is visible (light mode when inside tournament)
   useEffect(() => {
     if (livePath || !isTelegramEnv() || isCreating) return;
     const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && !supersededRef.current) {
         const useLight = Boolean(!showHome && selectedTournamentId);
         fetchState(selectedTournamentId, { light: useLight });
       }

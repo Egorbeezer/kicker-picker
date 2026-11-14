@@ -290,6 +290,8 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       BOT_USERNAME: 'kickerpickerbot',
       upsertUser: vi.fn(),
       escapeHtml: (s: string) => s,
+      buildMainAppLink: (param: string | number = 'open') =>
+        `https://t.me/kickerpickerbot?startapp=${encodeURIComponent(String(param))}`,
     }));
 
     const { default: messageHandler } = await import('../tgcloud/handlers/message.js');
@@ -298,6 +300,48 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     const btn = sendMessage.mock.calls[0][0].reply_markup.inline_keyboard[0][0];
     expect(btn.url).toBe('https://t.me/kickerpickerbot?startapp=77');
     expect(btn.web_app).toBeUndefined();
+
+    await messageHandler({ chat: { id: 99 }, text: '/start', from: { id: 99, first_name: 'Test' } });
+    const startBtn = sendMessage.mock.calls[1][0].reply_markup.inline_keyboard[0][0];
+    expect(startBtn.url).toBe('https://t.me/kickerpickerbot?startapp=open');
+    expect(startBtn.web_app).toBeUndefined();
+
+    // Ensure no bot handler or helper uses inline web_app URL buttons or leftover MINI_APP_URL
+    const helpersSrc = fs.readFileSync(path.resolve(process.cwd(), 'tgcloud/lib/helpers.js'), 'utf8');
+    const messageSrc = fs.readFileSync(path.resolve(process.cwd(), 'tgcloud/handlers/message.js'), 'utf8');
+    expect(helpersSrc).not.toContain('MINI_APP_URL');
+    expect(helpersSrc).not.toContain('web_app:');
+    expect(messageSrc).not.toContain('web_app:');
+  });
+
+  it('installSingleInstanceSync pauses superseded background tab and syncs latest tournament on reactivation', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    vi.resetModules();
+
+    const { installSingleInstanceSync } = await import('../src/utils/singleInstance');
+    const onSuperseded1 = vi.fn();
+    const onActivate1 = vi.fn();
+    const c1 = installSingleInstanceSync({ onSuperseded: onSuperseded1, onActivate: onActivate1 });
+    c1.announce(12);
+
+    const onSuperseded2 = vi.fn();
+    const onActivate2 = vi.fn();
+    const c2 = installSingleInstanceSync({ onSuperseded: onSuperseded2, onActivate: onActivate2 });
+    c2.announce(99);
+
+    await vi.waitFor(
+      () => {
+        expect(onSuperseded1).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 1000 }
+    );
+
+    window.dispatchEvent(new window.Event('focus'));
+    expect(onActivate1).toHaveBeenCalledWith(99);
+
+    c1.cleanup();
+    c2.cleanup();
   });
 
   it('removes dark/black surfaces and low-contrast yellow in light theme', async () => {

@@ -1,7 +1,7 @@
 import { db, api } from 'sdk';
 import { eq } from 'sdk/db';
 import { tournaments } from '../schema.js';
-import { upsertUser, escapeHtml, BOT_USERNAME } from '../lib/helpers.js';
+import { upsertUser, escapeHtml, buildMainAppLink } from '../lib/helpers.js';
 
 export default async function (message) {
   if (!message?.chat?.id) return;
@@ -15,9 +15,7 @@ export default async function (message) {
   const parsedId = matchStart?.[1] ? Number(matchStart[1]) : null;
   const startTournamentId = parsedId && Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
 
-  const appUrl = startTournamentId
-    ? `https://t.me/${BOT_USERNAME}?startapp=${startTournamentId}`
-    : `https://t.me/${BOT_USERNAME}?startapp=open`;
+  const appUrl = buildMainAppLink(startTournamentId || 'open');
 
   let greeting =
     `⚽ <b>Kicker Picker</b> — турнирный движок для кикера (Monster DYP).\n\n` +

@@ -182,7 +182,15 @@ export async function upsertUser(tgUser, { refreshAvatar = false } = {}) {
   return tgUser;
 }
 
-export const MINI_APP_URL = 'https://app9226493501.tgcloud.ai/';
+/**
+ * Единая точка входа в Telegram — только Main Mini App через t.me/<bot>?startapp=...
+ * Использование прямых web_app URL в кнопках создаёт дублирующиеся копии приложения.
+ * @param {string | number} [startParam='open']
+ */
+export function buildMainAppLink(startParam = 'open') {
+  const safeParam = String(startParam ?? 'open').trim() || 'open';
+  return `https://t.me/${BOT_USERNAME}?startapp=${encodeURIComponent(safeParam)}`;
+}
 
 export function escapeHtml(str) {
   return String(str ?? '')
@@ -337,7 +345,7 @@ export async function notifyRoundStart({ tournament, createdMatches, playersById
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
-            [{ text: '⚽ Открыть матч', url: `https://t.me/${BOT_USERNAME}?startapp=${tournament.id}` }],
+            [{ text: '⚽ Открыть матч', url: buildMainAppLink(tournament.id) }],
           ],
         },
       });
@@ -1338,7 +1346,7 @@ export async function checkAndSendLongMatchReminders({
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
-            [{ text: '⚽ Внести счёт', url: `https://t.me/${BOT_USERNAME}?startapp=${tournament.id}` }],
+            [{ text: '⚽ Внести счёт', url: buildMainAppLink(tournament.id) }],
           ],
         },
       });
