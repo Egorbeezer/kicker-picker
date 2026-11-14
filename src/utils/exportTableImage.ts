@@ -1,5 +1,5 @@
 import type { TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
-import { loadCanvasImage } from './canvasImage';
+import { canvasToPngResult, loadCanvasImage } from './canvasImage';
 import { currentTheme } from './theme';
 
 const COLUMN_META: Record<TableColumnKey, { label: string; width: number }> = {
@@ -114,7 +114,7 @@ export async function renderLeaderboardToPng(params: {
   const cutoffExtra = hasCutoff ? 14 : 0;
   const height = headerH + colHeaderH + rowsCount * (rowH + rowGap) + cutoffExtra + footerH + 16;
 
-  const scale = 2;
+  const scale = 1.5;
   const canvas = document.createElement('canvas');
   canvas.width = width * scale;
   canvas.height = height * scale;
@@ -345,11 +345,5 @@ export async function renderLeaderboardToPng(params: {
   ctx.fillStyle = palette.lime;
   ctx.fillText('пикер', bx, footerY);
 
-  const dataUrl = canvas.toDataURL('image/png');
-  const base64 = dataUrl.split(',')[1] || '';
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Не удалось сформировать PNG'))), 'image/png');
-  });
-
-  return { dataUrl, base64, blob };
+  return canvasToPngResult(canvas);
 }

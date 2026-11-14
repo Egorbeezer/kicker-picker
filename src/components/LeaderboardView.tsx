@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, Power, Eye, EyeOff, ArrowUp, ArrowDown, Download, Clock, GripVertical, Share2 } from 'lucide-react';
+import { SlidersHorizontal, Power, Eye, EyeOff, ArrowUp, ArrowDown, Clock, GripVertical, Share2 } from 'lucide-react';
 import { TieBreakersTooltip } from './InfoTooltip';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
 import { apiClient } from '../api/client';
@@ -132,7 +132,8 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [sharing, setSharing] = useState(false);
-  const [previewImage, setPreviewImage] = useState<{ dataUrl: string; blob: Blob } | null>(null);
+  const [sendingPreview, setSendingPreview] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ dataUrl: string; base64: string; blob: Blob } | null>(null);
 
   useEffect(() => {
     if (hasPlayoff) {
@@ -177,50 +178,70 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     setSharing(true);
     haptic('light');
     try {
-      const { dataUrl, base64, blob } = isPlayoffView
+      const rendered = isPlayoffView
         ? await (await import('../utils/exportPlayoffImage')).renderPlayoffToPng(snapshot)
         : await (await import('../utils/exportTableImage')).renderLeaderboardToPng({
             snapshot,
             activeConfig,
           });
-
-      let res: { sentToPm: boolean; preparedMessageId: string | null } | null = null;
-      try {
-        res = await apiClient.shareLeaderboard({
-          tournamentId: tournament.id,
-          imageBase64: base64,
-          kind: isPlayoffView ? 'playoff' : 'standings',
-        });
-      } catch {
-        res = null;
-      }
-
-      const webApp = window.Telegram?.WebApp;
-      if (res?.preparedMessageId && typeof webApp?.shareMessage === 'function') {
-        try {
-          webApp.shareMessage(res.preparedMessageId, (sent) => {
-            if (sent) {
-              haptic('success');
-              notify(isPlayoffView ? 'Сетка плей-офф отправлена в чат Telegram' : 'Таблица отправлена в чат Telegram');
-            }
-          });
-          return;
-        } catch {
-          // Фоллбек к модальному предпросмотру, если клиент Telegram отклонил shareMessage
-        }
-      }
-
-      if (res?.sentToPm) {
-        haptic('success');
-        notify('Фото отправлено вам в чат с ботом @kickerpickerbot');
-      }
-
-      setPreviewImage({ dataUrl, blob });
+      setPreviewImage(rendered);
     } catch (err) {
       haptic('error');
       notify(err instanceof Error ? err.message : isPlayoffView ? 'Не удалось выгрузить сетку плей-офф' : 'Не удалось выгрузить таблицу');
     } finally {
       setSharing(false);
+    }
+  };
+
+  const handleSendPreviewImage = async () => {
+    if (!previewImage || sendingPreview) return;
+    setSendingPreview(true);
+    haptic('light');
+    try {
+      const webApp = window.Telegram?.WebApp;
+      if (webApp?.initData) {
+        const res = await apiClient.shareLeaderboard({
+          tournamentId: tournament.id,
+          imageBase64: previewImage.base64,
+          kind: isPlayoffView ? 'playoff' : 'standings',
+        });
+        if (res.preparedMessageId && typeof webApp.shareMessage === 'function') {
+          try {
+            webApp.shareMessage(res.preparedMessageId, (sent) => {
+              if (sent) {
+                haptic('success');
+                notify(isPlayoffView ? 'Сетка плей-офф отправлена в чат Telegram' : 'Таблица отправлена в чат Telegram');
+              }
+            });
+            return;
+          } catch {
+            // Если клиент не поддерживает shareMessage, пробуем системный share ниже
+          }
+        }
+        if (res.sentToPm) {
+          haptic('success');
+          notify('Фото отправлено вам в чат с ботом @kickerpickerbot');
+          return;
+        }
+      }
+
+      const file = new File(
+        [previewImage.blob],
+        `${isPlayoffView ? 'playoff' : 'table'}-${tournament.id}.png`,
+        { type: 'image/png' }
+      );
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (navigator.canShare?.({ files: [file] }) ?? true)) {
+        await navigator.share({ files: [file], title: tournament.name });
+        haptic('success');
+        return;
+      }
+
+      notify('Разрешите боту @kickerpickerbot отправку сообщений, чтобы делиться фото');
+    } catch (err) {
+      haptic('error');
+      notify(err instanceof Error ? err.message : 'Не удалось поделиться фото');
+    } finally {
+      setSendingPreview(false);
     }
   };
 
@@ -464,50 +485,29 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
         </div>
       )}
 
-      {/* Table / playoff image preview fallback modal */}
+      {/* Table / playoff image preview modal */}
       {previewImage && (
         <Modal
           title={isPlayoffView ? 'Фото плей-офф' : 'Фото таблицы'}
           onClose={() => setPreviewImage(null)}
           closeLabel="Закрыть"
           footer={
-            <div className="btn-row">
-              {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const file = new File(
-                      [previewImage.blob],
-                      `${isPlayoffView ? 'playoff' : 'table'}-${tournament.id}.png`,
-                      { type: 'image/png' }
-                    );
-                    try {
-                      if (navigator.canShare?.({ files: [file] }) ?? true) {
-                        await navigator.share({ files: [file], title: tournament.name });
-                      }
-                    } catch {
-                      // пользователь отменил или клиент запретил системный share
-                    }
-                  }}
-                  className="btn btn-primary"
-                >
-                  <Share2 size={16} /> Поделиться
-                </button>
+            <button
+              type="button"
+              disabled={sendingPreview}
+              onClick={handleSendPreviewImage}
+              className="btn btn-primary w-full py-3"
+            >
+              {sendingPreview ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                <Share2 size={16} />
               )}
-              <a
-                href={previewImage.dataUrl}
-                download={`${isPlayoffView ? 'playoff' : 'table'}-${tournament.id}.png`}
-                className="btn btn-ghost flex-1"
-              >
-                <Download size={16} /> Скачать фото
-              </a>
-            </div>
+              {sendingPreview ? 'Отправка...' : 'Поделиться'}
+            </button>
           }
         >
           <div className="space-y-2">
-            <p className="text-xs text-[var(--muted)]">
-              Нажмите «Поделиться» или сохраните картинку ниже. Чтобы отправлять напрямую в чаты Telegram, запустите @kickerpickerbot.
-            </p>
             <img
               src={previewImage.dataUrl}
               alt={isPlayoffView ? 'Сетка плей-офф' : 'Турнирная таблица'}

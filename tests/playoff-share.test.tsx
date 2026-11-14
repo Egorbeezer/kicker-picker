@@ -252,6 +252,23 @@ describe('Playoff share & PNG export', () => {
     await act(async () => {
       shareBtn!.click();
     });
+    // Modal opens immediately with no network wait and without broken "Скачать фото" button
+    await vi.waitFor(
+      () => {
+        expect(container.textContent).toContain('Фото плей-офф');
+      },
+      { timeout: 3000 }
+    );
+    expect(container.textContent).not.toContain('Скачать фото');
+    expect(apiCalls.length).toBe(0);
+
+    const modalSharePlayoffBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Поделиться')
+    );
+    expect(modalSharePlayoffBtn).toBeDefined();
+    await act(async () => {
+      modalSharePlayoffBtn!.click();
+    });
     await vi.waitFor(
       () => {
         expect(apiCalls.some((c) => c.name === 'shareLeaderboard' && c.input.kind === 'playoff')).toBe(true);
@@ -259,11 +276,16 @@ describe('Playoff share & PNG export', () => {
       },
       { timeout: 3000 }
     );
+
+    const closeBtn1 = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Закрыть'
+    );
+    expect(closeBtn1).toBeDefined();
     await act(async () => {
-      await Promise.resolve();
+      closeBtn1!.click();
     });
 
-    // Switch to Group tab and confirm screenshot button switches to kind="standings"
+    // Switch to Group tab and confirm screenshot button opens standings preview and shares kind="standings"
     const groupBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Групповая')
     );
@@ -281,6 +303,19 @@ describe('Playoff share & PNG export', () => {
 
     await act(async () => {
       shareStandingsBtn!.click();
+    });
+    await vi.waitFor(
+      () => {
+        expect(container.textContent).toContain('Фото таблицы');
+      },
+      { timeout: 3000 }
+    );
+    const modalShareStandingsBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Поделиться')
+    );
+    expect(modalShareStandingsBtn).toBeDefined();
+    await act(async () => {
+      modalShareStandingsBtn!.click();
     });
     await vi.waitFor(
       () => {
@@ -548,6 +583,11 @@ describe('Playoff share & PNG export', () => {
         },
         { timeout: 3000 }
       );
+      expect(container.textContent).not.toContain('Скачать фото');
+
+      // Repeated load of same avatar URL hits in-memory cache without re-fetching
+      await loadCanvasImage('https://t.me/i/userpic/avatar.jpg');
+      expect(assignedImages.length).toBe(1);
 
       await act(async () => {
         root.unmount();

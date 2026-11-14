@@ -1,5 +1,5 @@
 import { MatchItem, MatchPlayerInfo, TournamentSnapshot } from '../types';
-import { loadCanvasImage } from './canvasImage';
+import { canvasToPngResult, loadCanvasImage } from './canvasImage';
 import { formatDateRu } from './date';
 import { currentTheme, Theme } from './theme';
 
@@ -438,14 +438,5 @@ export async function renderPodiumToPng(
   ctx.textAlign = 'right';
   ctx.fillText(rightFooter, W - PADDING_X, footerY + FOOTER_H / 2);
 
-  const dataUrl = canvas.toDataURL('image/png');
-  const base64 = dataUrl.split(',')[1] || '';
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b) => {
-      if (b) resolve(b);
-      else reject(new Error('Failed to encode PNG'));
-    }, 'image/png');
-  });
-
-  return { dataUrl, base64, blob };
+  return canvasToPngResult(canvas);
 }

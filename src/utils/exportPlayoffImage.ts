@@ -1,4 +1,5 @@
 import { MatchItem, TournamentSnapshot } from '../types';
+import { canvasToPngResult } from './canvasImage';
 import { formatDateRu } from './date';
 import { currentTheme, Theme } from './theme';
 
@@ -287,7 +288,7 @@ export async function renderPlayoffToPng(
   const logicalW = Math.max(600, treeW + PADDING * 2);
   const logicalH = HDR_H + ROUND_HDR_H + treeH + THIRD_SECTION_H + FOOTER_H + 16;
 
-  const SCALE = 2;
+  const SCALE = 1.5;
   const canvas = document.createElement('canvas');
   canvas.width = logicalW * SCALE;
   canvas.height = logicalH * SCALE;
@@ -449,14 +450,5 @@ export async function renderPlayoffToPng(
   ctx.fillStyle = palette.lime;
   ctx.fillText('пикер', bx, footerY);
 
-  const dataUrl = canvas.toDataURL('image/png');
-  const base64 = dataUrl.split(',')[1] || '';
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b) => {
-      if (b) resolve(b);
-      else reject(new Error('Не удалось сформировать PNG'));
-    }, 'image/png');
-  });
-
-  return { dataUrl, base64, blob };
+  return canvasToPngResult(canvas);
 }
