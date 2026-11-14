@@ -1,7 +1,7 @@
-import { db, api, InputFile, EndpointError } from 'sdk';
+import { db, EndpointError } from 'sdk';
 import { eq, and } from 'sdk/db';
 import { tournaments, tournamentPlayers } from '../schema.js';
-import { escapeHtml, isTournamentAdmin } from '../lib/helpers.js';
+import { isTournamentAdmin } from '../lib/helpers.js';
 
 function base64ToUint8(base64) {
   const clean = String(base64 || '').replace(/[^A-Za-z0-9+/=]/g, '');
@@ -71,91 +71,7 @@ export default async function (input, ctx) {
     throw new EndpointError('Некорректное изображение таблицы', { code: 'INVALID_IMAGE' });
   }
 
-  const kind =
-    input?.kind === 'podium'
-      ? 'podium'
-      : input?.kind === 'playoff'
-        ? 'playoff'
-        : 'standings';
-  const stageLabel =
-    kind === 'podium'
-      ? 'Победители и призёры турнира'
-      : kind === 'playoff'
-        ? 'Сетка плей-офф'
-        : tournament.status === 'FINISHED'
-          ? 'Итоги турнира'
-          : tournament.status === 'PLAYOFF'
-            ? `Плей-офф • Раунд ${tournament.currentRound}`
-            : tournament.status === 'QUALIFICATION'
-              ? `Квалификация • Раунд ${tournament.currentRound}`
-              : 'Регистрация';
-
-  const caption =
-    kind === 'podium'
-      ? `🏆 <b>${escapeHtml(tournament.name)}</b>\n🥇 ${escapeHtml(stageLabel)}`
-      : kind === 'playoff'
-        ? `🏆 <b>${escapeHtml(tournament.name)}</b>\n⚔️ ${escapeHtml(stageLabel)}`
-        : `🏆 <b>${escapeHtml(tournament.name)}</b>\n📊 ${escapeHtml(stageLabel)}`;
-
-  const prepareOnly = Boolean(input?.prepareOnly);
-  const filePrefix = kind === 'podium' ? 'podium' : kind === 'playoff' ? 'playoff' : 'table';
-  const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
-  const filename = `${filePrefix}-${tournamentId}.${isJpeg ? 'jpg' : 'png'}`;
-  const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
-
-  try {
-    const sent = await api.sendPhoto({
-      chat_id: tgUser.id,
-      photo: new InputFile(bytes, filename, { type: mimeType }),
-      caption,
-      parse_mode: 'HTML',
-      disable_notification: true,
-    });
-
-    const photos = Array.isArray(sent?.photo) ? sent.photo : [];
-    const fileId = photos.length ? photos[photos.length - 1].file_id : null;
-
-    let preparedMessageId = null;
-    if (fileId) {
-      try {
-        const prepared = await api.savePreparedInlineMessage({
-          user_id: tgUser.id,
-          result: {
-            type: 'photo',
-            id: `${kind}-${tournamentId}-${Date.now()}`,
-            photo_file_id: fileId,
-            title: tournament.name,
-            caption: `🏆 ${tournament.name} — ${stageLabel}`,
-          },
-          allow_user_chats: true,
-          allow_group_chats: true,
-          allow_channel_chats: true,
-        });
-        preparedMessageId = prepared?.id || null;
-      } catch (prepErr) {
-        console.warn('savePreparedInlineMessage skipped:', prepErr?.description || prepErr?.message);
-      }
-    }
-
-    // При фоновой подготовке (prepareOnly) всегда удаляем временное фото;
-    // при явном нажатии «Поделиться» оставляем фото в ЛС, если inline-подготовка не сработала.
-    let sentToPm = !prepareOnly && Boolean(sent?.message_id);
-    if ((preparedMessageId || prepareOnly) && sent?.message_id) {
-      try {
-        await api.deleteMessage({
-          chat_id: tgUser.id,
-          message_id: sent.message_id,
-        });
-        sentToPm = false;
-      } catch (delErr) {
-        console.warn('deleteMessage after share skipped:', delErr?.description || delErr?.message);
-        sentToPm = !prepareOnly;
-      }
-    }
-
-    return { sentToPm, preparedMessageId };
-  } catch (err) {
-    console.warn('shareLeaderboard sendPhoto failed:', err?.code, err?.description || err?.message);
-    return { sentToPm: false, preparedMessageId: null };
-  }
+  // Экспорт скриншота перенесён на клиент (Web Share API / буфер обмена),
+  // поэтому бот больше не отправляет фото в личные сообщения пользователю.
+  return { sentToPm: false, preparedMessageId: null };
 }

@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   Undo2,
   Medal,
-  Download,
   Image as ImageIcon,
   Search,
   Edit3,
@@ -21,11 +20,10 @@ import {
   X,
 } from 'lucide-react';
 import type { MatchItem, TournamentSnapshot } from '../types';
-import { apiClient } from '../api/client';
 import { formatTimeHm, getPlayoffPodium } from '../utils/date';
 import { haptic, notify } from '../utils/telegram';
-import { shareLiveUrlInTelegram, shareTournamentInTelegram } from '../utils/share';
-import type { PodiumImageResult } from '../utils/exportPodiumImage';
+import { shareImageFile, shareLiveUrlInTelegram, shareTournamentInTelegram } from '../utils/share';
+import { renderPodiumToPng, type PodiumImageResult } from '../utils/exportPodiumImage';
 import { Modal } from './Modal';
 import { MatchCard } from './MatchCard';
 import { ScorePickerRow } from './ScorePickerRow';
@@ -86,7 +84,6 @@ export const AdminDashboardView: React.FC<Props> = ({
   const openPodiumPreview = async () => {
     setGeneratingPodium(true);
     try {
-      const { renderPodiumToPng } = await import('../utils/exportPodiumImage');
       const rendered = await renderPodiumToPng(snapshot);
       setPodiumPreview(rendered);
       haptic('success');
@@ -102,45 +99,24 @@ export const AdminDashboardView: React.FC<Props> = ({
     setSharingPodium(true);
     haptic('light');
     try {
-      const res = await apiClient.shareLeaderboard({
-        tournamentId: tournament.id,
-        imageBase64: podiumPreview.base64,
-        kind: 'podium',
+      const outcome = await shareImageFile({
+        blob: podiumPreview.blob,
+        filename: `podium-${tournament.id}.png`,
+        title: `${tournament.name} — победители`,
       });
-      const webApp = window.Telegram?.WebApp;
-      if (res.preparedMessageId && typeof webApp?.shareMessage === 'function') {
-        webApp.shareMessage(res.preparedMessageId, (sent) => {
-          if (sent) {
-            haptic('success');
-            notify('Итоги турнира отправлены в Telegram');
-          }
-        });
-      } else if (res.sentToPm) {
+      if (outcome === 'shared') {
         haptic('success');
-        notify('Картинка отправлена вам в чат с ботом — перешлите её в любую группу');
-      } else {
-        throw new Error('Не удалось подготовить сообщение');
+        notify('Карточка призёров готова к отправке');
+      } else if (outcome === 'copied') {
+        haptic('success');
+        notify('Скриншот скопирован — вставьте его в любой чат');
+      } else if (outcome === 'downloaded') {
+        haptic('success');
+        notify('Скриншот сохранён — отправьте его в нужный чат');
+      } else if (outcome === 'unsupported') {
+        notify('На этом устройстве недоступен быстрый экспорт файла');
       }
     } catch (e) {
-      const file = new File([podiumPreview.blob], `podium-${tournament.id}.png`, {
-        type: 'image/png',
-      });
-      if (
-        typeof navigator !== 'undefined' &&
-        typeof navigator.canShare === 'function' &&
-        navigator.canShare({ files: [file] })
-      ) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: `${tournament.name} — победители`,
-          });
-          haptic('success');
-          return;
-        } catch {
-          // user cancelled
-        }
-      }
       notify(e instanceof Error ? e.message : 'Ошибка отправки');
     } finally {
       setSharingPodium(false);
@@ -917,24 +893,15 @@ export const AdminDashboardView: React.FC<Props> = ({
           title="Итоги турнира"
           onClose={() => setPodiumPreview(null)}
           footer={
-            <div className="btn-row">
-              <a
-                href={podiumPreview.dataUrl}
-                download={`podium-${tournament.id}.png`}
-                className="btn btn-ghost flex items-center justify-center gap-1.5"
-              >
-                <Download size={15} /> Скачать
-              </a>
-              <button
-                type="button"
-                disabled={sharingPodium}
-                onClick={handleSharePodium}
-                className="btn btn-primary font-bold flex items-center justify-center gap-1.5"
-              >
-                <Share2 size={15} />
-                {sharingPodium ? 'Отправка…' : 'Поделиться'}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={sharingPodium}
+              onClick={handleSharePodium}
+              className="btn btn-primary w-full font-bold flex items-center justify-center gap-1.5"
+            >
+              <Share2 size={15} />
+              {sharingPodium ? 'Отправка…' : 'Поделиться'}
+            </button>
           }
         >
           <div className="space-y-3">

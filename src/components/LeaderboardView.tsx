@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SlidersHorizontal, Power, Eye, EyeOff, ArrowUp, ArrowDown, Clock, GripVertical, Share2 } from 'lucide-react';
 import { TieBreakersTooltip } from './InfoTooltip';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
-import { apiClient } from '../api/client';
 import { haptic, notify } from '../utils/telegram';
+import { renderLeaderboardToPng } from '../utils/exportTableImage';
+import { renderPlayoffToPng } from '../utils/exportPlayoffImage';
+import { shareImageFile } from '../utils/share';
 import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayoffBracketView } from './PlayoffBracketView';
@@ -139,7 +141,6 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     shareBase64?: string;
     blob: Blob;
   } | null>(null);
-  const sharePrepRef = useRef<Promise<{ sentToPm: boolean; preparedMessageId: string | null } | null> | null>(null);
 
   useEffect(() => {
     if (hasPlayoff) {
@@ -185,30 +186,11 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     haptic('light');
     try {
       const rendered = isPlayoffView
-        ? await (await import('../utils/exportPlayoffImage')).renderPlayoffToPng(snapshot)
-        : await (await import('../utils/exportTableImage')).renderLeaderboardToPng({
+        ? await renderPlayoffToPng(snapshot)
+        : await renderLeaderboardToPng({
             snapshot,
             activeConfig,
           });
-
-      const webApp = window.Telegram?.WebApp;
-      const shareKind = isPlayoffView ? 'playoff' : 'standings';
-      const uploadBase64 = rendered.shareBase64 || rendered.base64;
-
-      // Пока пользователь смотрит превью, заранее готовим preparedMessageId на сервере (без спама в ЛС)
-      if (webApp?.initData && typeof webApp.shareMessage === 'function') {
-        sharePrepRef.current = apiClient
-          .shareLeaderboard({
-            tournamentId: tournament.id,
-            imageBase64: uploadBase64,
-            kind: shareKind,
-            prepareOnly: true,
-          })
-          .catch(() => null);
-      } else {
-        sharePrepRef.current = null;
-      }
-
       setPreviewImage(rendered);
     } catch (err) {
       haptic('error');
@@ -223,65 +205,25 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     setSendingPreview(true);
     haptic('light');
     try {
-      const webApp = window.Telegram?.WebApp;
-      const shareKind = isPlayoffView ? 'playoff' : 'standings';
-      const uploadBase64 = previewImage.shareBase64 || previewImage.base64;
-
-      if (webApp?.initData) {
-        let prep = sharePrepRef.current ? await sharePrepRef.current : null;
-        if (prep?.preparedMessageId && typeof webApp.shareMessage === 'function') {
-          try {
-            webApp.shareMessage(prep.preparedMessageId, (sent) => {
-              if (sent) {
-                haptic('success');
-                notify(isPlayoffView ? 'Сетка плей-офф отправлена в чат Telegram' : 'Таблица отправлена в чат Telegram');
-              }
-            });
-            return;
-          } catch {
-            // Если клиент не поддерживает shareMessage, переходим к отправке в ЛС/share
-          }
-        }
-
-        // Фоллбек: явная отправка (если prepareOnly не вернул preparedMessageId)
-        prep = await apiClient.shareLeaderboard({
-          tournamentId: tournament.id,
-          imageBase64: uploadBase64,
-          kind: shareKind,
-          prepareOnly: false,
-        });
-        if (prep.preparedMessageId && typeof webApp.shareMessage === 'function') {
-          try {
-            webApp.shareMessage(prep.preparedMessageId, (sent) => {
-              if (sent) {
-                haptic('success');
-                notify(isPlayoffView ? 'Сетка плей-офф отправлена в чат Telegram' : 'Таблица отправлена в чат Telegram');
-              }
-            });
-            return;
-          } catch {
-            // ignore
-          }
-        }
-        if (prep.sentToPm) {
-          haptic('success');
-          notify('Фото отправлено вам в чат с ботом @kickerpickerbot');
-          return;
-        }
-      }
-
-      const file = new File(
-        [previewImage.blob],
-        `${isPlayoffView ? 'playoff' : 'table'}-${tournament.id}.png`,
-        { type: 'image/png' }
-      );
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (navigator.canShare?.({ files: [file] }) ?? true)) {
-        await navigator.share({ files: [file], title: tournament.name });
+      const filename = `${isPlayoffView ? 'playoff' : 'table'}-${tournament.id}.png`;
+      const title = isPlayoffView ? `${tournament.name} — плей-офф` : `${tournament.name} — таблица`;
+      const outcome = await shareImageFile({
+        blob: previewImage.blob,
+        filename,
+        title,
+      });
+      if (outcome === 'shared') {
         haptic('success');
-        return;
+        notify(isPlayoffView ? 'Сетка плей-офф готова к отправке' : 'Таблица готова к отправке');
+      } else if (outcome === 'copied') {
+        haptic('success');
+        notify('Скриншот скопирован — вставьте его в любой чат');
+      } else if (outcome === 'downloaded') {
+        haptic('success');
+        notify('Скриншот сохранён — отправьте его в нужный чат');
+      } else if (outcome === 'unsupported') {
+        notify('На этом устройстве недоступен быстрый экспорт файла');
       }
-
-      notify('Разрешите боту @kickerpickerbot отправку сообщений, чтобы делиться фото');
     } catch (err) {
       haptic('error');
       notify(err instanceof Error ? err.message : 'Не удалось поделиться фото');
@@ -535,7 +477,6 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
         <Modal
           title={isPlayoffView ? 'Фото плей-офф' : 'Фото таблицы'}
           onClose={() => {
-            sharePrepRef.current = null;
             setPreviewImage(null);
           }}
           closeLabel="Закрыть"

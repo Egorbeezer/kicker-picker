@@ -200,13 +200,16 @@ describe('Playoff share & PNG export', () => {
     expect(fakeCtx.fillRect).toHaveBeenCalled();
   });
 
-  it('shows "Поделиться" on LeaderboardView Playoff tab and shares with kind="playoff"', async () => {
+  it('shows "Поделиться" on LeaderboardView Playoff & Table tabs and shares via navigator.share without bot PM', async () => {
     const env = installTestDom();
     cleanupDom = env.cleanup;
     mockCanvas2D();
 
     const apiCalls: Array<{ name: string; input: Record<string, unknown> }> = [];
-    const shareMessageMock = vi.fn((id: string, cb?: (sent: boolean) => void) => cb?.(true));
+    const navShareMock = vi.fn().mockResolvedValue(undefined);
+    const navCanShareMock = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, 'share', { value: navShareMock, configurable: true });
+    Object.defineProperty(navigator, 'canShare', { value: navCanShareMock, configurable: true });
 
     (window as unknown as { Telegram: unknown }).Telegram = {
       WebApp: {
@@ -214,7 +217,6 @@ describe('Playoff share & PNG export', () => {
         initDataUnsafe: { user: { id: 10, first_name: 'Алекс' } },
         colorScheme: 'dark',
         HapticFeedback: { impactOccurred: () => {}, notificationOccurred: () => {} },
-        shareMessage: shareMessageMock,
         Serverless: {
           call: (
             name: string,
@@ -222,9 +224,7 @@ describe('Playoff share & PNG export', () => {
             cb: (err: null, result: unknown) => void
           ) => {
             apiCalls.push({ name, input });
-            if (name === 'shareLeaderboard') {
-              cb(null, { sentToPm: false, preparedMessageId: 'prep_playoff_1' });
-            }
+            cb(null, { sentToPm: false, preparedMessageId: null });
           },
         },
       },
@@ -252,7 +252,6 @@ describe('Playoff share & PNG export', () => {
     await act(async () => {
       shareBtn!.click();
     });
-    // Modal opens immediately without broken "Скачать фото" button and pre-warms shareLeaderboard in background
     await vi.waitFor(
       () => {
         expect(container.textContent).toContain('Фото плей-офф');
@@ -260,17 +259,7 @@ describe('Playoff share & PNG export', () => {
       { timeout: 3000 }
     );
     expect(container.textContent).not.toContain('Скачать фото');
-    await vi.waitFor(
-      () => {
-        expect(
-          apiCalls.some(
-            (c) => c.name === 'shareLeaderboard' && c.input.kind === 'playoff' && c.input.prepareOnly === true
-          )
-        ).toBe(true);
-      },
-      { timeout: 3000 }
-    );
-    const prepCallsBeforeClick = apiCalls.filter((c) => c.name === 'shareLeaderboard').length;
+    expect(apiCalls.length).toBe(0);
 
     const modalSharePlayoffBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Поделиться')
@@ -279,13 +268,9 @@ describe('Playoff share & PNG export', () => {
     await act(async () => {
       modalSharePlayoffBtn!.click();
     });
-    await vi.waitFor(
-      () => {
-        expect(shareMessageMock).toHaveBeenCalledWith('prep_playoff_1', expect.any(Function));
-      },
-      { timeout: 3000 }
-    );
-    expect(apiCalls.filter((c) => c.name === 'shareLeaderboard').length).toBe(prepCallsBeforeClick);
+    expect(navShareMock).toHaveBeenCalledTimes(1);
+    expect(navShareMock.mock.calls[0][0].files[0].name).toBe('playoff-77.png');
+    expect(apiCalls.length).toBe(0);
 
     const closeBtn1 = Array.from(container.querySelectorAll('button')).find(
       (b) => b.textContent?.trim() === 'Закрыть'
@@ -295,7 +280,7 @@ describe('Playoff share & PNG export', () => {
       closeBtn1!.click();
     });
 
-    // Switch to Group tab and confirm screenshot button opens standings preview and shares kind="standings"
+    // Switch to Group tab and confirm screenshot button opens standings preview and shares via client file share
     const groupBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Групповая')
     );
@@ -327,133 +312,19 @@ describe('Playoff share & PNG export', () => {
     await act(async () => {
       modalShareStandingsBtn!.click();
     });
-    await vi.waitFor(
-      () => {
-        expect(apiCalls.some((c) => c.name === 'shareLeaderboard' && c.input.kind === 'standings')).toBe(true);
-      },
-      { timeout: 3000 }
-    );
-    await act(async () => {
-      await Promise.resolve();
-    });
+    expect(navShareMock).toHaveBeenCalledTimes(2);
+    expect(navShareMock.mock.calls[1][0].files[0].name).toBe('table-77.png');
+    expect(apiCalls.length).toBe(0);
 
     await act(async () => {
       root.unmount();
     });
   });
 
-  it('shareLeaderboard endpoint handles kind="playoff", saves prepared inline message, and deletes temp PM photo', async () => {
-    const sendPhoto = vi.fn().mockResolvedValue({
-      message_id: 991,
-      photo: [{ file_id: 'small' }, { file_id: 'large_playoff_file_id' }],
-    });
-    const savePreparedInlineMessage = vi.fn().mockResolvedValue({ id: 'prep_msg_77' });
-    const deleteMessage = vi.fn().mockResolvedValue(true);
-
-    class MockInputFile {
-      bytes: Uint8Array;
-      filename: string;
-      opts?: Record<string, unknown>;
-      constructor(bytes: Uint8Array, filename: string, opts?: Record<string, unknown>) {
-        this.bytes = bytes;
-        this.filename = filename;
-        this.opts = opts;
-      }
-    }
-    class MockEndpointError extends Error {
-      code?: string;
-      constructor(msg: string, params?: { code?: string }) {
-        super(msg);
-        this.code = params?.code;
-      }
-    }
-
-    vi.doMock('sdk', () => ({
-      db: {
-        select: () => ({
-          from: () => ({
-            where: () => ({
-              get: async () => ({
-                id: 77,
-                creatorTgId: 12345,
-                name: 'Кубок Пикера',
-                status: 'PLAYOFF',
-                currentRound: 4,
-              }),
-            }),
-          }),
-        }),
-      },
-      api: {
-        sendPhoto,
-        savePreparedInlineMessage,
-        deleteMessage,
-      },
-      InputFile: MockInputFile,
-      EndpointError: MockEndpointError,
-    }));
-    vi.doMock('sdk/db', () => ({
-      eq: vi.fn(),
-      and: vi.fn(),
-      desc: vi.fn(),
-      inArray: vi.fn(),
-      sql: vi.fn(),
-    }));
-    vi.doMock('../tgcloud/schema.js', () => ({
-      tournaments: { id: 'id' },
-      tournamentPlayers: {},
-      tournamentAdmins: {},
-      users: {},
-      matches: {},
-    }));
-
-    const { default: shareLeaderboard } = await import('../tgcloud/endpoints/shareLeaderboard.js');
-    const validBase64 = 'A'.repeat(200);
-    const res = await shareLeaderboard(
-      { tournamentId: 77, imageBase64: validBase64, kind: 'playoff' },
-      { initData: { user: { id: 12345 } } }
-    );
-
-    expect(res).toEqual({
-      sentToPm: false,
-      preparedMessageId: 'prep_msg_77',
-    });
-    expect(sendPhoto).toHaveBeenCalledTimes(1);
-    const sentArgs = sendPhoto.mock.calls[0][0];
-    expect(sentArgs.photo.filename).toBe('playoff-77.png');
-    expect(sentArgs.caption).toContain('Сетка плей-офф');
-    expect(savePreparedInlineMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: 12345,
-        result: expect.objectContaining({
-          photo_file_id: 'large_playoff_file_id',
-        }),
-      })
-    );
-    expect(deleteMessage).toHaveBeenCalledWith({
-      chat_id: 12345,
-      message_id: 991,
-    });
-  });
-
-  it('keeps PM photo when savePreparedInlineMessage fails so sentToPm=true', async () => {
-    const sendPhoto = vi.fn().mockResolvedValue({
-      message_id: 992,
-      photo: [{ file_id: 'small' }, { file_id: 'large_id' }],
-    });
-    const savePreparedInlineMessage = vi.fn().mockRejectedValue(new Error('BOT_INLINE_DISABLED'));
+  it('shareLeaderboard endpoint never sends photos to user PM and client source avoids dynamic module imports', async () => {
+    const sendPhoto = vi.fn();
+    const savePreparedInlineMessage = vi.fn();
     const deleteMessage = vi.fn();
-
-    class MockInputFile {
-      bytes: Uint8Array;
-      filename: string;
-      opts?: Record<string, unknown>;
-      constructor(bytes: Uint8Array, filename: string, opts?: Record<string, unknown>) {
-        this.bytes = bytes;
-        this.filename = filename;
-        this.opts = opts;
-      }
-    }
     class MockEndpointError extends Error {}
 
     vi.doMock('sdk', () => ({
@@ -473,7 +344,6 @@ describe('Playoff share & PNG export', () => {
         }),
       },
       api: { sendPhoto, savePreparedInlineMessage, deleteMessage },
-      InputFile: MockInputFile,
       EndpointError: MockEndpointError,
     }));
     vi.doMock('sdk/db', () => ({ eq: vi.fn(), and: vi.fn(), desc: vi.fn(), inArray: vi.fn(), sql: vi.fn() }));
@@ -485,19 +355,45 @@ describe('Playoff share & PNG export', () => {
       { initData: { user: { id: 12345 } } }
     );
 
-    expect(res).toEqual({ sentToPm: true, preparedMessageId: null });
+    expect(res).toEqual({ sentToPm: false, preparedMessageId: null });
+    expect(sendPhoto).not.toHaveBeenCalled();
+    expect(savePreparedInlineMessage).not.toHaveBeenCalled();
     expect(deleteMessage).not.toHaveBeenCalled();
 
-    // prepareOnly: true must always delete temp PM photo and never leave a stray photo in PM; also detect JPEG bytes
-    const jpgHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...new Array(150).fill(1)]).toString('base64');
-    const prepRes = await shareLeaderboard(
-      { tournamentId: 77, imageBase64: jpgHeader, kind: 'standings', prepareOnly: true },
-      { initData: { user: { id: 12345 } } }
-    );
-    expect(prepRes).toEqual({ sentToPm: false, preparedMessageId: null });
-    expect(sendPhoto.mock.calls[1][0].photo.filename).toBe('table-77.jpg');
-    expect(sendPhoto.mock.calls[1][0].photo.opts).toEqual({ type: 'image/jpeg' });
-    expect(deleteMessage).toHaveBeenCalledWith({ chat_id: 12345, message_id: 992 });
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    for (const rel of [
+      'src/App.tsx',
+      'src/components/LeaderboardView.tsx',
+      'src/components/AdminDashboardView.tsx',
+    ]) {
+      const code = fs.readFileSync(path.resolve(process.cwd(), rel), 'utf8');
+      expect(code).not.toMatch(/\bimport\s*\(/);
+      expect(code).not.toMatch(/\blazy\s*\(/);
+    }
+  });
+
+  it('shareImageFile falls back to clipboard when Web Share API is unavailable', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const writeMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    Object.defineProperty(navigator, 'clipboard', { value: { write: writeMock }, configurable: true });
+    (globalThis as unknown as { ClipboardItem: unknown }).ClipboardItem = class MockClipboardItem {
+      data: Record<string, Blob>;
+      constructor(data: Record<string, Blob>) {
+        this.data = data;
+      }
+    };
+
+    const { shareImageFile } = await import('../src/utils/share');
+    const outcome = await shareImageFile({
+      blob: new Blob(['png'], { type: 'image/png' }),
+      filename: 'table-77.png',
+      title: 'Таблица',
+    });
+    expect(outcome).toBe('copied');
+    expect(writeMock).toHaveBeenCalledTimes(1);
   });
 
   it('opens preview modal with formed screenshot even if shareLeaderboard fails, and sets crossOrigin on external avatar URLs', async () => {

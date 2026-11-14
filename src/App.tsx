@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Trophy,
   Gamepad2,
@@ -37,13 +37,8 @@ import { Modal } from './components/Modal';
 import { ToastHost } from './components/ToastHost';
 import { SupportHeaderButton } from './components/SupportHeaderButton';
 import { HomeView } from './components/HomeView';
-
-const CreateTournamentView = lazy(() =>
-  import('./components/CreateTournamentView').then((m) => ({ default: m.CreateTournamentView }))
-);
-const PublicLiveView = lazy(() =>
-  import('./components/PublicLiveView').then((m) => ({ default: m.PublicLiveView }))
-);
+import { CreateTournamentView } from './components/CreateTournamentView';
+import { PublicLiveView } from './components/PublicLiveView';
 
 export default function App() {
   const livePath = getLivePathFromUrl();
@@ -306,17 +301,15 @@ export default function App() {
 
   if (livePath) {
     return (
-      <Suspense fallback={<div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] flex items-center justify-center"><span className="loading loading-spinner text-[#2ea6ff]" /></div>}>
-        <PublicLiveView
-          publicPath={livePath}
-          theme={theme}
-          onToggleTheme={() => {
-            const next = theme === 'dark' ? 'light' : 'dark';
-            setTheme(next);
-            applyTheme(next);
-          }}
-        />
-      </Suspense>
+      <PublicLiveView
+        publicPath={livePath}
+        theme={theme}
+        onToggleTheme={() => {
+          const next = theme === 'dark' ? 'light' : 'dark';
+          setTheme(next);
+          applyTheme(next);
+        }}
+      />
     );
   }
 
@@ -383,14 +376,12 @@ export default function App() {
           <SupportHeaderButton />
         </div>
         <div className="flex-1 overflow-y-auto px-3 pt-4 pb-8">
-          <Suspense fallback={<div className="py-10 flex justify-center"><span className="loading loading-spinner text-[#2ea6ff]" /></div>}>
-            <CreateTournamentView
-              defaultName={defaultTournamentName}
-              busy={busy}
-              onSubmit={handleCreateTournament}
-              onCancel={() => setIsCreating(false)}
-            />
-          </Suspense>
+          <CreateTournamentView
+            defaultName={defaultTournamentName}
+            busy={busy}
+            onSubmit={handleCreateTournament}
+            onCancel={() => setIsCreating(false)}
+          />
         </div>
       </div>
     );
