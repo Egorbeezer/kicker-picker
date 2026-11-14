@@ -90,7 +90,7 @@ export default function App() {
           }
         }
 
-        const effectiveId = tId ?? selectedTournamentId;
+        const effectiveId = tId === undefined ? selectedTournamentId : tId;
         const canPollLight = Boolean(opts?.light && effectiveId);
         const res = await apiClient.getState(
           effectiveId ? { tournamentId: effectiveId, ...(canPollLight ? { light: true } : {}) } : {}
@@ -337,12 +337,13 @@ export default function App() {
             onClick={() => {
               haptic('light');
               setIsCreating(false);
+              setShowHome(true);
             }}
-            className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
-            aria-label="Назад"
-            title="Назад"
+            className="min-w-[62px] h-10 px-2.5 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] inline-flex items-center justify-center text-[var(--text)] active:scale-95 transition-transform shrink-0"
+            aria-label="Главный экран"
+            title="Главный экран"
           >
-            <ArrowLeft size={18} />
+            <Home size={20} />
           </button>
           <span className="text-sm font-bold text-[var(--text)]">Новый турнир</span>
           <SupportHeaderButton />
@@ -683,6 +684,8 @@ export default function App() {
                   try {
                     await apiClient.leaveTournament(snapshot.tournament.id);
                     setSelectedTournamentId(null);
+                    setMode('PLAYER');
+                    setPlayerTab('match');
                     setShowHome(true);
                     await fetchState(null);
                   } catch (err) {
@@ -830,6 +833,8 @@ export default function App() {
                   try {
                     await apiClient.deleteTournament(snapshot.tournament.id);
                     setSelectedTournamentId(null);
+                    setMode('PLAYER');
+                    setPlayerTab('match');
                     setShowHome(true);
                     setAdminTab('dashboard');
                     await fetchState(null);

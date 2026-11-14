@@ -8,7 +8,9 @@ import {
   sanitizeTournament,
   buildGlobalPlayerProfile,
   checkAndSendLongMatchReminders,
+  autoFinishExpiredTournaments,
 } from '../lib/helpers.js';
+import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
 
 export default async function (input, ctx) {
   const tgUser = ctx.initData?.user;
@@ -48,11 +50,19 @@ export default async function (input, ctx) {
             .where(eq(matches.tournamentId, targetTournamentId))
             .all(),
         ]);
-        await checkAndSendLongMatchReminders({
-          tournament: tObj,
-          players: tPlayers,
-          allMatches: tMatches,
-        });
+        const expired = await autoFinishExpiredTournaments(
+          [tObj],
+          new Map([[targetTournamentId, tMatches]])
+        );
+        if (expired.length > 0) {
+          await syncPublicLiveIfEnabled(targetTournamentId).catch(() => {});
+        } else {
+          await checkAndSendLongMatchReminders({
+            tournament: tObj,
+            players: tPlayers,
+            allMatches: tMatches,
+          });
+        }
       } catch (err) {
         console.warn('checkAndSendLongMatchReminders error:', err?.message);
       }
@@ -136,6 +146,13 @@ export default async function (input, ctx) {
   for (const m of allMatches) {
     if (!matchesByTournament.has(m.tournamentId)) matchesByTournament.set(m.tournamentId, []);
     matchesByTournament.get(m.tournamentId).push(m);
+  }
+
+  const autoFinishedIds = await autoFinishExpiredTournaments(myTournaments, matchesByTournament);
+  if (autoFinishedIds.length > 0) {
+    await Promise.all(
+      autoFinishedIds.map((id) => syncPublicLiveIfEnabled(id).catch(() => {}))
+    );
   }
 
   const tournamentHistory = myTournaments.map((t) => {

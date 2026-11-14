@@ -252,7 +252,7 @@ describe('Playoff share & PNG export', () => {
     await act(async () => {
       shareBtn!.click();
     });
-    // Modal opens immediately with no network wait and without broken "Скачать фото" button
+    // Modal opens immediately without broken "Скачать фото" button and pre-warms shareLeaderboard in background
     await vi.waitFor(
       () => {
         expect(container.textContent).toContain('Фото плей-офф');
@@ -260,7 +260,17 @@ describe('Playoff share & PNG export', () => {
       { timeout: 3000 }
     );
     expect(container.textContent).not.toContain('Скачать фото');
-    expect(apiCalls.length).toBe(0);
+    await vi.waitFor(
+      () => {
+        expect(
+          apiCalls.some(
+            (c) => c.name === 'shareLeaderboard' && c.input.kind === 'playoff' && c.input.prepareOnly === true
+          )
+        ).toBe(true);
+      },
+      { timeout: 3000 }
+    );
+    const prepCallsBeforeClick = apiCalls.filter((c) => c.name === 'shareLeaderboard').length;
 
     const modalSharePlayoffBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Поделиться')
@@ -271,11 +281,11 @@ describe('Playoff share & PNG export', () => {
     });
     await vi.waitFor(
       () => {
-        expect(apiCalls.some((c) => c.name === 'shareLeaderboard' && c.input.kind === 'playoff')).toBe(true);
         expect(shareMessageMock).toHaveBeenCalledWith('prep_playoff_1', expect.any(Function));
       },
       { timeout: 3000 }
     );
+    expect(apiCalls.filter((c) => c.name === 'shareLeaderboard').length).toBe(prepCallsBeforeClick);
 
     const closeBtn1 = Array.from(container.querySelectorAll('button')).find(
       (b) => b.textContent?.trim() === 'Закрыть'
@@ -477,6 +487,17 @@ describe('Playoff share & PNG export', () => {
 
     expect(res).toEqual({ sentToPm: true, preparedMessageId: null });
     expect(deleteMessage).not.toHaveBeenCalled();
+
+    // prepareOnly: true must always delete temp PM photo and never leave a stray photo in PM; also detect JPEG bytes
+    const jpgHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...new Array(150).fill(1)]).toString('base64');
+    const prepRes = await shareLeaderboard(
+      { tournamentId: 77, imageBase64: jpgHeader, kind: 'standings', prepareOnly: true },
+      { initData: { user: { id: 12345 } } }
+    );
+    expect(prepRes).toEqual({ sentToPm: false, preparedMessageId: null });
+    expect(sendPhoto.mock.calls[1][0].photo.filename).toBe('table-77.jpg');
+    expect(sendPhoto.mock.calls[1][0].photo.opts).toEqual({ type: 'image/jpeg' });
+    expect(deleteMessage).toHaveBeenCalledWith({ chat_id: 12345, message_id: 992 });
   });
 
   it('opens preview modal with formed screenshot even if shareLeaderboard fails, and sets crossOrigin on external avatar URLs', async () => {

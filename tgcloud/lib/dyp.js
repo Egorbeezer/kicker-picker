@@ -1267,7 +1267,7 @@ export function getNextPlayoffMatches({ currentRoundMatches, thirdPlaceMatch = t
   return { done: false, nextMatches };
 }
 
-function toEpochMs(val) {
+export function toEpochMs(val) {
   if (!val) return null;
   if (val instanceof Date) return val.getTime();
   if (typeof val === 'number' && Number.isFinite(val)) {

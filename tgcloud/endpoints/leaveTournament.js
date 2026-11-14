@@ -32,10 +32,11 @@ export default async function (input, ctx) {
   );
 
   if (hasMatches) {
-    // Soft leave: put on pause so historical matches stay intact
+    // Отвязываем игрока от турнира (tgId = null), чтобы исторические матчи остались целы,
+    // а участник реально вышел из турнира и потерял личный прогресс в нём.
     await db
       .update(tournamentPlayers)
-      .set({ isActive: false })
+      .set({ tgId: null, isActive: false, isGuest: true })
       .where(eq(tournamentPlayers.id, player.id));
   } else {
     await db.delete(tournamentPlayers).where(eq(tournamentPlayers.id, player.id));

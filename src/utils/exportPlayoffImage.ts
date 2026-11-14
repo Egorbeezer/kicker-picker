@@ -6,6 +6,7 @@ import { currentTheme, Theme } from './theme';
 export interface PlayoffImageResult {
   dataUrl: string;
   base64: string;
+  shareBase64?: string;
   blob: Blob;
 }
 

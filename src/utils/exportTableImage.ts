@@ -57,7 +57,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number):
 export async function renderLeaderboardToPng(params: {
   snapshot: TournamentSnapshot;
   activeConfig: TableColumnConfig[];
-}): Promise<{ dataUrl: string; base64: string; blob: Blob }> {
+}): Promise<{ dataUrl: string; base64: string; shareBase64?: string; blob: Blob }> {
   const { snapshot, activeConfig } = params;
   const { tournament, leaderboard, myPlayerId } = snapshot;
   const isLight = currentTheme() === 'light';

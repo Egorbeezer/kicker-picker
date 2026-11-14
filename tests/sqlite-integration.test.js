@@ -446,6 +446,7 @@ vi.mock('sdk/db', () => {
 const createTournament = (await import('../tgcloud/endpoints/createTournament.js')).default;
 const addGuestPlayer = (await import('../tgcloud/endpoints/addGuestPlayer.js')).default;
 const joinTournament = (await import('../tgcloud/endpoints/joinTournament.js')).default;
+const leaveTournament = (await import('../tgcloud/endpoints/leaveTournament.js')).default;
 const startRound = (await import('../tgcloud/endpoints/startRound.js')).default;
 const startPlayoff = (await import('../tgcloud/endpoints/startPlayoff.js')).default;
 const submitScore = (await import('../tgcloud/endpoints/submitScore.js')).default;
@@ -650,5 +651,76 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     expect(state.activeTournament.tournament.status).toBe('PLAYOFF');
     expect(state.activeTournament.currentRoundMatches).toHaveLength(1);
     expect(state.activeTournament.playoffMatches).toHaveLength(1);
+  });
+
+  it('detaches tgId on leaveTournament even after player has matches so tournament disappears from player active state', async () => {
+    const snap = await createTournament(
+      { name: 'Финал выписки', targetScore: 5 },
+      { initData: { user: { id: 100, first_name: 'Админ' } } }
+    );
+    await joinTournament(
+      { tournamentId: snap.tournament.id },
+      { initData: { user: { id: 202, first_name: 'Финалист' } } }
+    );
+    await addGuestPlayer(
+      { tournamentId: snap.tournament.id, names: ['Г1', 'Г2'] },
+      { initData: { user: { id: 100, first_name: 'Админ' } } }
+    );
+    await startRound(
+      { tournamentId: snap.tournament.id },
+      { initData: { user: { id: 100, first_name: 'Админ' } } }
+    );
+
+    await leaveTournament(
+      { tournamentId: snap.tournament.id },
+      { initData: { user: { id: 202, first_name: 'Финалист' } } }
+    );
+
+    const rows = sqlite.prepare('SELECT id, tg_id, is_active, is_guest FROM tournament_players WHERE tournament_id = ?').all(snap.tournament.id);
+    expect(rows.some((r) => r.tg_id === 202)).toBe(false);
+    expect(rows).toHaveLength(4);
+
+    const playerState = await getState(
+      {},
+      { initData: { user: { id: 202, first_name: 'Финалист' } } }
+    );
+    expect(playerState.activeTournament).toBeNull();
+  });
+
+  it('auto-finishes started tournaments inactive for >= 24h while keeping unstarted registration open', async () => {
+    const oldStart = await createTournament(
+      { name: 'Вчерашний плей-офф', skipQualification: true, playoffSize: 4, targetScore: 5 },
+      { initData: { user: { id: 301, first_name: 'Орг1' } } }
+    );
+    await addGuestPlayer(
+      { tournamentId: oldStart.tournament.id, names: ['А', 'Б', 'В'] },
+      { initData: { user: { id: 301, first_name: 'Орг1' } } }
+    );
+    await startPlayoff(
+      { tournamentId: oldStart.tournament.id, bracketSize: 4 },
+      { initData: { user: { id: 301, first_name: 'Орг1' } } }
+    );
+
+    const oldReg = await createTournament(
+      { name: 'Черновик регистрации' },
+      { initData: { user: { id: 302, first_name: 'Орг2' } } }
+    );
+
+    const twoDaysAgoSec = Math.floor((Date.now() - 26 * 60 * 60 * 1000) / 1000);
+    sqlite.prepare('UPDATE tournaments SET created_at = ?, started_at = ? WHERE id IN (?, ?)').run(twoDaysAgoSec, twoDaysAgoSec, oldStart.tournament.id, oldReg.tournament.id);
+    sqlite.prepare('UPDATE matches SET created_at = ? WHERE tournament_id = ?').run(twoDaysAgoSec, oldStart.tournament.id);
+
+    const stateOld = await getState(
+      { tournamentId: oldStart.tournament.id },
+      { initData: { user: { id: 301, first_name: 'Орг1' } } }
+    );
+    expect(stateOld.activeTournament.tournament.status).toBe('FINISHED');
+    expect(stateOld.activeTournament.tournament.finishedAt).toBeTruthy();
+
+    const stateReg = await getState(
+      { tournamentId: oldReg.tournament.id },
+      { initData: { user: { id: 302, first_name: 'Орг2' } } }
+    );
+    expect(stateReg.activeTournament.tournament.status).toBe('REGISTRATION');
   });
 });

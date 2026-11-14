@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SlidersHorizontal, Power, Eye, EyeOff, ArrowUp, ArrowDown, Clock, GripVertical, Share2 } from 'lucide-react';
 import { TieBreakersTooltip } from './InfoTooltip';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
@@ -133,7 +133,13 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [sharing, setSharing] = useState(false);
   const [sendingPreview, setSendingPreview] = useState(false);
-  const [previewImage, setPreviewImage] = useState<{ dataUrl: string; base64: string; blob: Blob } | null>(null);
+  const [previewImage, setPreviewImage] = useState<{
+    dataUrl: string;
+    base64: string;
+    shareBase64?: string;
+    blob: Blob;
+  } | null>(null);
+  const sharePrepRef = useRef<Promise<{ sentToPm: boolean; preparedMessageId: string | null } | null> | null>(null);
 
   useEffect(() => {
     if (hasPlayoff) {
@@ -184,6 +190,25 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
             snapshot,
             activeConfig,
           });
+
+      const webApp = window.Telegram?.WebApp;
+      const shareKind = isPlayoffView ? 'playoff' : 'standings';
+      const uploadBase64 = rendered.shareBase64 || rendered.base64;
+
+      // Пока пользователь смотрит превью, заранее готовим preparedMessageId на сервере (без спама в ЛС)
+      if (webApp?.initData && typeof webApp.shareMessage === 'function') {
+        sharePrepRef.current = apiClient
+          .shareLeaderboard({
+            tournamentId: tournament.id,
+            imageBase64: uploadBase64,
+            kind: shareKind,
+            prepareOnly: true,
+          })
+          .catch(() => null);
+      } else {
+        sharePrepRef.current = null;
+      }
+
       setPreviewImage(rendered);
     } catch (err) {
       haptic('error');
@@ -199,15 +224,14 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     haptic('light');
     try {
       const webApp = window.Telegram?.WebApp;
+      const shareKind = isPlayoffView ? 'playoff' : 'standings';
+      const uploadBase64 = previewImage.shareBase64 || previewImage.base64;
+
       if (webApp?.initData) {
-        const res = await apiClient.shareLeaderboard({
-          tournamentId: tournament.id,
-          imageBase64: previewImage.base64,
-          kind: isPlayoffView ? 'playoff' : 'standings',
-        });
-        if (res.preparedMessageId && typeof webApp.shareMessage === 'function') {
+        let prep = sharePrepRef.current ? await sharePrepRef.current : null;
+        if (prep?.preparedMessageId && typeof webApp.shareMessage === 'function') {
           try {
-            webApp.shareMessage(res.preparedMessageId, (sent) => {
+            webApp.shareMessage(prep.preparedMessageId, (sent) => {
               if (sent) {
                 haptic('success');
                 notify(isPlayoffView ? 'Сетка плей-офф отправлена в чат Telegram' : 'Таблица отправлена в чат Telegram');
@@ -215,10 +239,31 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
             });
             return;
           } catch {
-            // Если клиент не поддерживает shareMessage, пробуем системный share ниже
+            // Если клиент не поддерживает shareMessage, переходим к отправке в ЛС/share
           }
         }
-        if (res.sentToPm) {
+
+        // Фоллбек: явная отправка (если prepareOnly не вернул preparedMessageId)
+        prep = await apiClient.shareLeaderboard({
+          tournamentId: tournament.id,
+          imageBase64: uploadBase64,
+          kind: shareKind,
+          prepareOnly: false,
+        });
+        if (prep.preparedMessageId && typeof webApp.shareMessage === 'function') {
+          try {
+            webApp.shareMessage(prep.preparedMessageId, (sent) => {
+              if (sent) {
+                haptic('success');
+                notify(isPlayoffView ? 'Сетка плей-офф отправлена в чат Telegram' : 'Таблица отправлена в чат Telegram');
+              }
+            });
+            return;
+          } catch {
+            // ignore
+          }
+        }
+        if (prep.sentToPm) {
           haptic('success');
           notify('Фото отправлено вам в чат с ботом @kickerpickerbot');
           return;
@@ -489,7 +534,10 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
       {previewImage && (
         <Modal
           title={isPlayoffView ? 'Фото плей-офф' : 'Фото таблицы'}
-          onClose={() => setPreviewImage(null)}
+          onClose={() => {
+            sharePrepRef.current = null;
+            setPreviewImage(null);
+          }}
           closeLabel="Закрыть"
           footer={
             <button

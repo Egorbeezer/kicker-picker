@@ -137,6 +137,7 @@ export const HomeView: React.FC<Props> = ({
   onCreateTournament,
 }) => {
   const [pastOpen, setPastOpen] = useState(false);
+  const [profileExpanded, setProfileExpanded] = useState(false);
 
   const activeTournaments = tournaments.filter((t) => t.status !== 'FINISHED');
   const finishedTournaments = tournaments.filter((t) => t.status === 'FINISHED');
@@ -235,9 +236,26 @@ export const HomeView: React.FC<Props> = ({
         Создать новый турнир
       </button>
 
-      {/* Главный профиль игрока */}
+      {/* Главный профиль игрока (компактный по умолчанию, раскрывается по тапу) */}
       {playerProfile && (
-        <section className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 space-y-3">
+        <section
+          role="button"
+          tabIndex={0}
+          aria-expanded={profileExpanded}
+          data-testid="home-profile-card"
+          onClick={() => {
+            haptic('light');
+            setProfileExpanded((v) => !v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              haptic('light');
+              setProfileExpanded((v) => !v);
+            }
+          }}
+          className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 space-y-3 cursor-pointer select-none transition-colors hover:border-[var(--border-strong)]"
+        >
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-[#2ea6ff]">
@@ -247,109 +265,126 @@ export const HomeView: React.FC<Props> = ({
                 {userName || 'Игрок кикера'}
               </div>
             </div>
-            {playerProfile.championCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-500 text-xs font-bold">
-                <Crown size={13} />
-                {playerProfile.championCount} {playerProfile.championCount === 1 ? 'титул' : 'титула'}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {playerProfile.championCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-500 text-xs font-bold">
+                  <Crown size={13} />
+                  {playerProfile.championCount} {playerProfile.championCount === 1 ? 'титул' : 'титула'}
+                </span>
+              )}
+              {profileExpanded ? (
+                <ChevronUp size={16} className="text-[var(--muted)]" />
+              ) : (
+                <ChevronDown size={16} className="text-[var(--muted)]" />
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-2 px-1">
-              <div className="text-base font-extrabold text-[var(--text)]">{playerProfile.tournamentsPlayed}</div>
-              <div className="text-[10px] text-[var(--muted)]">Турниров</div>
+            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
+              <div className="text-sm font-extrabold text-[var(--text)] leading-tight">
+                {playerProfile.tournamentsPlayed}
+              </div>
+              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Турниров</div>
             </div>
-            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-2 px-1">
-              <div className="text-base font-extrabold text-emerald-500">
+            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
+              <div className="text-sm font-extrabold text-emerald-500 leading-tight">
                 {playerProfile.totalWins}/{playerProfile.totalMatches}
               </div>
-              <div className="text-[10px] text-[var(--muted)]">Побед</div>
+              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Побед</div>
             </div>
-            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-2 px-1">
-              <div className="text-base font-extrabold text-[#2ea6ff]">{playerProfile.winRate}%</div>
-              <div className="text-[10px] text-[var(--muted)]">Винрейт</div>
+            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
+              <div className="text-sm font-extrabold text-[#2ea6ff] leading-tight">
+                {playerProfile.winRate}%
+              </div>
+              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Винрейт</div>
             </div>
-            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-2 px-1">
-              <div className="text-base font-extrabold text-[var(--text)]">{playerProfile.avgGoalsPerMatch}</div>
-              <div className="text-[10px] text-[var(--muted)]">Гол/матч</div>
+            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
+              <div className="text-sm font-extrabold text-[var(--text)] leading-tight">
+                {playerProfile.avgGoalsPerMatch}
+              </div>
+              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Гол/матч</div>
             </div>
           </div>
 
-          {/* Напарники и неудобный соперник */}
-          {(playerProfile.mostFrequentPartner || playerProfile.bestPartner || playerProfile.toughestOpponent) && (
-            <div className="grid grid-cols-1 gap-2">
-              {playerProfile.mostFrequentPartner && (
-                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-[var(--muted)] flex items-center gap-1.5">
-                    <Users size={13} className="text-[#2ea6ff]" />
-                    Частый напарник
-                  </span>
-                  <span className="font-bold text-[var(--text)] truncate">
-                    {playerProfile.mostFrequentPartner.name}{' '}
-                    <span className="font-normal text-[var(--muted)]">
-                      ({playerProfile.mostFrequentPartner.games} игр, {playerProfile.mostFrequentPartner.winRate}%)
-                    </span>
-                  </span>
+          {profileExpanded && (
+            <div className="space-y-3 pt-1" data-testid="home-profile-details">
+              {/* Напарники и неудобный соперник */}
+              {(playerProfile.mostFrequentPartner || playerProfile.bestPartner || playerProfile.toughestOpponent) && (
+                <div className="grid grid-cols-1 gap-2">
+                  {playerProfile.mostFrequentPartner && (
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-[var(--muted)] flex items-center gap-1.5">
+                        <Users size={13} className="text-[#2ea6ff]" />
+                        Частый напарник
+                      </span>
+                      <span className="font-bold text-[var(--text)] truncate">
+                        {playerProfile.mostFrequentPartner.name}{' '}
+                        <span className="font-normal text-[var(--muted)]">
+                          ({playerProfile.mostFrequentPartner.games} игр, {playerProfile.mostFrequentPartner.winRate}%)
+                        </span>
+                      </span>
+                    </div>
+                  )}
+
+                  {playerProfile.bestPartner && (
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-[var(--muted)] flex items-center gap-1.5">
+                        <HeartHandshake size={13} className="text-emerald-500" />
+                        Лучший напарник
+                      </span>
+                      <span className="font-bold text-emerald-500 truncate">
+                        {playerProfile.bestPartner.name}{' '}
+                        <span className="font-normal text-[var(--muted)]">
+                          ({playerProfile.bestPartner.winRate}% • {playerProfile.bestPartner.wins}/{playerProfile.bestPartner.games})
+                        </span>
+                      </span>
+                    </div>
+                  )}
+
+                  {playerProfile.toughestOpponent && (
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-[var(--muted)] flex items-center gap-1.5">
+                        <Swords size={13} className="text-red-500" />
+                        Неудобный соперник (H2H)
+                      </span>
+                      <span className="font-bold text-red-500 truncate">
+                        {playerProfile.toughestOpponent.name}{' '}
+                        <span className="font-normal text-[var(--muted)]">
+                          ({playerProfile.toughestOpponent.losses} пор. из {playerProfile.toughestOpponent.games})
+                        </span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {playerProfile.bestPartner && (
-                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-[var(--muted)] flex items-center gap-1.5">
-                    <HeartHandshake size={13} className="text-emerald-500" />
-                    Лучший напарник
-                  </span>
-                  <span className="font-bold text-emerald-500 truncate">
-                    {playerProfile.bestPartner.name}{' '}
-                    <span className="font-normal text-[var(--muted)]">
-                      ({playerProfile.bestPartner.winRate}% • {playerProfile.bestPartner.wins}/{playerProfile.bestPartner.games})
-                    </span>
-                  </span>
-                </div>
-              )}
+              {/* График среднего балла */}
+              <AvgPointsSparkline timeline={playerProfile.timeline} />
 
-              {playerProfile.toughestOpponent && (
-                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-[var(--muted)] flex items-center gap-1.5">
-                    <Swords size={13} className="text-red-500" />
-                    Неудобный соперник (H2H)
-                  </span>
-                  <span className="font-bold text-red-500 truncate">
-                    {playerProfile.toughestOpponent.name}{' '}
-                    <span className="font-normal text-[var(--muted)]">
-                      ({playerProfile.toughestOpponent.losses} пор. из {playerProfile.toughestOpponent.games})
-                    </span>
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* График среднего балла */}
-          <AvgPointsSparkline timeline={playerProfile.timeline} />
-
-          {/* Клубные бейджи */}
-          {playerProfile.badges.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                Достижения клуба
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {playerProfile.badges.map((b) => (
-                  <div
-                    key={b.id}
-                    title={b.description}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-xs font-semibold text-[var(--text)]"
-                  >
-                    <span>{b.emoji}</span>
-                    <span>{b.title}</span>
-                    {b.count > 1 && (
-                      <span className="text-[10px] font-bold text-[#2ea6ff]">×{b.count}</span>
-                    )}
+              {/* Клубные бейджи */}
+              {playerProfile.badges.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                    Достижения клуба
                   </div>
-                ))}
-              </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {playerProfile.badges.map((b) => (
+                      <div
+                        key={b.id}
+                        title={b.description}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-xs font-semibold text-[var(--text)]"
+                      >
+                        <span>{b.emoji}</span>
+                        <span>{b.title}</span>
+                        {b.count > 1 && (
+                          <span className="text-[10px] font-bold text-[#2ea6ff]">×{b.count}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

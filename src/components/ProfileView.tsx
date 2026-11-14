@@ -16,6 +16,7 @@ import type { TournamentHistoryItem, TournamentSnapshot } from '../types';
 import { apiClient } from '../api/client';
 import { formatDateRu, getPlayoffPodium } from '../utils/date';
 import type { Theme } from '../utils/theme';
+import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
 import { Toggle } from './Toggle';
 import { PlayoffBracketView } from './PlayoffBracketView';
@@ -61,6 +62,7 @@ export const ProfileView: React.FC<Props> = ({
   const [inspectLoadingId, setInspectLoadingId] = useState<number | null>(null);
   const [inspectError, setInspectError] = useState<string | null>(null);
   const [inspectTab, setInspectTab] = useState<'stats' | 'table' | 'playoff'>('stats');
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
   const handleOpenTournamentDetails = async (item: TournamentHistoryItem) => {
     if (item.id === snapshot.tournament.id) {
@@ -570,11 +572,45 @@ export const ProfileView: React.FC<Props> = ({
         <button
           type="button"
           disabled={busy}
-          onClick={onLeave}
+          onClick={() => setConfirmLeaveOpen(true)}
           className="mt-auto flex items-center justify-center gap-2 text-red-500 bg-red-500/10 px-6 py-3.5 rounded-xl font-semibold border border-red-500/20 active:scale-95 transition-all"
         >
           <LogOut size={18} /> Выписаться из турнира
         </button>
+      )}
+
+      {confirmLeaveOpen && (
+        <Modal
+          title="Выписаться из турнира?"
+          onClose={() => setConfirmLeaveOpen(false)}
+          hideClose
+          footer={
+            <div className="btn-row">
+              <button
+                type="button"
+                onClick={() => setConfirmLeaveOpen(false)}
+                className="btn btn-ghost"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  setConfirmLeaveOpen(false);
+                  await onLeave();
+                }}
+                className="btn bg-red-600 text-white font-bold"
+              >
+                Выписаться
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm text-[var(--muted)] leading-relaxed">
+            Точно уверен? Весь прогресс потеряется
+          </p>
+        </Modal>
       )}
     </div>
   );

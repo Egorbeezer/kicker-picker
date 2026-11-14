@@ -97,12 +97,16 @@ export default async function (input, ctx) {
         ? `🏆 <b>${escapeHtml(tournament.name)}</b>\n⚔️ ${escapeHtml(stageLabel)}`
         : `🏆 <b>${escapeHtml(tournament.name)}</b>\n📊 ${escapeHtml(stageLabel)}`;
 
+  const prepareOnly = Boolean(input?.prepareOnly);
   const filePrefix = kind === 'podium' ? 'podium' : kind === 'playoff' ? 'playoff' : 'table';
+  const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+  const filename = `${filePrefix}-${tournamentId}.${isJpeg ? 'jpg' : 'png'}`;
+  const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
 
   try {
     const sent = await api.sendPhoto({
       chat_id: tgUser.id,
-      photo: new InputFile(bytes, `${filePrefix}-${tournamentId}.png`, { type: 'image/png' }),
+      photo: new InputFile(bytes, filename, { type: mimeType }),
       caption,
       parse_mode: 'HTML',
       disable_notification: true,
@@ -133,9 +137,10 @@ export default async function (input, ctx) {
       }
     }
 
-    // Удаляем временное фото из ЛС только если удалось подготовить inline-сообщение для shareMessage
-    let sentToPm = Boolean(sent?.message_id);
-    if (preparedMessageId && sent?.message_id) {
+    // При фоновой подготовке (prepareOnly) всегда удаляем временное фото;
+    // при явном нажатии «Поделиться» оставляем фото в ЛС, если inline-подготовка не сработала.
+    let sentToPm = !prepareOnly && Boolean(sent?.message_id);
+    if ((preparedMessageId || prepareOnly) && sent?.message_id) {
       try {
         await api.deleteMessage({
           chat_id: tgUser.id,
@@ -144,7 +149,7 @@ export default async function (input, ctx) {
         sentToPm = false;
       } catch (delErr) {
         console.warn('deleteMessage after share skipped:', delErr?.description || delErr?.message);
-        sentToPm = true;
+        sentToPm = !prepareOnly;
       }
     }
 

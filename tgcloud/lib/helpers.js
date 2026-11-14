@@ -7,6 +7,7 @@ import {
   generateDypRound,
   generatePlayoffFirstRound,
   getNextPlayoffMatches,
+  toEpochMs,
   validateMatchScore,
 } from './dyp.js';
 
@@ -1347,4 +1348,45 @@ export async function checkAndSendLongMatchReminders({
   }
 
   return sentCount;
+}
+
+const AUTO_FINISH_INACTIVITY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Автоматически завершает начатые турниры (QUALIFICATION / PLAYOFF),
+ * по которым последняя активность была более 24 часов назад.
+ * Возвращает список id завершённых турниров.
+ */
+export async function autoFinishExpiredTournaments(
+  tournamentList,
+  matchesByTournament,
+  nowMs = Date.now()
+) {
+  const finishedIds = [];
+  for (const t of tournamentList || []) {
+    if (!t || (t.status !== 'QUALIFICATION' && t.status !== 'PLAYOFF')) continue;
+    let lastActivityMs = toEpochMs(t.startedAt) || toEpochMs(t.createdAt) || 0;
+    const tMatches = matchesByTournament?.get?.(t.id) || [];
+    for (const m of tMatches) {
+      const mMs = toEpochMs(m.finishedAt) || toEpochMs(m.createdAt) || 0;
+      if (mMs > lastActivityMs) lastActivityMs = mMs;
+    }
+    if (!lastActivityMs || nowMs - lastActivityMs < AUTO_FINISH_INACTIVITY_MS) continue;
+
+    const finishedAt = new Date(nowMs);
+    await db
+      .update(tournaments)
+      .set({
+        status: 'FINISHED',
+        finishedAt,
+        pendingPlayoff: false,
+      })
+      .where(and(eq(tournaments.id, t.id), eq(tournaments.status, t.status)));
+
+    t.status = 'FINISHED';
+    t.finishedAt = finishedAt;
+    t.pendingPlayoff = false;
+    finishedIds.push(t.id);
+  }
+  return finishedIds;
 }

@@ -11,6 +11,7 @@ import { LeaderboardView } from '../src/components/LeaderboardView';
 import { PlayoffBracketView } from '../src/components/PlayoffBracketView';
 import { AdminDashboardView } from '../src/components/AdminDashboardView';
 import { AdminPlayersView } from '../src/components/AdminPlayersView';
+import { ProfileView } from '../src/components/ProfileView';
 import type {
   ClubPlayer,
   PlayerGlobalProfile,
@@ -311,8 +312,25 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       );
     });
 
+    // Collapsed by default: shows 4 circular metrics only, details hidden
+    const profileCard = container.querySelector('[data-testid="home-profile-card"]') as HTMLElement | null;
+    expect(profileCard).not.toBeNull();
     expect(container.textContent).toContain('Мой профиль');
     expect(container.textContent).toContain('75%');
+    expect(container.textContent).toContain('Турниров');
+    expect(container.textContent).toContain('Побед');
+    expect(container.textContent).toContain('Винрейт');
+    expect(container.textContent).toContain('Гол/матч');
+    expect(profileCard!.querySelectorAll('.rounded-full').length).toBeGreaterThanOrEqual(4);
+    expect(container.querySelector('[data-testid="home-profile-details"]')).toBeNull();
+    expect(container.textContent).not.toContain('Маша');
+    expect(container.textContent).not.toContain('Победитель турнира');
+
+    // First tap expands full stats
+    await act(async () => {
+      profileCard!.click();
+    });
+    expect(container.querySelector('[data-testid="home-profile-details"]')).not.toBeNull();
     expect(container.textContent).toContain('Маша');
     expect(container.textContent).toContain('Петя');
     expect(container.textContent).toContain('Костя');
@@ -320,6 +338,12 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(container.textContent).toContain('14.11.2026');
     expect(container.textContent).toContain('Победитель турнира');
     expect(container.textContent).toContain('Камбэк дня');
+
+    // Second tap collapses back
+    await act(async () => {
+      profileCard!.click();
+    });
+    expect(container.querySelector('[data-testid="home-profile-details"]')).toBeNull();
 
     await act(async () => {
       root.unmount();
@@ -627,6 +651,73 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
         clubPlayerIds: [70],
       })
     );
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('ProfileView asks confirmation before leaving an unfinished tournament and invokes onLeave on confirm', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onLeave = vi.fn().mockResolvedValue(undefined);
+
+    const snapshot = makeSnapshot({
+      tournament: {
+        ...makeSnapshot().tournament,
+        status: 'PLAYOFF',
+      },
+      myPlayerId: 1,
+    });
+
+    await act(async () => {
+      root.render(
+        <ProfileView
+          snapshot={snapshot}
+          tournamentHistory={[]}
+          theme="light"
+          onChangeTheme={() => {}}
+          onSelectTournament={() => {}}
+          onLeave={onLeave}
+          busy={false}
+        />
+      );
+    });
+
+    const leaveBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Выписаться из турнира')
+    ) as HTMLButtonElement | undefined;
+    expect(leaveBtn).toBeDefined();
+    await act(async () => {
+      leaveBtn!.click();
+    });
+
+    expect(document.body.textContent).toContain('Точно уверен? Весь прогресс потеряется');
+    expect(onLeave).not.toHaveBeenCalled();
+
+    const cancelBtn = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Отмена'
+    ) as HTMLButtonElement | undefined;
+    expect(cancelBtn).toBeDefined();
+    await act(async () => {
+      cancelBtn!.click();
+    });
+    expect(onLeave).not.toHaveBeenCalled();
+
+    await act(async () => {
+      leaveBtn!.click();
+    });
+    const confirmLeaveBtn = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Выписаться'
+    ) as HTMLButtonElement | undefined;
+    expect(confirmLeaveBtn).toBeDefined();
+    await act(async () => {
+      confirmLeaveBtn!.click();
+    });
+    expect(onLeave).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       root.unmount();

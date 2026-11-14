@@ -225,6 +225,11 @@ export const apiClient = {
     callEndpoint<TournamentSnapshot>('transferAdmin', { tournamentId, playerId }),
   deleteTournament: (tournamentId: number) =>
     callEndpoint<{ ok: boolean; deletedId: number }>('deleteTournament', { tournamentId }),
-  shareLeaderboard: (params: { tournamentId: number; imageBase64: string; kind?: 'standings' | 'podium' | 'playoff' }) =>
+  shareLeaderboard: (params: {
+    tournamentId: number;
+    imageBase64: string;
+    kind?: 'standings' | 'podium' | 'playoff';
+    prepareOnly?: boolean;
+  }) =>
     callEndpoint<{ sentToPm: boolean; preparedMessageId: string | null }>('shareLeaderboard', params),
 };
