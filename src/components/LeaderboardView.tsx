@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, Power, Eye, EyeOff, ArrowUp, ArrowDown, Share2, Download, Clock, Radio, GripVertical } from 'lucide-react';
+import { SlidersHorizontal, Power, Eye, EyeOff, ArrowUp, ArrowDown, Download, Clock, GripVertical } from 'lucide-react';
 import { TieBreakersTooltip } from './InfoTooltip';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
-import { apiClient, buildPublicLiveUrl } from '../api/client';
+import { apiClient } from '../api/client';
 import { haptic, notify } from '../utils/telegram';
 import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayoffBracketView } from './PlayoffBracketView';
+import { ScreenshotIcon } from './ScreenshotIcon';
 
 interface Props {
   snapshot: TournamentSnapshot;
   busy?: boolean;
   onSaveTableConfig?: (config: TableColumnConfig[]) => Promise<void>;
-  onOpenLive?: (publicPath: string) => void;
 }
 
 interface ColumnMeta {
@@ -117,7 +117,7 @@ function formatTimeHm(ms: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSaveTableConfig, onOpenLive }) => {
+export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSaveTableConfig }) => {
   const { leaderboard, myPlayerId, tournament, isAdmin, playoffMatches } = snapshot;
   const activeConfig = getNormalizedConfig(tournament.tableConfig);
   const hasPlayoff =
@@ -235,33 +235,28 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {tournament.publicPath && (
-              <button
-                type="button"
-                onClick={() => {
-                  haptic('light');
-                  if (onOpenLive) {
-                    onOpenLive(tournament.publicPath!);
-                    return;
-                  }
-                  window.open(buildPublicLiveUrl(tournament.publicPath!), '_blank', 'noopener,noreferrer');
-                }}
-                className="px-2.5 py-1.5 rounded-full bg-green-500/15 border border-green-500/35 text-green-400 text-xs font-bold flex items-center gap-1 active:scale-95"
-                title="Открыть Live-трансляцию"
-              >
-                <Radio size={13} className="animate-pulse" />
-                LIVE
-              </button>
-            )}
             <button
               type="button"
+              data-testid="share-table-screenshot-btn"
               disabled={sharing}
               onClick={handleShareTableImage}
-              className="px-2.5 py-1.5 rounded-full bg-[#2ea6ff]/15 border border-[#2ea6ff]/30 text-[#2ea6ff] text-xs font-bold flex items-center gap-1 active:scale-95 disabled:opacity-50"
-              title={isPlayoffView ? 'Поделиться сеткой плей-офф как фото' : 'Поделиться полной таблицей как фото'}
+              aria-label={
+                isPlayoffView
+                  ? 'Поделиться скриншотом сетки плей-офф'
+                  : 'Поделиться скриншотом таблицы'
+              }
+              title={
+                isPlayoffView
+                  ? 'Поделиться сеткой плей-офф как фото'
+                  : 'Поделиться полной таблицей как фото'
+              }
+              className="w-9 h-9 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center active:scale-95 disabled:opacity-50 transition-opacity"
             >
-              <Share2 size={14} />
-              {sharing ? '...' : 'Поделиться'}
+              {sharing ? (
+                <span className="loading loading-spinner loading-xs text-[#2ea6ff]" />
+              ) : (
+                <ScreenshotIcon size={22} />
+              )}
             </button>
             {(!hasPlayoff || subTab === 'group') && (
               <>

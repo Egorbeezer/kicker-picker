@@ -53,7 +53,6 @@ export default function App() {
   const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
   const [showHome, setShowHome] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [embeddedLivePath, setEmbeddedLivePath] = useState<string | null>(null);
   const [createdInvite, setCreatedInvite] = useState<{ id: number; name: string } | null>(null);
 
   const [mode, setMode] = useState<'PLAYER' | 'ADMIN'>('PLAYER');
@@ -282,23 +281,6 @@ export default function App() {
             setTheme(next);
             applyTheme(next);
           }}
-        />
-      </Suspense>
-    );
-  }
-
-  if (embeddedLivePath) {
-    return (
-      <Suspense fallback={<div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] flex items-center justify-center"><span className="loading loading-spinner text-[#2ea6ff]" /></div>}>
-        <PublicLiveView
-          publicPath={embeddedLivePath}
-          theme={theme}
-          onToggleTheme={() => {
-            const next = theme === 'dark' ? 'light' : 'dark';
-            setTheme(next);
-            applyTheme(next);
-          }}
-          onClose={() => setEmbeddedLivePath(null)}
         />
       </Suspense>
     );
@@ -670,7 +652,6 @@ export default function App() {
               <LeaderboardView
                 snapshot={snapshot}
                 busy={busy}
-                onOpenLive={(path) => setEmbeddedLivePath(path)}
               />
             )}
             {playerTab === 'profile' && (
@@ -755,7 +736,6 @@ export default function App() {
                 onToggleLive={(enabled) =>
                   runAction(() => apiClient.publishLive(snapshot.tournament.id, enabled))
                 }
-                onOpenLive={(path) => setEmbeddedLivePath(path)}
                 onOpenSettings={() => setAdminTab('settings')}
                 onRefresh={() => fetchState(snapshot.tournament.id)}
               />
@@ -801,7 +781,6 @@ export default function App() {
               <LeaderboardView
                 snapshot={snapshot}
                 busy={busy}
-                onOpenLive={(path) => setEmbeddedLivePath(path)}
                 onSaveTableConfig={(tableConfig) =>
                   runAction(() =>
                     apiClient.updateTournament({
@@ -823,7 +802,6 @@ export default function App() {
                 onToggleLive={(enabled) =>
                   runAction(() => apiClient.publishLive(snapshot.tournament.id, enabled))
                 }
-                onOpenLive={(path) => setEmbeddedLivePath(path)}
                 onTransferAdmin={async (playerId) => {
                   setBusy(true);
                   try {

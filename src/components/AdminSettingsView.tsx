@@ -9,12 +9,11 @@ import {
   Trash2,
   Save,
   Radio,
-  Copy,
-  ExternalLink,
+  Share2,
 } from 'lucide-react';
 import type { DypMode, PlayoffFormat, TeamFormat, TournamentSnapshot } from '../types';
-import { buildPublicLiveUrl } from '../api/client';
 import { notify } from '../utils/telegram';
+import { shareLiveUrlInTelegram } from '../utils/share';
 import { Modal } from './Modal';
 import { Toggle } from './Toggle';
 import { BucketsTooltip, DypModeTooltip, TOURNAMENT_MODE_CATALOG } from './InfoTooltip';
@@ -24,7 +23,6 @@ interface Props {
   onBack: () => void;
   onSave: (payload: Record<string, unknown>) => Promise<void>;
   onToggleLive?: (enabled: boolean) => Promise<void>;
-  onOpenLive?: (publicPath: string) => void;
   onTransferAdmin: (playerId: number) => Promise<void>;
   onDelete: () => Promise<void>;
   busy: boolean;
@@ -35,7 +33,6 @@ export const AdminSettingsView: React.FC<Props> = ({
   onBack,
   onSave,
   onToggleLive,
-  onOpenLive,
   onTransferAdmin,
   onDelete,
   busy,
@@ -566,41 +563,19 @@ export const AdminSettingsView: React.FC<Props> = ({
             </div>
 
             {tournament.publicPath && (
-              <div className="space-y-2 pt-1">
-                <div className="bg-[#1c1c1d] border border-[#3a3a3c] rounded-xl px-3 py-2 text-[11px] font-mono text-gray-300 truncate select-all">
-                  {buildPublicLiveUrl(tournament.publicPath)}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const url = buildPublicLiveUrl(tournament.publicPath!);
-                      await navigator.clipboard?.writeText(url);
-                      notify('Live-ссылка скопирована');
-                    }}
-                    className="bg-[#1c1c1d] border border-[#3a3a3c] text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95"
-                  >
-                    <Copy size={14} className="text-[#2ea6ff]" /> Копировать
-                  </button>
-                  {onOpenLive ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpenLive(tournament.publicPath!)}
-                      className="bg-[#2ea6ff]/15 border border-[#2ea6ff]/30 text-[#2ea6ff] py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95"
-                    >
-                      <ExternalLink size={14} /> Открыть
-                    </button>
-                  ) : (
-                    <a
-                      href={buildPublicLiveUrl(tournament.publicPath)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="bg-[#2ea6ff]/15 border border-[#2ea6ff]/30 text-[#2ea6ff] py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95"
-                    >
-                      <ExternalLink size={14} /> Открыть
-                    </a>
-                  )}
-                </div>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    shareLiveUrlInTelegram({
+                      name: tournament.name,
+                      publicPath: tournament.publicPath!,
+                    })
+                  }
+                  className="w-full bg-[#2ea6ff] text-white py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95"
+                >
+                  <Share2 size={14} /> Поделиться
+                </button>
               </div>
             )}
           </div>

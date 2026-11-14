@@ -153,48 +153,63 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
   });
 
-  it('renders LIVE button in LeaderboardView header only when publicPath is enabled and calls onOpenLive', async () => {
+  it('hides open LIVE links in LeaderboardView/AdminSettingsView/AdminDashboardView, leaves single Поделиться button on live toggle, and uses screenshot icon in LeaderboardView', async () => {
     const env = installTestDom();
     cleanupDom = env.cleanup;
+    const openTelegramLink = vi.fn();
+    (window as unknown as { Telegram: { WebApp: { openTelegramLink: typeof openTelegramLink } } }).Telegram = {
+      WebApp: { openTelegramLink },
+    };
 
     const { LeaderboardView } = await import('../src/components/LeaderboardView');
-    const onOpenLive = vi.fn();
+    const { AdminSettingsView } = await import('../src/components/AdminSettingsView');
 
     const c1 = document.createElement('div');
     document.body.appendChild(c1);
     const r1 = createRoot(c1);
     await act(async () => {
-      r1.render(
-        <LeaderboardView
-          snapshot={makePlayoffSnapshot({ publicPath: null })}
-          onOpenLive={onOpenLive}
-        />
-      );
+      r1.render(<LeaderboardView snapshot={makePlayoffSnapshot({ publicPath: 'kp_77_abc' })} />);
     });
-    const noLiveBtn = Array.from(c1.querySelectorAll('button')).find((b) =>
+
+    const liveBtn = Array.from(c1.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('LIVE')
     );
-    expect(noLiveBtn).toBeUndefined();
+    expect(liveBtn).toBeUndefined();
+    expect(c1.textContent).not.toContain('kp_77_abc');
+
+    const screenshotBtn = c1.querySelector('[data-testid="share-table-screenshot-btn"]');
+    expect(screenshotBtn).not.toBeNull();
+    expect(screenshotBtn!.querySelector('svg')).not.toBeNull();
 
     const c2 = document.createElement('div');
     document.body.appendChild(c2);
     const r2 = createRoot(c2);
     await act(async () => {
       r2.render(
-        <LeaderboardView
-          snapshot={makePlayoffSnapshot({ publicPath: 'kp_77_abc' })}
-          onOpenLive={onOpenLive}
+        <AdminSettingsView
+          snapshot={makePlayoffSnapshot({ isAdmin: true, publicPath: 'kp_77_abc' })}
+          onBack={() => {}}
+          onSave={async () => {}}
+          onToggleLive={async () => {}}
+          onTransferAdmin={async () => {}}
+          onDelete={async () => {}}
+          busy={false}
         />
       );
     });
-    const liveBtn = Array.from(c2.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('LIVE')
+    expect(c2.textContent).not.toContain('kp_77_abc');
+    expect(c2.textContent).not.toContain('Копировать');
+    expect(c2.textContent).not.toContain('Открыть');
+    const shareLiveBtn = Array.from(c2.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Поделиться')
     );
-    expect(liveBtn).toBeDefined();
+    expect(shareLiveBtn).toBeDefined();
     await act(async () => {
-      liveBtn!.click();
+      shareLiveBtn!.click();
     });
-    expect(onOpenLive).toHaveBeenCalledWith('kp_77_abc');
+    expect(openTelegramLink).toHaveBeenCalledTimes(1);
+    expect(openTelegramLink.mock.calls[0][0]).toContain('https://t.me/share/url?');
+    expect(openTelegramLink.mock.calls[0][0]).toContain(encodeURIComponent('kp_77_abc'));
 
     await act(async () => {
       r1.unmount();

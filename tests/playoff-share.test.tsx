@@ -241,10 +241,13 @@ describe('Playoff share & PNG export', () => {
 
     // Starts on Playoff sub-tab when playoffMatches exist
     expect(container.textContent).toContain('Сетка плей-офф');
-    const shareBtn = Array.from(container.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Поделиться')
-    );
-    expect(shareBtn).toBeDefined();
+    const shareBtn = container.querySelector(
+      '[data-testid="share-table-screenshot-btn"]'
+    ) as HTMLButtonElement | null;
+    expect(shareBtn).not.toBeNull();
+    expect(shareBtn!.getAttribute('aria-label')).toContain('плей-офф');
+    expect(shareBtn!.querySelector('svg')).not.toBeNull();
+    expect(shareBtn!.textContent?.trim()).toBe('');
 
     await act(async () => {
       shareBtn!.click();
@@ -260,7 +263,7 @@ describe('Playoff share & PNG export', () => {
       await Promise.resolve();
     });
 
-    // Switch to Group tab and confirm "Поделиться" still exists and switches to kind="standings"
+    // Switch to Group tab and confirm screenshot button switches to kind="standings"
     const groupBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Групповая')
     );
@@ -270,10 +273,11 @@ describe('Playoff share & PNG export', () => {
     });
     expect(container.textContent).toContain('Турнирная таблица');
 
-    const shareStandingsBtn = Array.from(container.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Поделиться')
-    );
-    expect(shareStandingsBtn).toBeDefined();
+    const shareStandingsBtn = container.querySelector(
+      '[data-testid="share-table-screenshot-btn"]'
+    ) as HTMLButtonElement | null;
+    expect(shareStandingsBtn).not.toBeNull();
+    expect(shareStandingsBtn!.getAttribute('aria-label')).toContain('таблиц');
 
     await act(async () => {
       shareStandingsBtn!.click();
