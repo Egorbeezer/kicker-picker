@@ -11,5 +11,5 @@
     "strict": false,
     "noImplicitAny": false
   },
-  "include": ["tgcloud/**/*.js", "tgcloud/sdk.d.ts"]
+  "include": ["tgcloud/**/*.js", "support-bot/tgcloud/**/*.js", "tgcloud/sdk.d.ts"]
 }

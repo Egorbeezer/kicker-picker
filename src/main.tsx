@@ -4,6 +4,7 @@ import App from './App';
 import './index.css';
 import { apiClient, isTelegramEnv } from './api/client';
 import { applyTheme, currentTheme } from './utils/theme';
+import { openTelegramChat, SUPPORT_BUTTON, SUPPORT_HINT } from './support';
 
 applyTheme(currentTheme(), { persist: false });
 
@@ -47,6 +48,14 @@ class ErrorBoundary extends React.Component<
             className="btn btn-primary px-5 py-2.5 text-sm"
           >
             Обновить
+          </button>
+          <p className="text-xs text-[var(--muted)] max-w-xs mt-1">{SUPPORT_HINT}</p>
+          <button
+            type="button"
+            onClick={() => openTelegramChat()}
+            className="w-full max-w-xs py-2.5 px-4 rounded-2xl bg-[var(--bg-3)] border border-[var(--border-strong)] text-[var(--text)] text-sm font-semibold active:scale-95 transition-transform"
+          >
+            {SUPPORT_BUTTON}
           </button>
         </div>
       );

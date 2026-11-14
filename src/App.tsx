@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { apiClient, getLivePathFromUrl, getStartTournamentId, isTelegramEnv } from './api/client';
 import { getTournamentInviteLink, shareTournamentInTelegram } from './utils/share';
+import { openTelegramChat, SUPPORT_BUTTON } from './support';
 import { haptic, installFullscreenInsets, installKeyboardInset, notify } from './utils/telegram';
 import { applyTheme, currentTheme, hydrateSavedTheme, type Theme } from './utils/theme';
 import { formatDateRu } from './utils/date';
@@ -33,6 +34,7 @@ import { BottomNav, type BottomNavItem } from './components/BottomNav';
 import { Brand } from './components/Brand';
 import { Modal } from './components/Modal';
 import { ToastHost } from './components/ToastHost';
+import { SupportHeaderButton } from './components/SupportHeaderButton';
 import { HomeView } from './components/HomeView';
 
 const CreateTournamentView = lazy(() =>
@@ -320,6 +322,13 @@ export default function App() {
           </a>{' '}
           для автоматической авторизации и работы с турнирами.
         </p>
+        <button
+          type="button"
+          onClick={() => openTelegramChat()}
+          className="w-full max-w-xs py-3 px-4 rounded-2xl bg-[var(--bg-3)] border border-[var(--border-strong)] text-[var(--text)] text-sm font-semibold active:scale-95 transition-transform"
+        >
+          {SUPPORT_BUTTON}
+        </button>
       </div>
     );
   }
@@ -354,7 +363,7 @@ export default function App() {
             <ArrowLeft size={18} />
           </button>
           <span className="text-sm font-bold text-[var(--text)]">Новый турнир</span>
-          <div className="w-10" />
+          <SupportHeaderButton />
         </div>
         <div className="flex-1 overflow-y-auto px-3 pt-4 pb-8">
           <Suspense fallback={<div className="py-10 flex justify-center"><span className="loading loading-spinner text-[#2ea6ff]" /></div>}>
@@ -389,22 +398,23 @@ export default function App() {
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
         <ToastHost />
         <div className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
-          {snapshot ? (
-            <button
-              type="button"
-              onClick={() => {
-                haptic('light');
-                setShowHome(false);
-              }}
-              className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
-              aria-label="Вернуться в турнир"
-              title="Вернуться в турнир"
-            >
-              <ArrowLeft size={18} />
-            </button>
-          ) : (
-            <div className="w-10" />
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {snapshot && (
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('light');
+                  setShowHome(false);
+                }}
+                className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
+                aria-label="Вернуться в турнир"
+                title="Вернуться в турнир"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
+            <SupportHeaderButton />
+          </div>
 
           <Brand className="text-base" />
 
@@ -534,20 +544,23 @@ export default function App() {
     <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col relative overflow-hidden">
       <ToastHost />
 
-      {/* Top bar: home icon + role / finished tabs */}
+      {/* Top bar: home + support button + role / finished tabs */}
       <div className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
-        <button
-          type="button"
-          onClick={() => {
-            haptic('light');
-            setShowHome(true);
-          }}
-          className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
-          aria-label="Главный экран"
-          title="Главный экран"
-        >
-          <Home size={19} />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              haptic('light');
+              setShowHome(true);
+            }}
+            className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
+            aria-label="Главный экран"
+            title="Главный экран"
+          >
+            <Home size={19} />
+          </button>
+          <SupportHeaderButton />
+        </div>
 
         {snapshot.isAdmin ? (
           <div className="flex bg-[#2c2c2e] rounded-full p-1 border border-[#3a3a3c] text-sm font-bold shrink-0">

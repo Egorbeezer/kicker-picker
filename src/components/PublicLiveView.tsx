@@ -18,6 +18,8 @@ import { Brand } from './Brand';
 import { MatchCard } from './MatchCard';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { PlayerAvatar } from './PlayerAvatar';
+import { SupportHeaderButton } from './SupportHeaderButton';
+import { openTelegramChat, SUPPORT_BUTTON } from '../support';
 
 interface Props {
   publicPath: string;
@@ -186,6 +188,13 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
             Повторить
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => openTelegramChat()}
+          className="px-4 py-2.5 rounded-2xl bg-[var(--bg-3)] border border-[var(--border-strong)] text-[var(--text)] text-sm font-semibold active:scale-95 transition-transform"
+        >
+          {SUPPORT_BUTTON}
+        </button>
       </div>
     );
   }
@@ -363,6 +372,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <SupportHeaderButton />
             <button
               type="button"
               onClick={() => setTvMode((v) => !v)}

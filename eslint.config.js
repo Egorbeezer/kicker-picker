@@ -31,7 +31,7 @@ export default [
     },
   },
   {
-    files: ['tgcloud/**/*.js'],
+    files: ['tgcloud/**/*.js', 'support-bot/tgcloud/**/*.js'],
     languageOptions: {
       globals: {
         console: 'readonly',
