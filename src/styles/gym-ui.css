@@ -1,0 +1,669 @@
+/* Дизайн-система и библиотека компонентов из gym-gym-app */
+:root {
+  --bg: #17212b;
+  --bg-2: #232e3c;
+  --bg-3: #2b3a4a;
+  --text: #ffffff;
+  --muted: #8b9bab;
+  --accent: #2ea6ff;
+  --accent-lime: #96f84d;
+  --ok: #34c759;
+  --warn: #ff9f0a;
+  --info: #4fb0ff;
+  --danger: #ff453a;
+  --on-accent: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --accent-soft: rgba(46, 166, 255, 0.16);
+  --accent-text: #bae6fd;
+  --ok-soft: rgba(52, 199, 89, 0.2);
+  --ok-border: rgba(52, 199, 89, 0.4);
+  --warn-soft: rgba(255, 159, 10, 0.18);
+  --warn-border: rgba(255, 159, 10, 0.4);
+  --info-soft: rgba(79, 176, 255, 0.16);
+  --danger-soft: rgba(255, 69, 58, 0.18);
+  --danger-text: #ffb4ad;
+  --overlay: rgba(0, 0, 0, 0.62);
+  --shadow: rgba(0, 0, 0, 0.45);
+  --press: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+  --radius-btn: 999px;
+  --radius-field: 22px;
+  --radius-card: 28px;
+  --env-safe-top: env(safe-area-inset-top, 0px);
+  --env-safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #eef1f5;
+  --bg-2: #ffffff;
+  --bg-3: #e4e9f0;
+  --text: #12212e;
+  --muted: #63788c;
+  --accent: #0b74d1;
+  --accent-lime: #4e9e14;
+  --ok: #1e9e4a;
+  --warn: #b87600;
+  --info: #0b74d1;
+  --danger: #d9372b;
+  --on-accent: #ffffff;
+  --border: rgba(18, 33, 46, 0.1);
+  --border-strong: rgba(18, 33, 46, 0.18);
+  --accent-soft: rgba(11, 116, 209, 0.13);
+  --accent-text: #0b74d1;
+  --ok-soft: rgba(30, 158, 74, 0.14);
+  --ok-border: rgba(30, 158, 74, 0.35);
+  --warn-soft: rgba(184, 118, 0, 0.14);
+  --warn-border: rgba(184, 118, 0, 0.35);
+  --info-soft: rgba(11, 116, 209, 0.13);
+  --danger-soft: rgba(217, 55, 43, 0.13);
+  --danger-text: #a5261c;
+  --overlay: rgba(18, 33, 46, 0.35);
+  --shadow: rgba(18, 33, 46, 0.16);
+  --press: inset 0 2px 5px rgba(18, 33, 46, 0.16);
+  color-scheme: light;
+}
+
+/* Адаптация экранов под светлую тему (с сохранением белого текста на акцентных кнопках) */
+:root[data-theme="light"] .brand-kicker {
+  color: #0b74d1;
+}
+
+:root[data-theme="light"] .brand-picker {
+  color: #4e9e14;
+}
+
+:root[data-theme="light"] .bg-\[\#1c1c1d\],
+:root[data-theme="light"] .bg-\[\#1c1c1e\] {
+  background-color: var(--bg);
+}
+
+:root[data-theme="light"] .bg-\[\#2c2c2e\],
+:root[data-theme="light"] .bg-\[\#2c2c2e\]\/50,
+:root[data-theme="light"] .bg-\[\#2c2c2e\]\/40,
+:root[data-theme="light"] .bg-\[\#2c2c2e\]\/95 {
+  background-color: var(--bg-2);
+}
+
+:root[data-theme="light"] .bg-\[\#1c1c1d\]\/25,
+:root[data-theme="light"] .bg-\[\#1c1c1d\]\/40,
+:root[data-theme="light"] .bg-\[\#3a3a3c\],
+:root[data-theme="light"] .bg-gray-600,
+:root[data-theme="light"] .bg-gray-700,
+:root[data-theme="light"] .bg-gray-800,
+:root[data-theme="light"] .disabled\:bg-\[\#1c1c1d\]:disabled {
+  background-color: var(--bg-3);
+}
+
+:root[data-theme="light"] .border-\[\#3a3a3c\],
+:root[data-theme="light"] .border-\[\#3a3a3c\]\/60,
+:root[data-theme="light"] .border-\[\#3a3a3c\]\/50,
+:root[data-theme="light"] .disabled\:border-\[\#3a3a3c\]:disabled {
+  border-color: var(--border-strong);
+}
+
+:root[data-theme="light"] .text-white:not(.btn-primary):not(.bg-\[\#2ea6ff\]):not(.bg-red-600):not(.bg-green-500):not(.bg-green-600:not(:disabled)):not(.bg-black\/60) {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .btn-primary .text-white,
+:root[data-theme="light"] .bg-\[\#2ea6ff\] .text-white {
+  color: #ffffff;
+}
+
+:root[data-theme="light"] .text-gray-200,
+:root[data-theme="light"] .text-gray-300 {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .text-gray-400,
+:root[data-theme="light"] .text-gray-500,
+:root[data-theme="light"] .disabled\:text-gray-500:disabled {
+  color: var(--muted);
+}
+
+/* Высококонтрастный жёлтый/янтарный, зелёный и красный текст на светлом фоне */
+:root[data-theme="light"] .text-yellow-300,
+:root[data-theme="light"] .text-yellow-400,
+:root[data-theme="light"] .text-yellow-500,
+:root[data-theme="light"] .text-amber-300,
+:root[data-theme="light"] .text-amber-400,
+:root[data-theme="light"] .text-amber-500,
+:root[data-theme="light"] .text-\[\#eab308\] {
+  color: #92400e;
+}
+
+:root[data-theme="light"] .bg-yellow-500\/10,
+:root[data-theme="light"] .bg-yellow-500\/15,
+:root[data-theme="light"] .bg-yellow-500\/20,
+:root[data-theme="light"] .bg-amber-500\/10,
+:root[data-theme="light"] .bg-amber-500\/15 {
+  background-color: rgba(217, 119, 6, 0.16);
+}
+
+:root[data-theme="light"] .border-yellow-500\/20,
+:root[data-theme="light"] .border-yellow-500\/25,
+:root[data-theme="light"] .border-yellow-500\/30,
+:root[data-theme="light"] .border-yellow-500\/35,
+:root[data-theme="light"] .border-amber-500\/35 {
+  border-color: rgba(180, 83, 9, 0.35);
+}
+
+:root[data-theme="light"] .text-green-400,
+:root[data-theme="light"] .text-green-500 {
+  color: #15803d;
+}
+
+:root[data-theme="light"] .text-red-400,
+:root[data-theme="light"] .text-red-500 {
+  color: #b91c1c;
+}
+
+:root[data-theme="light"] .text-\[\#96f84d\] {
+  color: #3f820e;
+}
+
+:root[data-theme="light"] .bg-\[\#96f84d\]\/20 {
+  background-color: rgba(78, 158, 20, 0.16);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Логотип кикер пикер шрифтом Unbounded */
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28em;
+  font-family: "Unbounded", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  user-select: none;
+}
+
+.brand-kicker {
+  color: #2ea6ff;
+}
+
+.brand-picker {
+  color: #96f84d;
+}
+
+/* Отступ контента снизу под приподнятый dock + подпись */
+.content-dock-pad {
+  padding-bottom: calc(132px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
+}
+
+.no-dock .content-dock-pad {
+  padding-bottom: calc(28px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
+}
+
+/* Нижнее меню в стиле daisyUI Dock (как в gym-gym) */
+.dock {
+  display: flex;
+  width: calc(100% - 20px);
+  max-width: 428px;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(34px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
+  z-index: 30;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  box-shadow: 0 10px 28px var(--shadow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-sizing: border-box;
+}
+
+body.modal-open .dock,
+body.field-focus .dock,
+body.modal-open .footer-sign,
+body.field-focus .footer-sign {
+  display: none;
+}
+
+.dock > * {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px 4px;
+  min-height: 50px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-width: 0;
+}
+
+.dock-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.dock-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dock-icon-wrapper .tab-dot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+  border: 1.5px solid var(--bg-2);
+}
+
+.dock-active,
+.dock > *.dock-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dock > *.dock-active .dock-icon {
+  transform: scale(1.12);
+  color: var(--accent);
+}
+
+.dock > *.dock-active .dock-label {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.dock-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+/* Подпись-логотип под нижним меню */
+.footer-sign {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(34px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px));
+  z-index: 29;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  pointer-events: none;
+}
+
+.footer-brand {
+  font-size: 13px;
+}
+
+/* Дизайн-система кнопок (gym-gym) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 16px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-3);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+  box-shadow: var(--press);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.btn-ok {
+  background: var(--ok-soft);
+  border-color: var(--ok-border);
+  color: var(--text);
+}
+
+.btn-warn {
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--danger-soft);
+  border-color: var(--danger-soft);
+  color: var(--danger);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-row > .btn {
+  flex: 1 1 0;
+}
+
+/* Карточки и алерты */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 14px;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-field);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.alert-info {
+  background: var(--info-soft);
+  border-color: var(--info);
+}
+
+.alert-success,
+.alert-ok {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+}
+
+.alert-warning {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+}
+
+.alert-danger,
+.alert-error {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+/* Тумблер (gym-gym Toggle) */
+.toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-strong);
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.toggle::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.toggle:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle:checked::before {
+  transform: translateX(18px);
+}
+
+/* Всплывающие уведомления (ToastHost из gym-gym) */
+.toast {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 60;
+  pointer-events: none;
+  max-width: calc(100% - 24px);
+  width: 420px;
+}
+
+.toast > * {
+  pointer-events: auto;
+}
+
+.toast-top {
+  top: calc(var(--tg-inset-top, 0px) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+body.modal-open .app-toast {
+  z-index: 200;
+}
+
+.toast-item {
+  padding: 12px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-field);
+  background: var(--bg-2);
+  box-shadow: 0 10px 28px var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+  animation: toast-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toast-item.is-leaving {
+  animation: toast-out 0.28s ease-in both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-140%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-140%);
+  }
+}
+
+/* Модальные окна (Modal из gym-gym) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: calc(12px + var(--tg-inset-top, 0px)) 10px
+    calc(14px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)) + var(--keyboard-inset, 0px));
+  z-index: 50;
+}
+
+.modal {
+  width: 100%;
+  max-width: 430px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 30px;
+  padding: 16px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: min(82vh, calc(100dvh - var(--keyboard-inset, 0px) - 40px));
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px var(--shadow), 0 8px 10px -6px var(--shadow);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.modal-header .modal-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.modal-cancel-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.modal-cancel-btn:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.modal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.modal-close {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 13px;
+  border-radius: 999px;
+  font-size: 15px;
+  color: var(--muted);
+  background: var(--bg-3);
+}
+
+.modal-close.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* Индикатор загрузки */
+.loading {
+  display: inline-block;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  animation: gym-spin 0.75s linear infinite;
+}
+
+@keyframes gym-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
