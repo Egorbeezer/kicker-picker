@@ -8,6 +8,37 @@ import { openTelegramChat, SUPPORT_BUTTON, SUPPORT_HINT } from './support';
 
 applyTheme(currentTheme(), { persist: false });
 
+function reportUiErrorOnce(message: string, stack?: string, source = 'miniapp') {
+  try {
+    if (!isTelegramEnv()) return;
+    const cleanMessage = (message || 'Unknown error').slice(0, 400);
+    const key = `kp_err_${source}_${cleanMessage.slice(0, 60)}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    void apiClient.reportClientError({
+      message: cleanMessage,
+      stack: stack ? stack.slice(0, 2000) : undefined,
+      source,
+    });
+  } catch {
+    // ignore telemetry failure
+  }
+}
+
+window.addEventListener('error', (event) => {
+  const err = event.error instanceof Error ? event.error : null;
+  const message = err?.message || event.message || 'Unhandled window error';
+  const stack = err?.stack || `${event.filename || ''}:${event.lineno || 0}:${event.colno || 0}`;
+  reportUiErrorOnce(message, stack, 'window_error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const reason = event.reason;
+  const message = reason instanceof Error ? reason.message : String(reason || 'Unhandled rejection');
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  reportUiErrorOnce(message, stack, 'unhandled_rejection');
+});
+
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
@@ -19,19 +50,8 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    try {
-      if (!isTelegramEnv()) return;
-      const key = `kp_err_${(error.message || '').slice(0, 60)}`;
-      if (sessionStorage.getItem(key)) return;
-      sessionStorage.setItem(key, '1');
-      const stack = [error.stack, info.componentStack].filter(Boolean).join('\n').slice(0, 2000);
-      void apiClient.reportClientError({
-        message: error.message || 'Unknown render error',
-        stack,
-      });
-    } catch {
-      // ignore telemetry failure
-    }
+    const stack = [error.stack, info.componentStack].filter(Boolean).join('\n');
+    reportUiErrorOnce(error.message || 'Unknown render error', stack, 'error_boundary');
   }
 
   render() {

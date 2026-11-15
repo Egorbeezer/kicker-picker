@@ -177,10 +177,26 @@ async function writeTelegraphFallback(row, bodyStr) {
   return { token, path: createJson.result.path };
 }
 
-export async function deletePublicLivePage(publicPath) {
-  if (!publicPath || !String(publicPath).startsWith('kp_')) return;
+export async function deletePublicLivePage(publicPath, publicToken = null) {
+  if (!publicPath) return;
   try {
-    await writeLivePayload(publicPath, '');
+    const pathStr = String(publicPath);
+    if (pathStr.startsWith('kp_')) {
+      await writeLivePayload(pathStr, '');
+      return;
+    }
+    if (publicToken && publicToken !== 'textdb') {
+      await fetch('https://api.telegra.ph/editPage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: publicToken,
+          path: pathStr,
+          title: 'Live-трансляция удалена',
+          content: [{ tag: 'p', children: [''] }],
+        }),
+      });
+    }
   } catch (err) {
     console.warn('deletePublicLivePage failed:', err?.message || err);
   }

@@ -1,6 +1,7 @@
 import { db, EndpointError } from 'sdk';
 import { and, eq, gt } from 'sdk/db';
 import { clientErrors } from '../schema.js';
+import { notifyBotOwnerAlert } from '../lib/helpers.js';
 
 export default async function (input, ctx) {
   const tgUser = ctx.initData?.user;
@@ -14,8 +15,22 @@ export default async function (input, ctx) {
   }
 
   const stack = input?.stack ? String(input.stack).slice(0, 2000) : null;
+  const source = input?.source ? String(input.source).trim().slice(0, 80) : 'miniapp';
+  const context = input?.context ? String(input.context).trim().slice(0, 300) : null;
   const fingerprint = rawMessage.slice(0, 120);
-  const cutoffSec = Math.floor(Date.now() / 1000) - 30 * 60;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const cutoffSec = nowSec - 30 * 60;
+  const rateLimitCutoffSec = nowSec - 10 * 60;
+
+  const recentUserErrors = await db
+    .select({ id: clientErrors.id })
+    .from(clientErrors)
+    .where(and(eq(clientErrors.tgId, tgUser.id), gt(clientErrors.createdAt, rateLimitCutoffSec)))
+    .all();
+
+  if (recentUserErrors.length >= 10) {
+    return { ok: true, deduplicated: false, rateLimited: true };
+  }
 
   const recent = await db
     .select({ id: clientErrors.id })
@@ -34,6 +49,14 @@ export default async function (input, ctx) {
     stack,
   });
 
-  console.error('[CLIENT_ERROR]', { tgId: tgUser.id, message: rawMessage });
+  console.error('[CLIENT_ERROR]', { tgId: tgUser.id, source, message: rawMessage });
+  await notifyBotOwnerAlert({
+    source,
+    message: rawMessage,
+    stack,
+    tgUser,
+    context,
+  });
+
   return { ok: true, deduplicated: false };
 }

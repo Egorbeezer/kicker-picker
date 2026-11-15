@@ -9,7 +9,11 @@
     "noEmit": true,
     "skipLibCheck": true,
     "strict": false,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "noImplicitThis": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["tgcloud/**/*.js", "support-bot/tgcloud/**/*.js", "tgcloud/sdk.d.ts"]
 }

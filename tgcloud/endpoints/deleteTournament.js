@@ -1,6 +1,7 @@
 import { db, EndpointError } from 'sdk';
 import { eq } from 'sdk/db';
 import { tournaments, tournamentPlayers, tournamentAdmins, matches } from '../schema.js';
+import { deletePublicLivePage } from '../lib/publicLive.js';
 
 export default async function (input, ctx) {
   const tgUser = ctx.initData?.user;
@@ -15,6 +16,10 @@ export default async function (input, ctx) {
   if (!tournament) throw new EndpointError('Турнир не найден', { code: 'NOT_FOUND' });
   if (tournament.creatorTgId !== tgUser?.id) {
     throw new EndpointError('Только организатор может удалить турнир', { code: 'FORBIDDEN' });
+  }
+
+  if (tournament.publicPath) {
+    await deletePublicLivePage(tournament.publicPath, tournament.publicToken);
   }
 
   // Delete children before parent (SQLite FKs are off in tgcloud)

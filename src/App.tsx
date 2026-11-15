@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React from 'react';
 import {
   Trophy,
   Gamepad2,
@@ -12,20 +12,14 @@ import {
   Sun,
   Moon,
   ArrowLeft,
-  Loader2,
 } from 'lucide-react';
-import { apiClient, getLivePathFromUrl, getStartTournamentId, isTelegramEnv } from './api/client';
+import { apiClient, isTelegramEnv } from './api/client';
 import { getTournamentInviteLink, shareTournamentInTelegram } from './utils/share';
 import { openTelegramChat, SUPPORT_BUTTON } from './support';
-import { haptic, installFullscreenInsets, installKeyboardInset, notify } from './utils/telegram';
-import { installSingleInstanceSync, type SingleInstanceController } from './utils/singleInstance';
-import { applyTheme, currentTheme, hydrateSavedTheme, type Theme } from './utils/theme';
+import { haptic, notify } from './utils/telegram';
 import { formatDateRu } from './utils/date';
-import type {
-  AppStateResponse,
-  CreateTournamentForm,
-  TournamentSnapshot,
-} from './types';
+import { useAppController } from './hooks/useAppController';
+import { ActionStatusBanner } from './components/ActionStatusBanner';
 import { PlayerMatchView } from './components/PlayerMatchView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { ProfileView } from './components/ProfileView';
@@ -42,283 +36,47 @@ import { CreateTournamentView } from './components/CreateTournamentView';
 import { PublicLiveView } from './components/PublicLiveView';
 
 export default function App() {
-  const livePath = getLivePathFromUrl();
-  const [loading, setLoading] = useState(!livePath);
-  const [busy, setBusy] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => currentTheme());
-  const [appState, setAppState] = useState<AppStateResponse | null>(null);
-  const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
-  const [showHome, setShowHome] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [createdInvite, setCreatedInvite] = useState<{ id: number; name: string } | null>(null);
-
-  const [mode, setMode] = useState<'PLAYER' | 'ADMIN'>('PLAYER');
-  const [playerTab, setPlayerTab] = useState<'match' | 'table' | 'profile'>('match');
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'players' | 'table' | 'settings'>('dashboard');
-
-  const startHandledRef = useRef(false);
-  const actionLockRef = useRef(false);
-  const supersededRef = useRef(false);
-  const singleInstanceRef = useRef<SingleInstanceController | null>(null);
-  const selectedTournamentIdRef = useRef<number | null>(selectedTournamentId);
-  selectedTournamentIdRef.current = selectedTournamentId;
-
-  const showError = useCallback((err: unknown) => {
-    const msg = err instanceof Error ? err.message : 'Произошла ошибка';
-    haptic('error');
-    notify(msg);
-  }, []);
-
-  const fetchState = useCallback(
-    async (tId?: number | null, opts?: { light?: boolean }) => {
-      try {
-        if (livePath || !isTelegramEnv()) {
-          setLoading(false);
-          return;
-        }
-        const startTournamentId = !startHandledRef.current ? getStartTournamentId() : null;
-        if (startTournamentId && !startHandledRef.current) {
-          startHandledRef.current = true;
-          try {
-            const joined = await apiClient.joinTournament(startTournamentId);
-            setSelectedTournamentId(joined.tournament.id);
-            setShowHome(false);
-            const res = await apiClient.getState({ tournamentId: joined.tournament.id });
-            setAppState(res);
-            setLoading(false);
-            return;
-          } catch (joinErr) {
-            showError(joinErr);
-          }
-        }
-
-        const effectiveId = tId === undefined ? selectedTournamentId : tId;
-        const canPollLight = Boolean(opts?.light && effectiveId);
-        const res = await apiClient.getState(
-          effectiveId ? { tournamentId: effectiveId, ...(canPollLight ? { light: true } : {}) } : {}
-        );
-
-        if (res.light) {
-          let needsFullRefresh = false;
-          setAppState((prev) => {
-            if (!prev) {
-              needsFullRefresh = true;
-              return prev;
-            }
-            const prevStatus = prev.activeTournament?.tournament.status;
-            const nextStatus = res.activeTournament?.tournament.status;
-            if (prevStatus && nextStatus && prevStatus !== nextStatus && nextStatus === 'FINISHED') {
-              needsFullRefresh = true;
-            }
-            return {
-              ...prev,
-              activeTournament: res.activeTournament,
-            };
-          });
-          if (needsFullRefresh) {
-            const full = await apiClient.getState(effectiveId ? { tournamentId: effectiveId } : {});
-            setAppState(full);
-          }
-        } else {
-          setAppState(res);
-        }
-
-        if (res.activeTournament && !selectedTournamentId) {
-          setSelectedTournamentId(res.activeTournament.tournament.id);
-          if (res.activeTournament.isAdmin) {
-            setMode('ADMIN');
-          }
-        }
-      } catch (err) {
-        showError(err);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [selectedTournamentId, showError, livePath]
-  );
-
-  useEffect(() => {
-    const stopInsets = installFullscreenInsets();
-    const stopKeyboard = installKeyboardInset();
-    hydrateSavedTheme((resolved) => setTheme(resolved));
-    if (livePath) {
-      return () => {
-        stopInsets();
-        stopKeyboard();
-      };
-    }
-    const webApp = window.Telegram?.WebApp;
-    webApp?.ready?.();
-    webApp?.expand?.();
-    const user = webApp?.initDataUnsafe?.user;
-    if (user && user.allows_write_to_pm !== true && webApp?.requestWriteAccess) {
-      const storageKey = `kp_write_req_${user.id}`;
-      if (!sessionStorage.getItem(storageKey)) {
-        sessionStorage.setItem(storageKey, '1');
-        try {
-          webApp.requestWriteAccess();
-        } catch (_) {}
-      }
-    }
-    fetchState();
-
-    const sync = installSingleInstanceSync({
-      onSuperseded: () => {
-        supersededRef.current = true;
-      },
-      onActivate: (latestTournamentId) => {
-        supersededRef.current = false;
-        const targetId =
-          latestTournamentId && latestTournamentId !== selectedTournamentIdRef.current
-            ? latestTournamentId
-            : selectedTournamentIdRef.current;
-        if (latestTournamentId && latestTournamentId !== selectedTournamentIdRef.current) {
-          setSelectedTournamentId(latestTournamentId);
-          setShowHome(false);
-        }
-        if (isTelegramEnv()) {
-          void fetchState(targetId);
-        }
-      },
-    });
-    singleInstanceRef.current = sync;
-    sync.announce(getStartTournamentId() ?? selectedTournamentIdRef.current);
-
-    return () => {
-      sync.cleanup();
-      singleInstanceRef.current = null;
-      stopInsets();
-      stopKeyboard();
-    };
-  }, [fetchState, livePath]);
-
-  useEffect(() => {
-    singleInstanceRef.current?.announce(selectedTournamentId);
-  }, [selectedTournamentId]);
-
-  // 2.5s serverless live polling when tab is visible (light mode when inside tournament)
-  useEffect(() => {
-    if (livePath || !isTelegramEnv() || isCreating) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible' && !supersededRef.current) {
-        const useLight = Boolean(!showHome && selectedTournamentId);
-        fetchState(selectedTournamentId, { light: useLight });
-      }
-    }, 2500);
-    return () => clearInterval(timer);
-  }, [fetchState, selectedTournamentId, isCreating, showHome, livePath]);
-
-  const applySnapshot = (snap: TournamentSnapshot) => {
-    setSelectedTournamentId(snap.tournament.id);
-    setAppState((prev) => {
-      if (!prev) return prev;
-      const list = prev.tournaments || [];
-      const exists = list.some((t) => t.id === snap.tournament.id);
-      const historyList = prev.tournamentHistory || [];
-      const historyExists = historyList.some((t) => t.id === snap.tournament.id);
-      return {
-        ...prev,
-        tournaments: exists
-          ? list.map((t) => (t.id === snap.tournament.id ? snap.tournament : t))
-          : [snap.tournament, ...list],
-        tournamentHistory: historyExists
-          ? historyList.map((t) =>
-              t.id === snap.tournament.id
-                ? {
-                    ...t,
-                    ...snap.tournament,
-                    participantsCount: snap.players.length,
-                  }
-                : t
-            )
-          : [
-              {
-                ...snap.tournament,
-                participantsCount: snap.players.length,
-                myStats: null,
-              },
-              ...historyList,
-            ],
-        activeTournament: snap,
-      };
-    });
-  };
-
-  const runLocked = useCallback(
-    async (statusText: string, fn: () => Promise<void>) => {
-      if (actionLockRef.current) return;
-      actionLockRef.current = true;
-      setBusy(true);
-      setPendingStatus(statusText);
-      try {
-        await fn();
-      } catch (err) {
-        showError(err);
-      } finally {
-        actionLockRef.current = false;
-        setBusy(false);
-        setPendingStatus(null);
-      }
-    },
-    [showError]
-  );
-
-  const handleCreateTournament = (form: CreateTournamentForm) =>
-    runLocked('Создаём турнир...', async () => {
-      const snap = await apiClient.createTournament({ ...form, joinAsPlayer: true });
-      applySnapshot(snap);
-      setIsCreating(false);
-      setShowHome(false);
-      setMode('ADMIN');
-      setAdminTab('players');
-      setCreatedInvite({ id: snap.tournament.id, name: snap.tournament.name });
-      notify('Турнир создан');
-    });
-
-  const runAction = (
-    fn: () => Promise<TournamentSnapshot>,
-    statusText = 'Выполняем действие...',
-    successToast?: string
-  ) =>
-    runLocked(statusText, async () => {
-      const snap = await fn();
-      applySnapshot(snap);
-      if (successToast) notify(successToast);
-    });
-
-  const handleManageClubPlayer = (params: {
-    action: 'list' | 'add' | 'delete';
-    id?: number;
-    name?: string;
-  }) =>
-    runLocked('Обновляем список клуба...', async () => {
-      const res = await apiClient.manageClubPlayer(params);
-      setAppState((prev) => (prev ? { ...prev, clubPlayers: res.clubPlayers } : prev));
-    });
-
-  const snapshot = appState?.activeTournament ?? null;
-  const hideBottomNav = Boolean(
-    snapshot && mode === 'PLAYER' && snapshot.tournament.status === 'FINISHED'
-  );
-
-  useEffect(() => {
-    if (hideBottomNav && playerTab === 'profile') {
-      setPlayerTab('match');
-    }
-  }, [hideBottomNav, playerTab]);
+  const {
+    livePath,
+    loading,
+    busy,
+    pendingStatus,
+    theme,
+    changeTheme,
+    toggleTheme,
+    appState,
+    setClubPlayers,
+    showError,
+    snapshot,
+    hideBottomNav,
+    setSelectedTournamentId,
+    showHome,
+    setShowHome,
+    isCreating,
+    setIsCreating,
+    createdInvite,
+    setCreatedInvite,
+    mode,
+    setMode,
+    playerTab,
+    setPlayerTab,
+    adminTab,
+    setAdminTab,
+    fetchState,
+    applySnapshot,
+    runLocked,
+    runAction,
+    handleCreateTournament,
+    handleManageClubPlayer,
+    handleSelectTournament,
+  } = useAppController();
 
   if (livePath) {
     return (
       <PublicLiveView
         publicPath={livePath}
         theme={theme}
-        onToggleTheme={() => {
-          const next = theme === 'dark' ? 'light' : 'dark';
-          setTheme(next);
-          applyTheme(next);
-        }}
+        onToggleTheme={toggleTheme}
       />
     );
   }
@@ -327,15 +85,7 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col items-center justify-center p-6 text-center">
         <ToastHost />
-      {pendingStatus && (
-        <div
-          data-testid="action-status-banner"
-          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
-        >
-          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
-          <span>{pendingStatus}</span>
-        </div>
-      )}
+        <ActionStatusBanner pendingStatus={pendingStatus} />
         <Trophy size={56} className="text-[#2ea6ff] mb-4" />
         <h1 className="text-2xl mb-2">
           <Brand />
@@ -365,15 +115,7 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col items-center justify-center gap-3">
         <ToastHost />
-      {pendingStatus && (
-        <div
-          data-testid="action-status-banner"
-          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
-        >
-          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
-          <span>{pendingStatus}</span>
-        </div>
-      )}
+        <ActionStatusBanner pendingStatus={pendingStatus} />
         <span className="loading loading-spinner text-[#2ea6ff]" />
         <Brand className="text-lg mt-1" />
         <span className="text-xs text-[var(--muted)]">Загрузка турнира...</span>
@@ -386,15 +128,7 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
         <ToastHost />
-      {pendingStatus && (
-        <div
-          data-testid="action-status-banner"
-          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
-        >
-          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
-          <span>{pendingStatus}</span>
-        </div>
-      )}
+        <ActionStatusBanner pendingStatus={pendingStatus} />
         <div className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
           <button
             type="button"
@@ -442,15 +176,7 @@ export default function App() {
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
         <ToastHost />
-      {pendingStatus && (
-        <div
-          data-testid="action-status-banner"
-          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
-        >
-          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
-          <span>{pendingStatus}</span>
-        </div>
-      )}
+        <ActionStatusBanner pendingStatus={pendingStatus} />
         <div
           data-testid="home-header"
           className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
@@ -478,9 +204,7 @@ export default function App() {
               type="button"
               onClick={() => {
                 haptic('light');
-                const next = theme === 'dark' ? 'light' : 'dark';
-                setTheme(next);
-                applyTheme(next);
+                toggleTheme();
               }}
               className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
               aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
@@ -498,21 +222,7 @@ export default function App() {
             currentTournamentId={snapshot?.tournament.id ?? null}
             playerProfile={appState?.playerProfile ?? null}
             userName={fullUserName}
-            onSelectTournament={(tId) => {
-              const picked = (appState?.tournaments || appState?.tournamentHistory || []).find((t) => t.id === tId);
-              const uid = appState?.user.id ?? 0;
-              const pickedIsAdmin = Boolean(
-                picked &&
-                  (picked.creatorTgId === uid ||
-                    (Array.isArray(picked.coAdminTgIds) && picked.coAdminTgIds.includes(uid)))
-              );
-              setSelectedTournamentId(tId);
-              setShowHome(false);
-              setMode(pickedIsAdmin ? 'ADMIN' : 'PLAYER');
-              setPlayerTab('match');
-              setAdminTab('dashboard');
-              fetchState(tId);
-            }}
+            onSelectTournament={handleSelectTournament}
             onCreateTournament={() => setIsCreating(true)}
           />
         </div>
@@ -601,17 +311,8 @@ export default function App() {
   return (
     <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col relative overflow-hidden">
       <ToastHost />
-      {pendingStatus && (
-        <div
-          data-testid="action-status-banner"
-          className="fixed top-[calc(58px+var(--tg-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-[var(--card)]/95 border border-[#2ea6ff]/40 shadow-lg flex items-center gap-2 text-xs font-semibold text-[var(--text)] pointer-events-none"
-        >
-          <Loader2 size={13} className="animate-spin text-[#2ea6ff] shrink-0" />
-          <span>{pendingStatus}</span>
-        </div>
-      )}
+      <ActionStatusBanner pendingStatus={pendingStatus} />
 
-      {/* Top bar: home + support button + role / finished tabs */}
       <div
         data-testid="app-header"
         className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
@@ -686,7 +387,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className={`flex-1 overflow-hidden relative ${hideBottomNav ? 'no-dock' : ''}`}>
         {mode === 'PLAYER' ? (
           <>
@@ -751,10 +451,7 @@ export default function App() {
               />
             )}
             {playerTab === 'table' && (
-              <LeaderboardView
-                snapshot={snapshot}
-                busy={busy}
-              />
+              <LeaderboardView snapshot={snapshot} busy={busy} />
             )}
             {playerTab === 'profile' && (
               <ProfileView
@@ -764,8 +461,7 @@ export default function App() {
                 theme={theme}
                 onChangeTheme={(nextTheme) => {
                   haptic('light');
-                  setTheme(nextTheme);
-                  applyTheme(nextTheme);
+                  changeTheme(nextTheme);
                 }}
                 onSelectTournament={(tId) => {
                   setSelectedTournamentId(tId);
@@ -870,11 +566,7 @@ export default function App() {
                   if (typeof payload !== 'string' && payload.saveToClub !== false) {
                     apiClient
                       .manageClubPlayer({ action: 'list' })
-                      .then((res) => {
-                        setAppState((prev) =>
-                          prev ? { ...prev, clubPlayers: res.clubPlayers } : prev
-                        );
-                      })
+                      .then((res) => setClubPlayers(res.clubPlayers))
                       .catch(() => {});
                   }
                 }}
@@ -958,10 +650,8 @@ export default function App() {
         )}
       </div>
 
-      {/* Elevated gym-gym Dock + Unbounded кикер пикер Brand underneath */}
       {!hideBottomNav && <BottomNav items={navItems} />}
 
-      {/* Created Tournament Invite Modal (gym-gym Modal) */}
       {createdInvite && (
         <Modal
           title={

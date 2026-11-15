@@ -321,47 +321,12 @@ describe('Playoff share & PNG export', () => {
     });
   });
 
-  it('shareLeaderboard endpoint never sends photos to user PM and client source avoids dynamic module imports', async () => {
-    const sendPhoto = vi.fn();
-    const savePreparedInlineMessage = vi.fn();
-    const deleteMessage = vi.fn();
-    class MockEndpointError extends Error {}
-
-    vi.doMock('sdk', () => ({
-      db: {
-        select: () => ({
-          from: () => ({
-            where: () => ({
-              get: async () => ({
-                id: 77,
-                creatorTgId: 12345,
-                name: 'Кубок Пикера',
-                status: 'QUALIFICATION',
-                currentRound: 2,
-              }),
-            }),
-          }),
-        }),
-      },
-      api: { sendPhoto, savePreparedInlineMessage, deleteMessage },
-      EndpointError: MockEndpointError,
-    }));
-    vi.doMock('sdk/db', () => ({ eq: vi.fn(), and: vi.fn(), desc: vi.fn(), inArray: vi.fn(), sql: vi.fn() }));
-    vi.doMock('../tgcloud/schema.js', () => ({ tournaments: { id: 'id' }, tournamentPlayers: {} }));
-
-    const { default: shareLeaderboard } = await import('../tgcloud/endpoints/shareLeaderboard.js');
-    const res = await shareLeaderboard(
-      { tournamentId: 77, imageBase64: 'A'.repeat(200), kind: 'standings' },
-      { initData: { user: { id: 12345 } } }
-    );
-
-    expect(res).toEqual({ sentToPm: false, preparedMessageId: null });
-    expect(sendPhoto).not.toHaveBeenCalled();
-    expect(savePreparedInlineMessage).not.toHaveBeenCalled();
-    expect(deleteMessage).not.toHaveBeenCalled();
-
+  it('dead shareLeaderboard endpoint is removed and client source avoids dynamic module imports', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
+    expect(fs.existsSync(path.resolve(process.cwd(), 'tgcloud/endpoints/shareLeaderboard.js'))).toBe(false);
+    const clientCode = fs.readFileSync(path.resolve(process.cwd(), 'src/api/client.ts'), 'utf8');
+    expect(clientCode).not.toContain('shareLeaderboard');
     for (const rel of [
       'src/App.tsx',
       'src/components/LeaderboardView.tsx',
@@ -396,7 +361,7 @@ describe('Playoff share & PNG export', () => {
     expect(writeMock).toHaveBeenCalledTimes(1);
   });
 
-  it('opens preview modal with formed screenshot even if shareLeaderboard fails, and sets crossOrigin on external avatar URLs', async () => {
+  it('opens preview modal with formed screenshot and sets crossOrigin on external avatar URLs', async () => {
     const env = installTestDom();
     const assignedImages: Array<{ crossOrigin: string | null; src: string }> = [];
     const OriginalImage = globalThis.Image;

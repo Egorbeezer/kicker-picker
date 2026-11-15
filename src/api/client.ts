@@ -73,9 +73,38 @@ function extractTextFromTelegraphNode(node: unknown): string {
   return children.map(extractTextFromTelegraphNode).join('');
 }
 
+function validatePublicLivePayload(parsed: unknown): PublicLiveData {
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Некорректный формат live-данных');
+  }
+  const data = parsed as Partial<PublicLiveData>;
+  if (data.v !== 1 || !data.tournament?.id || !Array.isArray(data.leaderboard)) {
+    throw new Error('Live-трансляция отключена или повреждена');
+  }
+  return data as PublicLiveData;
+}
+
+async function fetchWithRetry(url: string, init?: RequestInit, attempts = 2): Promise<Response> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok || res.status < 500 || i === attempts - 1) {
+        return res;
+      }
+      lastError = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastError = err;
+      if (i === attempts - 1) throw err;
+    }
+    await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+  }
+  throw lastError instanceof Error ? lastError : new Error('Не удалось загрузить live-трансляцию');
+}
+
 export async function fetchPublicLive(publicPath: string): Promise<PublicLiveData> {
   if (publicPath.startsWith('kp_')) {
-    const res = await fetch(
+    const res = await fetchWithRetry(
       `https://textdb.dev/api/data/${encodeURIComponent(publicPath)}?_=${Date.now()}`,
       { cache: 'no-store' }
     );
@@ -86,10 +115,10 @@ export async function fetchPublicLive(publicPath: string): Promise<PublicLiveDat
     if (!rawText) {
       throw new Error('Live-трансляция отключена или ещё не обновлена');
     }
-    return JSON.parse(rawText) as PublicLiveData;
+    return validatePublicLivePayload(JSON.parse(rawText));
   }
 
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://api.telegra.ph/getPage/${encodeURIComponent(publicPath)}?return_content=true`,
     { cache: 'no-store' }
   );
@@ -105,7 +134,10 @@ export async function fetchPublicLive(publicPath: string): Promise<PublicLiveDat
     throw new Error(json?.error || 'Live-страница не найдена');
   }
   const rawText = json.result.content.map(extractTextFromTelegraphNode).join('').trim();
-  return JSON.parse(rawText) as PublicLiveData;
+  if (!rawText) {
+    throw new Error('Live-трансляция отключена или ещё не обновлена');
+  }
+  return validatePublicLivePayload(JSON.parse(rawText));
 }
 
 export function getStartTournamentId(): number | null {
@@ -128,7 +160,27 @@ export async function callEndpoint<T>(name: string, input: Record<string, unknow
   return new Promise<T>((resolve, reject) => {
     serverless.call(name, input, (err, result) => {
       if (err) {
-        reject(new Error(err.message || 'Ошибка сервера'));
+        const message = err.message || 'Ошибка сервера';
+        if (err.type !== 'ENDPOINT_ERROR' && name !== 'reportClientError') {
+          try {
+            const key = `kp_err_ep_${name}_${message.slice(0, 80)}`;
+            if (!sessionStorage.getItem(key)) {
+              sessionStorage.setItem(key, '1');
+              serverless.call(
+                'reportClientError',
+                {
+                  message: `Endpoint ${name}: ${message}`,
+                  source: 'api_client',
+                  context: `type=${err.type || 'unknown'}`,
+                },
+                () => {},
+              );
+            }
+          } catch {
+            // ignore reporting failures
+          }
+        }
+        reject(new Error(message));
         return;
       }
       resolve(result as T);
@@ -156,8 +208,8 @@ export function callMutatingEndpoint<T>(
 export const apiClient = {
   getState: (params: { tournamentId?: number; light?: boolean } = {}) =>
     callEndpoint<AppStateResponse>('getState', params),
-  reportClientError: (params: { message: string; stack?: string }) =>
-    callEndpoint<{ ok: boolean; deduplicated?: boolean }>('reportClientError', params),
+  reportClientError: (params: { message: string; stack?: string; source?: string; context?: string }) =>
+    callEndpoint<{ ok: boolean; deduplicated?: boolean; rateLimited?: boolean }>('reportClientError', params),
   createTournament: (input: Record<string, unknown>) =>
     callMutatingEndpoint<TournamentSnapshot>('createTournament', input),
   joinTournament: (tournamentId: number) =>
@@ -247,11 +299,4 @@ export const apiClient = {
     callMutatingEndpoint<TournamentSnapshot>('transferAdmin', { tournamentId, playerId }),
   deleteTournament: (tournamentId: number) =>
     callMutatingEndpoint<{ ok: boolean; deletedId: number }>('deleteTournament', { tournamentId }),
-  shareLeaderboard: (params: {
-    tournamentId: number;
-    imageBase64: string;
-    kind?: 'standings' | 'podium' | 'playoff';
-    prepareOnly?: boolean;
-  }) =>
-    callEndpoint<{ sentToPm: boolean; preparedMessageId: string | null }>('shareLeaderboard', params),
 };

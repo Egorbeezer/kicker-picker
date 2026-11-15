@@ -1,7 +1,7 @@
 import { db, EndpointError } from 'sdk';
 import { eq } from 'sdk/db';
 import { tournaments } from '../schema.js';
-import { getTournamentSnapshot, isTournamentAdmin } from '../lib/helpers.js';
+import { getTournamentSnapshot, isTournamentAdmin, notifyBotOwnerAlert } from '../lib/helpers.js';
 import { deletePublicLivePage, publishPublicLivePage } from '../lib/publicLive.js';
 
 export default async function (input, ctx) {
@@ -27,13 +27,20 @@ export default async function (input, ctx) {
       if (!path) throw new Error('Empty live path');
     } catch (err) {
       console.error('publishLive failed:', err);
+      await notifyBotOwnerAlert({
+        source: 'publishLive',
+        message: err?.message || String(err),
+        stack: err?.stack || null,
+        tgUser,
+        context: `tournamentId=${tournamentId}`,
+      });
       throw new EndpointError(
         'Не удалось опубликовать Live-ссылку. Попробуйте ещё раз через несколько секунд.',
         { code: 'LIVE_PUBLISH_FAILED' }
       );
     }
   } else {
-    await deletePublicLivePage(tournament.publicPath);
+    await deletePublicLivePage(tournament.publicPath, tournament.publicToken);
     await db
       .update(tournaments)
       .set({ publicToken: null, publicPath: null })

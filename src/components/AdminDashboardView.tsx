@@ -2,14 +2,7 @@ import React, { useState } from 'react';
 import {
   Trophy,
   Play,
-  Share2,
-  Settings,
-  RefreshCw,
-  RotateCcw,
-  Ban,
   Trash2,
-  Radio,
-  Clock,
   CheckCircle2,
   Undo2,
   Medal,
@@ -20,14 +13,14 @@ import {
   X,
 } from 'lucide-react';
 import type { MatchItem, TournamentSnapshot } from '../types';
-import { formatTimeHm, getPlayoffPodium } from '../utils/date';
+import { getPlayoffPodium } from '../utils/date';
 import { haptic, notify } from '../utils/telegram';
-import { shareImageFile, shareLiveUrlInTelegram, shareTournamentInTelegram } from '../utils/share';
+import { shareImageFile } from '../utils/share';
 import { renderPodiumToPng, type PodiumImageResult } from '../utils/exportPodiumImage';
-import { Modal } from './Modal';
 import { MatchCard } from './MatchCard';
 import { ScorePickerRow } from './ScorePickerRow';
-import { Toggle } from './Toggle';
+import { AdminDashboardHeader } from './admin/AdminDashboardHeader';
+import { AdminDashboardModals } from './admin/AdminDashboardModals';
 
 interface Props {
   snapshot: TournamentSnapshot;
@@ -158,101 +151,16 @@ export const AdminDashboardView: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
-      <div className="p-4 border-b border-[#3a3a3c] bg-[#2c2c2e] sticky top-0 z-10">
-        <div className="flex justify-between items-center gap-2">
-          <h2 className="text-xl font-bold truncate pr-2">{tournament.name}</h2>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowLiveModal(true)}
-              className={`p-1.5 rounded-lg border active:scale-95 ${
-                tournament.publicPath
-                  ? 'bg-green-500/15 text-green-400 border-green-500/35'
-                  : 'bg-[#1c1c1d] text-gray-300 border-[#3a3a3c]'
-              }`}
-              title="Публичная Live-ссылка"
-            >
-              <Radio size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                shareTournamentInTelegram({ id: tournament.id, name: tournament.name })
-              }
-              className="bg-[#2ea6ff]/15 text-[#2ea6ff] border border-[#2ea6ff]/30 p-1.5 rounded-lg active:scale-95"
-              title="Поделиться ссылкой"
-            >
-              <Share2 size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="bg-[#1c1c1d] text-gray-300 border border-[#3a3a3c] p-1.5 rounded-lg active:scale-95"
-              title="Обновить"
-            >
-              <RefreshCw size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="bg-[#1c1c1d] text-gray-200 border border-[#3a3a3c] p-1.5 rounded-lg active:scale-95"
-              title="Настройки турнира"
-            >
-              <Settings size={15} />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center mt-2">
-          <span className="text-xs text-gray-400">
-            {tournament.status === 'REGISTRATION' && 'Регистрация'}
-            {tournament.status === 'QUALIFICATION' && `Квалификация • Раунд ${tournament.currentRound}`}
-            {tournament.status === 'PLAYOFF' && `Плей-офф • Раунд ${tournament.currentRound}`}
-            {tournament.status === 'FINISHED' && 'Турнир завершен'}
-            {' • '}
-            {tournament.dypMode === 'classic' ? 'Classic DYP' : 'Monster DYP'}
-            {tournament.useBuckets ? ' (A/B)' : ''}
-            {' • '}Столов: {activeTablesCount}/{tournament.tablesCount}
-            {tournament.autoRounds ? ' • Авто' : ''}
-          </span>
-          {totalCount > 0 && (
-            <span className="text-sm font-medium text-[#2ea6ff]">
-              Сыграно {finishedCount} из {totalCount}
-            </span>
-          )}
-        </div>
-
-        {totalCount > 0 && (
-          <div className="w-full bg-[#1c1c1d] h-2 rounded-full mt-3 overflow-hidden border border-[#3a3a3c]">
-            <div
-              className="bg-[#2ea6ff] h-full transition-all duration-500"
-              style={{ width: `${(finishedCount / totalCount) * 100}%` }}
-            />
-          </div>
-        )}
-
-        {timings && (timings.playedCount > 0 || timings.elapsedMinutes > 0) && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400 mt-2.5 pt-2 border-t border-[#3a3a3c]/50">
-            <span className="flex items-center gap-1">
-              <Clock size={12} className="text-[#2ea6ff]" />
-              Идёт: <strong className="text-white">{timings.elapsedMinutes} мин</strong>
-            </span>
-            {timings.avgMatchMinutes !== null && (
-              <span>
-                Матч: <strong className="text-white">~{timings.avgMatchMinutes} мин</strong>
-              </span>
-            )}
-            <span>
-              Всего игр: <strong className="text-white">{timings.playedCount}/{timings.totalCount}</strong>
-            </span>
-            {timings.estimatedEndAt && tournament.status !== 'FINISHED' && (
-              <span>
-                Раунд до: <strong className="text-[#2ea6ff]">{formatTimeHm(timings.estimatedEndAt)}</strong>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      <AdminDashboardHeader
+        tournament={tournament}
+        timings={timings}
+        activeTablesCount={activeTablesCount}
+        finishedCount={finishedCount}
+        totalCount={totalCount}
+        onShowLive={() => setShowLiveModal(true)}
+        onRefresh={onRefresh}
+        onOpenSettings={onOpenSettings}
+      />
 
       <div className="p-4 space-y-3">
         {/* Quick table toggles */}
@@ -627,375 +535,37 @@ export const AdminDashboardView: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Edit Match Modal (gym-gym Modal) */}
-      {editingMatch && (
-        <Modal
-          title={`Редактирование матча (Стол ${editingMatch.tableNumber})`}
-          onClose={() => setEditingMatch(null)}
-          footer={
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleSave}
-              className="btn btn-primary w-full py-3.5"
-            >
-              {busy ? 'Сохранение...' : `Сохранить счет: ${editingMatch.score1} - ${editingMatch.score2}`}
-            </button>
-          }
-        >
-          <div className="py-1 space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-sm text-white truncate">
-                  {editingMatch.team1Label}
-                </span>
-                <span className="text-xl font-black text-[#2ea6ff] shrink-0">
-                  {editingMatch.score1}
-                </span>
-              </div>
-              <ScorePickerRow
-                score={editingMatch.score1}
-                maxScore={getMaxButtonForMatch(editingMatch)}
-                onChange={(val) =>
-                  setEditingMatch((prev) => (prev ? { ...prev, score1: val } : null))
-                }
-              />
-            </div>
-
-            <div className="text-center font-black text-xs text-gray-500">VS</div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-sm text-white truncate">
-                  {editingMatch.team2Label}
-                </span>
-                <span className="text-xl font-black text-[#2ea6ff] shrink-0">
-                  {editingMatch.score2}
-                </span>
-              </div>
-              <ScorePickerRow
-                score={editingMatch.score2}
-                maxScore={getMaxButtonForMatch(editingMatch)}
-                onChange={(val) =>
-                  setEditingMatch((prev) => (prev ? { ...prev, score2: val } : null))
-                }
-              />
-            </div>
-
-            {/* Table reassignment */}
-            {tournament.tablesCount > 1 && (
-              <div className="pt-2 border-t border-[var(--border)]">
-                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Переназначить стол
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.from({ length: tournament.tablesCount }, (_, i) => i + 1).map((tNum) => (
-                    <button
-                      key={tNum}
-                      type="button"
-                      disabled={busy || editingMatch.tableNumber === tNum}
-                      onClick={async () => {
-                        await onAdminManageMatch({
-                          matchId: editingMatch.id,
-                          action: 'set_table',
-                          tableNumber: tNum,
-                        });
-                        setEditingMatch((prev) => (prev ? { ...prev, tableNumber: tNum } : null));
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors active:scale-95 ${
-                        editingMatch.tableNumber === tNum
-                          ? 'bg-[#2ea6ff] border-[#2ea6ff] text-white'
-                          : 'bg-[var(--bg)] border-[var(--border-strong)] text-gray-300'
-                      }`}
-                    >
-                      Стол {tNum}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Match management actions: reset / cancel */}
-            <div className="pt-2 border-t border-[var(--border)] grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  const mId = editingMatch.id;
-                  setEditingMatch(null);
-                  await onAdminManageMatch({ matchId: mId, action: 'reset' });
-                }}
-                className="bg-[var(--bg)] border border-[var(--border-strong)] text-gray-200 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-40"
-              >
-                <RotateCcw size={14} /> Сбросить счёт
-              </button>
-
-              {editingMatch.stage === 'QUALIFICATION' && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={async () => {
-                    const mId = editingMatch.id;
-                    setEditingMatch(null);
-                    await onAdminManageMatch({ matchId: mId, action: 'toggle_cancel' });
-                  }}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border active:scale-95 disabled:opacity-40 ${
-                    editingMatch.status === 'CANCELLED'
-                      ? 'bg-green-500/15 border-green-500/30 text-green-400'
-                      : 'bg-red-500/10 border-red-500/25 text-red-400'
-                  }`}
-                >
-                  <Ban size={14} />
-                  {editingMatch.status === 'CANCELLED' ? 'Вернуть матч' : 'Отменить матч'}
-                </button>
-              )}
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Delete Last Round Confirmation Modal */}
-      {confirmDeleteRound && (
-        <Modal
-          title="Удалить текущий раунд?"
-          onClose={() => setConfirmDeleteRound(false)}
-          footer={
-            <div className="btn-row">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteRound(false)}
-                className="btn btn-ghost"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  setConfirmDeleteRound(false);
-                  await onDeleteLastRound();
-                }}
-                className="btn bg-red-600 text-white font-bold"
-              >
-                Удалить раунд
-              </button>
-            </div>
-          }
-        >
-          <p className="text-sm text-[var(--muted)] leading-relaxed">
-            Все матчи и результаты раунда №{tournament.currentRound} ({tournament.status === 'QUALIFICATION' ? 'Квалификация' : 'Плей-офф'}) будут безвозвратно удалены, а счётчик отдыхов вернётся на предыдущий шаг.
-          </p>
-        </Modal>
-      )}
-
-      {/* Public Live Broadcast Modal */}
-      {showLiveModal && (
-        <Modal
-          title="Публичная Live-ссылка"
-          onClose={() => setShowLiveModal(false)}
-          closeLabel="Закрыть"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="font-semibold text-sm text-white">Live-трансляция</div>
-                <div className="text-xs text-[var(--muted)] mt-0.5">
-                  Показывает текущий раунд, таблицу и сетку плей-офф в любом браузере и на ТВ без входа в Telegram
-                </div>
-              </div>
-              <Toggle
-                checked={Boolean(tournament.publicPath)}
-                disabled={busy}
-                onChange={(next) => onToggleLive(next)}
-                color="green"
-                ariaLabel="Включить Live-ссылку"
-              />
-            </div>
-
-            {tournament.publicPath && (
-              <button
-                type="button"
-                onClick={() =>
-                  shareLiveUrlInTelegram({
-                    name: tournament.name,
-                    publicPath: tournament.publicPath!,
-                  })
-                }
-                className="w-full bg-[#2ea6ff] text-white py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95"
-              >
-                <Share2 size={14} /> Поделиться
-              </button>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {/* Finish Tournament Confirmation Modal */}
-      {confirmFinish && (
-        <Modal
-          title="Завершить турнир?"
-          onClose={() => setConfirmFinish(false)}
-          footer={
-            <div className="btn-row">
-              <button
-                type="button"
-                onClick={() => setConfirmFinish(false)}
-                className="btn btn-ghost"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  setConfirmFinish(false);
-                  await onFinishTournament(false);
-                  await openPodiumPreview();
-                }}
-                className="btn bg-green-600 text-white font-bold"
-              >
-                Завершить
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-3 text-sm text-[var(--muted)]">
-            <p className="leading-relaxed">
-              {tournament.status === 'PLAYOFF'
-                ? 'Турнир получит статус «Завершён», а итоговые призовые места будут зафиксированы.'
-                : 'Завершить турнир по итогам квалификации без проведения плей-офф?'}
-            </p>
-            {(podium.first || podium.second || podium.third) && (
-              <div className="space-y-1.5 text-xs">
-                {podium.first && (
-                  <div className="bg-[var(--bg)] border border-yellow-500/30 rounded-xl px-3 py-2 flex justify-between">
-                    <span className="text-yellow-500 font-bold">🥇 1 место</span>
-                    <span className="font-bold text-[var(--text)]">{podium.first}</span>
-                  </div>
-                )}
-                {podium.second && (
-                  <div className="bg-[var(--bg)] border border-[var(--border-strong)] rounded-xl px-3 py-2 flex justify-between">
-                    <span className="text-[var(--muted)] font-bold">🥈 2 место</span>
-                    <span className="font-semibold text-[var(--text)]">{podium.second}</span>
-                  </div>
-                )}
-                {podium.third && (
-                  <div className="bg-[var(--bg)] border border-[var(--border-strong)] rounded-xl px-3 py-2 flex justify-between">
-                    <span className="text-amber-500 font-bold">🥉 3 место</span>
-                    <span className="font-semibold text-[var(--text)]">{podium.third}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {/* Podium Share Preview Modal */}
-      {podiumPreview && (
-        <Modal
-          title="Итоги турнира"
-          onClose={() => setPodiumPreview(null)}
-          footer={
-            <button
-              type="button"
-              disabled={sharingPodium}
-              onClick={handleSharePodium}
-              className="btn btn-primary w-full font-bold flex items-center justify-center gap-1.5"
-            >
-              <Share2 size={15} />
-              {sharingPodium ? 'Отправка…' : 'Поделиться'}
-            </button>
-          }
-        >
-          <div className="space-y-3">
-            <img
-              src={podiumPreview.dataUrl}
-              alt="Победители и призёры турнира"
-              className="w-full rounded-xl border border-[var(--border-strong)]"
-            />
-            <p className="text-xs text-[var(--muted)] text-center">
-              Нажмите «Поделиться», чтобы отправить карточку призёров в Telegram.
-            </p>
-          </div>
-        </Modal>
-      )}
-
-      {/* Playoff Start Configuration Modal */}
-      {playoffPromptOpen && (
-        <Modal
-          title="Запуск плей-офф"
-          onClose={() => setPlayoffPromptOpen(false)}
-          footer={
-            <div className="btn-row">
-              <button
-                type="button"
-                onClick={() => setPlayoffPromptOpen(false)}
-                className="btn btn-ghost"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  const payload = {
-                    playoffSize: promptPlayoffSize,
-                    thirdPlaceMatch: promptThirdPlace,
-                  };
-                  setPlayoffPromptOpen(false);
-                  await onStartPlayoff(payload);
-                }}
-                className="btn btn-primary font-bold"
-              >
-                Начать плей-офф
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                Размер сетки плей-офф
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {(tournament.teamFormat === 'single' ? [2, 4, 8, 16, 32] : [4, 8, 16, 32]).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => {
-                      haptic('light');
-                      setPromptPlayoffSize(n);
-                    }}
-                    className={`px-3 py-1.5 rounded-2xl text-xs font-bold border transition-colors ${
-                      promptPlayoffSize === n
-                        ? 'bg-[#2ea6ff] text-white border-[#2ea6ff]'
-                        : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
-                    }`}
-                  >
-                    Топ-{n}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label className="flex items-center justify-between gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3.5 py-3 cursor-pointer">
-              <div>
-                <div className="text-sm font-semibold text-[var(--text)]">Матч за 3-е место</div>
-                <div className="text-xs text-[var(--muted)]">
-                  Проигравшие в полуфиналах сыграют за бронзу
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={promptThirdPlace}
-                onChange={(e) => setPromptThirdPlace(e.target.checked)}
-                className="w-5 h-5 accent-[#2ea6ff]"
-              />
-            </label>
-          </div>
-        </Modal>
-      )}
+      <AdminDashboardModals
+        tournament={tournament}
+        busy={busy}
+        podium={podium}
+        editingMatch={editingMatch}
+        setEditingMatch={setEditingMatch}
+        getMaxButtonForMatch={getMaxButtonForMatch}
+        onSaveEditingMatch={handleSave}
+        onAdminManageMatch={onAdminManageMatch}
+        confirmDeleteRound={confirmDeleteRound}
+        setConfirmDeleteRound={setConfirmDeleteRound}
+        onDeleteLastRound={onDeleteLastRound}
+        showLiveModal={showLiveModal}
+        setShowLiveModal={setShowLiveModal}
+        onToggleLive={onToggleLive}
+        confirmFinish={confirmFinish}
+        setConfirmFinish={setConfirmFinish}
+        onFinishTournament={onFinishTournament}
+        onOpenPodiumPreview={openPodiumPreview}
+        podiumPreview={podiumPreview}
+        setPodiumPreview={setPodiumPreview}
+        sharingPodium={sharingPodium}
+        onSharePodium={handleSharePodium}
+        playoffPromptOpen={playoffPromptOpen}
+        setPlayoffPromptOpen={setPlayoffPromptOpen}
+        promptPlayoffSize={promptPlayoffSize}
+        setPromptPlayoffSize={setPromptPlayoffSize}
+        promptThirdPlace={promptThirdPlace}
+        setPromptThirdPlace={setPromptThirdPlace}
+        onStartPlayoff={onStartPlayoff}
+      />
     </div>
   );
 };

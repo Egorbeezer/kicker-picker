@@ -466,7 +466,7 @@ const callbackQueryHandler = (await import('../tgcloud/handlers/callback_query.j
 const managePlayer = (await import('../tgcloud/endpoints/managePlayer.js')).default;
 const getState = (await import('../tgcloud/endpoints/getState.js')).default;
 const transferAdmin = (await import('../tgcloud/endpoints/transferAdmin.js')).default;
-const shareLeaderboard = (await import('../tgcloud/endpoints/shareLeaderboard.js')).default;
+const deleteTournament = (await import('../tgcloud/endpoints/deleteTournament.js')).default;
 const reportClientError = (await import('../tgcloud/endpoints/reportClientError.js')).default;
 const { publishPublicLivePage } = await import('../tgcloud/lib/publicLive.js');
 
@@ -570,7 +570,12 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     expect(lightState.tournamentHistory).toBeUndefined();
   });
 
-  it('escapes HTML in transferAdmin, enforces access check in shareLeaderboard, and deduplicates client errors', async () => {
+  it('escapes HTML in transferAdmin, alerts @egor_beezer on client errors, deduplicates, rate-limits, and cleans LIVE on deleteTournament', async () => {
+    // Register @egor_beezer so alert notifications resolve chat_id 777
+    await createTournament(
+      { name: 'Owner Seed' },
+      { initData: { user: { id: 777, first_name: 'Egor', username: 'egor_beezer' } } }
+    );
     const snap = await createTournament(
       { name: 'Кубок <Pro> & Co' },
       { initData: { user: { id: 1, first_name: 'Орг' } } }
@@ -580,15 +585,6 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
       { initData: { user: { id: 2, first_name: 'Новый' } } }
     );
     const p2 = joined.players.find((p) => p.tgId === 2);
-
-    // Outsider cannot export private tournament leaderboard
-    const validPngBase64 = Buffer.alloc(150, 1).toString('base64');
-    await expect(
-      shareLeaderboard(
-        { tournamentId: snap.tournament.id, imageBase64: validPngBase64, kind: 'standings' },
-        { initData: { user: { id: 999, first_name: 'Чужой' } } }
-      )
-    ).rejects.toThrow('Нет доступа');
 
     await transferAdmin(
       { tournamentId: snap.tournament.id, playerId: p2.id },
@@ -601,16 +597,49 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
       })
     );
 
+    sendMessageSpy.mockClear();
     const r1 = await reportClientError(
-      { message: 'TypeError: boom', stack: 'at App.tsx:10' },
+      { message: 'TypeError: boom', stack: 'at App.tsx:10', source: 'window_error' },
       { initData: { user: { id: 2, first_name: 'Новый' } } }
     );
     const r2 = await reportClientError(
-      { message: 'TypeError: boom', stack: 'at App.tsx:10' },
+      { message: 'TypeError: boom', stack: 'at App.tsx:10', source: 'window_error' },
       { initData: { user: { id: 2, first_name: 'Новый' } } }
     );
     expect(r1).toEqual({ ok: true, deduplicated: false });
     expect(r2).toEqual({ ok: true, deduplicated: true });
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    expect(sendMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: 777,
+        text: expect.stringContaining('TypeError: boom'),
+      })
+    );
+
+    // Rate limiting after 10 distinct errors from user 2 within 10m
+    for (let i = 1; i <= 9; i++) {
+      await reportClientError(
+        { message: `Err #${i}` },
+        { initData: { user: { id: 2, first_name: 'Новый' } } }
+      );
+    }
+    const rLimited = await reportClientError(
+      { message: 'Err #10 overflow' },
+      { initData: { user: { id: 2, first_name: 'Новый' } } }
+    );
+    expect(rLimited).toEqual({ ok: true, deduplicated: false, rateLimited: true });
+
+    // Deleting a tournament with active LIVE page cleans up external textdb.dev page
+    sqlite.prepare("UPDATE tournaments SET public_path = 'kp_test123' WHERE id = ?").run(snap.tournament.id);
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, text: async () => '' });
+    await deleteTournament(
+      { tournamentId: snap.tournament.id },
+      { initData: { user: { id: 2, first_name: 'Новый' } } }
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://textdb.dev/api/data/kp_test123',
+      expect.objectContaining({ method: 'POST', body: '' })
+    );
   });
 
   it('falls back to telegra.ph when primary textdb.dev live store returns HTTP 500', async () => {

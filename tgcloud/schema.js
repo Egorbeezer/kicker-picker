@@ -8,7 +8,9 @@ export const users = table('users', {
   lastName: text('last_name'),
   photoUrl: text('photo_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-});
+}, (t) => ({
+  usernameIdx: index('idx_users_username').on(t.username),
+}));
 
 export const tournaments = table('tournaments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -128,4 +130,5 @@ export const clientErrors = table('client_errors', {
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 }, (t) => ({
   fpIdx: index('idx_client_errors_fp').on(t.fingerprint, t.createdAt),
+  tgCreatedIdx: index('idx_client_errors_tg_created').on(t.tgId, t.createdAt),
 }));

@@ -1,4 +1,5 @@
 import { db, EndpointError } from 'sdk';
+import { and, eq, gt } from 'sdk/db';
 import { tournaments, tournamentPlayers } from '../schema.js';
 import {
   VALID_DYP_MODES,
@@ -33,6 +34,19 @@ export default async function (input, ctx) {
   if (!tgUser?.id) throw new EndpointError('Необходима авторизация Telegram', { code: 'UNAUTHORIZED' });
 
   await upsertUser(tgUser);
+
+  const oneHourAgoSec = Math.floor(Date.now() / 1000) - 60 * 60;
+  const recentTournaments = await db
+    .select({ id: tournaments.id })
+    .from(tournaments)
+    .where(and(eq(tournaments.creatorTgId, tgUser.id), gt(tournaments.createdAt, oneHourAgoSec)))
+    .all();
+
+  if (recentTournaments.length >= 20) {
+    throw new EndpointError('Слишком много созданных турниров за последний час. Попробуйте позже.', {
+      code: 'RATE_LIMITED',
+    });
+  }
 
   const name = String(input?.name || formatDefaultTournamentName()).trim();
   if (!name) throw new EndpointError('Укажите название турнира', { code: 'INVALID_NAME' });
