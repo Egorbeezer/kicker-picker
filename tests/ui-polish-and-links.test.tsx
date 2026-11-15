@@ -454,6 +454,9 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
     expect(cAdmin.querySelectorAll('input[type="checkbox"]').length).toBe(0);
     expect(cAdmin.querySelectorAll('[role="radio"]').length).toBeGreaterThanOrEqual(8);
+    const adminSwitches = Array.from(cAdmin.querySelectorAll('[role="switch"]')) as HTMLButtonElement[];
+    expect(adminSwitches.length).toBeGreaterThanOrEqual(5);
+    expect(adminSwitches.some((sw) => sw.getAttribute('aria-checked') === 'true' && sw.className.includes('bg-emerald-500'))).toBe(true);
     expect(cAdmin.textContent).toContain('Удалить турнир');
     expect(cAdmin.textContent).not.toContain('Удалить дип');
     expect(cAdmin.innerHTML).not.toContain('#2c2c2e');
@@ -478,6 +481,16 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
     expect(cCreate.querySelectorAll('input[type="checkbox"]').length).toBe(0);
     expect(cCreate.querySelectorAll('[role="radio"]').length).toBeGreaterThanOrEqual(8);
+    const createSwitches = Array.from(cCreate.querySelectorAll('[role="switch"]')) as HTMLButtonElement[];
+    expect(createSwitches.length).toBeGreaterThanOrEqual(4);
+    const autoRoundsSwitch = createSwitches.find((sw) => sw.getAttribute('aria-label') === 'Автоматические раунды');
+    expect(autoRoundsSwitch?.getAttribute('aria-checked')).toBe('true');
+    expect(autoRoundsSwitch?.className).toContain('bg-emerald-500');
+    await act(async () => {
+      autoRoundsSwitch?.click();
+    });
+    expect(autoRoundsSwitch?.getAttribute('aria-checked')).toBe('false');
+    expect(autoRoundsSwitch?.className).not.toContain('bg-emerald-500');
 
     const form = cCreate.querySelector('form')!;
     await act(async () => {

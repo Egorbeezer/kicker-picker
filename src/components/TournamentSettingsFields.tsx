@@ -54,34 +54,25 @@ export const RadioCircle: React.FC<RadioCircleProps> = ({ selected, accent = 'bl
   );
 };
 
-interface BooleanRadioProps {
+interface BooleanToggleProps {
   label: React.ReactNode;
   description?: string;
   value: boolean;
   onChange: (next: boolean) => void;
   disabled?: boolean;
-  onLabel?: string;
-  offLabel?: string;
-  accent?: 'blue' | 'green';
   ariaLabel?: string;
 }
 
-/** Переключатель режима Вкл / Выкл в виде пары радиокнопок. */
-export const BooleanRadioRow: React.FC<BooleanRadioProps> = ({
+/** Классический зелёный тумблер переключения (вкл / выкл) для настроек турнира. */
+export const BooleanToggleRow: React.FC<BooleanToggleProps> = ({
   label,
   description,
   value,
   onChange,
   disabled = false,
-  onLabel = 'Вкл',
-  offLabel = 'Выкл',
-  accent = 'blue',
   ariaLabel,
 }) => {
-  const activeBg =
-    accent === 'green'
-      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-400'
-      : 'bg-[#2ea6ff]/12 border-[#2ea6ff] text-[#2ea6ff]';
+  const computedLabel = ariaLabel || (typeof label === 'string' ? label : 'Переключатель режима');
 
   return (
     <div className="flex items-center justify-between gap-3 py-1">
@@ -91,42 +82,30 @@ export const BooleanRadioRow: React.FC<BooleanRadioProps> = ({
         </div>
         {description && <div className="text-xs text-[var(--muted)] mt-0.5">{description}</div>}
       </div>
-      <div
-        role="radiogroup"
-        aria-label={ariaLabel || (typeof label === 'string' ? label : 'Переключатель режима')}
-        className="inline-flex rounded-2xl bg-[var(--bg)] border border-[var(--border)] p-1 gap-1 shrink-0"
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        aria-label={computedLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          haptic('light');
+          onChange(!value);
+        }}
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-[3px] transition-colors duration-200 active:scale-95 disabled:opacity-50 ${
+          value
+            ? 'bg-emerald-500'
+            : 'bg-[var(--bg-3)] ring-1 ring-inset ring-[var(--border-strong)]'
+        }`}
       >
-        {(
-          [
-            [true, onLabel],
-            [false, offLabel],
-          ] as Array<[boolean, string]>
-        ).map(([optVal, optText]) => {
-          const selected = value === optVal;
-          return (
-            <button
-              key={String(optVal)}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={disabled}
-              onClick={() => {
-                if (disabled || selected) return;
-                haptic('light');
-                onChange(optVal);
-              }}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all inline-flex items-center gap-1.5 disabled:opacity-50 ${
-                selected
-                  ? activeBg
-                  : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'
-              }`}
-            >
-              <RadioCircle selected={selected} accent={optVal ? accent : 'blue'} />
-              <span>{optText}</span>
-            </button>
-          );
-        })}
-      </div>
+        <span
+          aria-hidden="true"
+          className={`inline-block h-[22px] w-[22px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            value ? 'translate-x-[20px]' : 'translate-x-0'
+          }`}
+        />
+      </button>
     </div>
   );
 };
@@ -471,7 +450,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
 
         {/* Авто-раунды */}
         {!isElimination && (
-          <BooleanRadioRow
+          <BooleanToggleRow
             label="Автоматические раунды"
             description="Следующий раунд создается сам после завершения всех игр"
             value={value.autoRounds}
@@ -482,7 +461,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
 
         {/* Корзины A/B */}
         {showBucketsOption && (
-          <BooleanRadioRow
+          <BooleanToggleRow
             label={
               <span className="inline-flex items-center gap-1.5">
                 <span>Корзины A / B (баланс)</span>
@@ -542,7 +521,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
             </div>
           </div>
 
-          <BooleanRadioRow
+          <BooleanToggleRow
             label="Баланс (+2 мяча)"
             description="При ничьей игра идет до разницы в 2 гола"
             value={value.winByTwo}
@@ -613,7 +592,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
           </div>
         </div>
 
-        <BooleanRadioRow
+        <BooleanToggleRow
           label="Матч за 3-е место"
           value={value.thirdPlaceMatch}
           disabled={disabled || !canEditPlayoff}
@@ -688,7 +667,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
           </div>
         </div>
 
-        <BooleanRadioRow
+        <BooleanToggleRow
           label="Баланс в плей-офф (+2 мяча)"
           value={value.playoffWinByTwo}
           disabled={disabled || !canEditPlayoff}

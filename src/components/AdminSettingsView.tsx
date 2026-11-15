@@ -5,7 +5,7 @@ import { shareLiveUrlInTelegram } from '../utils/share';
 import { TOURNAMENT_MODE_CATALOG } from './InfoTooltip';
 import { Modal } from './Modal';
 import {
-  BooleanRadioRow,
+  BooleanToggleRow,
   TournamentSettingsFields,
   type TournamentSettingsState,
 } from './TournamentSettingsFields';
@@ -162,7 +162,7 @@ export const AdminSettingsView: React.FC<Props> = ({
       {/* Public Live Broadcast */}
       {onToggleLive && (
         <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] p-4 space-y-3">
-          <BooleanRadioRow
+          <BooleanToggleRow
             label={
               <span className="inline-flex items-center gap-1.5">
                 <Radio
@@ -175,7 +175,6 @@ export const AdminSettingsView: React.FC<Props> = ({
             description="Табло, таблица и сетка в любом браузере без входа в Telegram"
             value={Boolean(tournament.publicPath)}
             disabled={isLocked}
-            accent="green"
             ariaLabel="Публичная Live-ссылка"
             onChange={(next) => {
               void runGuarded('live', () => onToggleLive(next));
