@@ -667,7 +667,7 @@ export default function App() {
               onClick={() => shareTournamentInTelegram(createdInvite)}
               className="btn btn-primary w-full py-3.5 text-sm shadow-[0_4px_20px_rgba(46,166,255,0.35)]"
             >
-              <Share2 size={17} /> Поделиться в Telegram
+              <Share2 size={17} /> Пригласить
             </button>
           }
         >
