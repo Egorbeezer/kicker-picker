@@ -338,8 +338,11 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       disable_notification: true,
     });
 
-    const { syncBotMenuSettings } = await import('../tgcloud/lib/botMenu.js');
-    await syncBotMenuSettings();
+    const { default: setupBotMenu } = await import('../tgcloud/endpoints/setupBotMenu.js');
+    await expect(
+      setupBotMenu({}, { initData: { user: { id: 123 } } })
+    ).rejects.toThrow('Forbidden');
+    await setupBotMenu({}, {});
     expect(setMyCommands).toHaveBeenCalledWith({
       commands: [{ command: 'start', description: 'Открыть Кикер Пикер' }],
     });
