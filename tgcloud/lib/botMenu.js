@@ -1,17 +1,14 @@
 import { api } from 'sdk';
 
-export const BOT_COMMANDS = [
-  { command: 'start', description: 'Открыть Кикер Пикер' },
-];
-
 /**
- * Устанавливает единственную быструю команду /start и переводит кнопку меню чата
- * в режим commands (без web_app), чтобы все входы открывали единый Main Mini App.
+ * Удаляет список команд бота (чтобы скрыть гамбургер-кнопку «Меню» в диалоге)
+ * и сбрасывает кнопку меню чата в default (без отдельного web_app окна).
+ * Вход в приложение остаётся единым через закреплённое сообщение /start и ссылки t.me/...
  */
 export async function syncBotMenuSettings() {
-  await api.setMyCommands({ commands: BOT_COMMANDS });
-  await api.setChatMenuButton({ menu_button: { type: 'commands' } });
-  return { ok: true, commands: BOT_COMMANDS, menuButton: 'commands' };
+  await api.deleteMyCommands({});
+  await api.setChatMenuButton({ menu_button: { type: 'default' } });
+  return { ok: true, commands: [], menuButton: 'default' };
 }
 
 export default syncBotMenuSettings;

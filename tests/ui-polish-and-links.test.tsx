@@ -267,7 +267,7 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     const sendMessage = vi.fn().mockResolvedValue({ message_id: 1 });
     const pinChatMessage = vi.fn().mockResolvedValue(true);
     const unpinAllChatMessages = vi.fn().mockResolvedValue(true);
-    const setMyCommands = vi.fn().mockResolvedValue(true);
+    const deleteMyCommands = vi.fn().mockResolvedValue(true);
     const setChatMenuButton = vi.fn().mockResolvedValue(true);
     vi.doMock('sdk', () => ({
       db: {
@@ -279,7 +279,7 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
           }),
         }),
       },
-      api: { sendMessage, pinChatMessage, unpinAllChatMessages, setMyCommands, setChatMenuButton },
+      api: { sendMessage, pinChatMessage, unpinAllChatMessages, deleteMyCommands, setChatMenuButton },
       EndpointError: Error,
     }));
     vi.doMock('sdk/db', () => ({
@@ -343,11 +343,9 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       setupBotMenu({}, { initData: { user: { id: 123 } } })
     ).rejects.toThrow('Forbidden');
     await setupBotMenu({}, {});
-    expect(setMyCommands).toHaveBeenCalledWith({
-      commands: [{ command: 'start', description: 'Открыть Кикер Пикер' }],
-    });
+    expect(deleteMyCommands).toHaveBeenCalledWith({});
     expect(setChatMenuButton).toHaveBeenCalledWith({
-      menu_button: { type: 'commands' },
+      menu_button: { type: 'default' },
     });
 
     // Ensure no bot handler or helper uses inline web_app URL buttons or leftover MINI_APP_URL
