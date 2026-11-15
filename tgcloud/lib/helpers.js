@@ -38,6 +38,7 @@ export {
   createPlayoffFirstRound,
 } from './helpers/engine.js';
 export {
+  computeSnapshotVersion,
   getTournamentSnapshot,
   buildGlobalPlayerProfile,
 } from './helpers/snapshot.js';

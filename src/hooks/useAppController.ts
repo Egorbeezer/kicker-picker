@@ -37,6 +37,10 @@ export function useAppController() {
   const singleInstanceRef = useRef<SingleInstanceController | null>(null);
   const selectedTournamentIdRef = useRef<number | null>(selectedTournamentId);
   selectedTournamentIdRef.current = selectedTournamentId;
+  const snapshotVersionRef = useRef<string | null>(
+    appState?.activeTournament?.snapshotVersion ?? null
+  );
+  snapshotVersionRef.current = appState?.activeTournament?.snapshotVersion ?? null;
 
   const showError = useCallback((err: unknown) => {
     const msg = err instanceof Error ? err.message : 'Произошла ошибка';
@@ -69,11 +73,22 @@ export function useAppController() {
 
         const effectiveId = tId === undefined ? selectedTournamentId : tId;
         const canPollLight = Boolean(opts?.light && effectiveId);
+        const pollVersion = canPollLight ? snapshotVersionRef.current : null;
         const res = await apiClient.getState(
-          effectiveId ? { tournamentId: effectiveId, ...(canPollLight ? { light: true } : {}) } : {}
+          effectiveId
+            ? {
+                tournamentId: effectiveId,
+                ...(canPollLight ? { light: true } : {}),
+                ...(pollVersion ? { snapshotVersion: pollVersion } : {}),
+              }
+            : {}
         );
 
         if (res.light) {
+          if (res.unchanged) {
+            setLoading(false);
+            return;
+          }
           let needsFullRefresh = false;
           setAppState((prev) => {
             if (!prev) {
@@ -87,7 +102,7 @@ export function useAppController() {
             }
             return {
               ...prev,
-              activeTournament: res.activeTournament,
+              activeTournament: res.activeTournament ?? null,
             };
           });
           if (needsFullRefresh) {

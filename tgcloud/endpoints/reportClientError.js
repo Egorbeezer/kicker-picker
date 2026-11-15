@@ -1,5 +1,5 @@
 import { db, EndpointError } from 'sdk';
-import { and, eq, gt } from 'sdk/db';
+import { and, eq, gt, lt } from 'sdk/db';
 import { clientErrors } from '../schema.js';
 import { notifyBotOwnerAlert } from '../lib/helpers.js';
 
@@ -48,6 +48,10 @@ export default async function (input, ctx) {
     message: rawMessage,
     stack,
   });
+
+  // Автоматическая ротация: удаляем записи старше 30 дней, чтобы не копить мусор в client_errors
+  const retentionCutoffSec = nowSec - 30 * 24 * 60 * 60;
+  await db.delete(clientErrors).where(lt(clientErrors.createdAt, retentionCutoffSec));
 
   console.error('[CLIENT_ERROR]', { tgId: tgUser.id, source, message: rawMessage });
   await notifyBotOwnerAlert({

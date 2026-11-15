@@ -176,6 +176,11 @@ function compileWhere(node, params) {
     params.push(toDbVal(node.col, node.val));
     return `${node.col.colName} > ?`;
   }
+  if (node.kind === 'lt') {
+    if (node.val instanceof Date) throw new TypeError('db: unsupported value type: object');
+    params.push(toDbVal(node.col, node.val));
+    return `${node.col.colName} < ?`;
+  }
   if (node.kind === 'isNotNull') {
     return `${node.col.colName} IS NOT NULL`;
   }
@@ -442,6 +447,7 @@ vi.mock('sdk/db', () => {
     uniqueIndex: () => ({ on: () => ({}) }),
     eq: (col, val) => ({ kind: 'eq', col, val }),
     gt: (col, val) => ({ kind: 'gt', col, val }),
+    lt: (col, val) => ({ kind: 'lt', col, val }),
     and: (...conds) => ({ kind: 'and', conds }),
     or: (...conds) => ({ kind: 'or', conds }),
     inArray: (col, vals) => ({ kind: 'inArray', col, vals }),
@@ -642,17 +648,40 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     );
   });
 
-  it('falls back to telegra.ph when primary textdb.dev live store returns HTTP 500', async () => {
+  it('retries transient textdb.dev HTTP 500 once before falling back to telegra.ph', async () => {
     const snap = await createTournament(
       { name: 'Live Fallback Test' },
       { initData: { user: { id: 1, first_name: 'Орг' } } }
     );
 
+    // 1. Первая 500 -> повторная попытка успешна, kp_* адрес сохранён
     fetchMock
       .mockResolvedValueOnce({
         ok: false,
         status: 500,
-        text: async () => 'server error',
+        text: async () => 'transient error',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => 'OK',
+      });
+    const kpPath = await publishPublicLivePage(snap.tournament.id, { createIfMissing: true });
+    expect(kpPath).toMatch(/^kp_/);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // 2. Два 500 подряд от textdb.dev -> переключение на резервный telegra.ph
+    fetchMock.mockClear();
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => 'server error 1',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => 'server error 2',
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -665,7 +694,7 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
 
     const path = await publishPublicLivePage(snap.tournament.id, { createIfMissing: true });
     expect(path).toBe('Live-Fallback-11-14');
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it('prevents duplicate playoff bracket generation on concurrent startPlayoff calls via CAS', async () => {
@@ -1168,5 +1197,92 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     await expect(
       startPlayoff({ tournamentId: tid, playoffSize: 4, thirdPlaceMatch: false }, adminCtx)
     ).rejects.toThrow(/минимум 4 присутствующих/);
+  });
+
+  it('deduplicates snapshot avatars, returns unchanged:true on matching snapshotVersion, and updates version on match finish', async () => {
+    const adminCtx = { initData: { user: { id: 9201, first_name: 'Егор' } } };
+    const snap = await createTournament(
+      { name: 'Poll Opt', dypMode: 'monster', targetScore: 5, autoRounds: false },
+      adminCtx
+    );
+    const tid = snap.tournament.id;
+    sqlite.prepare("UPDATE users SET photo_url = 'data:image/jpeg;base64,AAAABBBB' WHERE tg_id = 9201").run();
+    await addGuestPlayer({ tournamentId: tid, names: ['А', 'Б', 'В'] }, adminCtx);
+    await startRound({ tournamentId: tid }, adminCtx);
+
+    const firstPoll = await getState({ tournamentId: tid, light: true }, adminCtx);
+    expect(firstPoll.light).toBe(true);
+    expect(firstPoll.unchanged).toBeUndefined();
+    const s = firstPoll.activeTournament;
+    expect(s.snapshotVersion).toBeTruthy();
+    // Base64 avatar keeps single canonical copy in players[] while omitted from leaderboard/teamPlayers
+    expect(s.players.find((p) => p.tgId === 9201)?.avatarUrl).toBe('data:image/jpeg;base64,AAAABBBB');
+    expect(s.leaderboard[0].avatarUrl).toBeUndefined();
+    expect(s.currentRoundMatches[0].team1Players[0].avatarUrl).toBeUndefined();
+
+    // Matching snapshotVersion skips building full snapshot
+    const unchangedPoll = await getState(
+      { tournamentId: tid, light: true, snapshotVersion: s.snapshotVersion },
+      adminCtx
+    );
+    expect(unchangedPoll.light).toBe(true);
+    expect(unchangedPoll.unchanged).toBe(true);
+    expect(unchangedPoll.snapshotVersion).toBe(s.snapshotVersion);
+    expect(unchangedPoll.activeTournament).toBeUndefined();
+
+    // Submitting a score bumps snapshotVersion so next light poll delivers fresh state
+    await submitScore(
+      { matchId: s.currentRoundMatches[0].id, score1: 5, score2: 1, forceAdmin: true },
+      adminCtx
+    );
+    const changedPoll = await getState(
+      { tournamentId: tid, light: true, snapshotVersion: s.snapshotVersion },
+      adminCtx
+    );
+    expect(changedPoll.unchanged).toBeUndefined();
+    expect(changedPoll.activeTournament.snapshotVersion).not.toBe(s.snapshotVersion);
+    expect(changedPoll.activeTournament.currentRoundMatches[0].status).toBe('FINISHED');
+  });
+
+  it('prevents concurrent regenerateFirst races via CAS and prunes expired client_errors rows', async () => {
+    const adminCtx = { initData: { user: { id: 9301, first_name: 'РегенОрг' } } };
+    const snap = await createTournament(
+      { name: 'CAS Regen', tablesCount: 1, dypMode: 'monster' },
+      adminCtx
+    );
+    const tid = snap.tournament.id;
+    await addGuestPlayer({ tournamentId: tid, names: ['П1', 'П2', 'П3', 'П4'] }, adminCtx);
+    await startRound({ tournamentId: tid }, adminCtx);
+
+    const regenResults = await Promise.allSettled([
+      startRound({ tournamentId: tid, regenerateFirst: true }, adminCtx),
+      startRound({ tournamentId: tid, regenerateFirst: true }, adminCtx),
+    ]);
+    expect(regenResults.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(regenResults.filter((r) => r.status === 'rejected')).toHaveLength(1);
+
+    const r1Matches = sqlite
+      .prepare("SELECT id FROM matches WHERE tournament_id = ? AND stage = 'QUALIFICATION' AND round_number = 1")
+      .all(tid);
+    expect(r1Matches).toHaveLength(1);
+    const totalByes = sqlite
+      .prepare('SELECT SUM(byes_count) AS s FROM tournament_players WHERE tournament_id = ?')
+      .get(tid);
+    expect(totalByes.s).toBe(1);
+
+    // Retention test: older than 30 days pruned, fresh retained
+    const oldSec = Math.floor(Date.now() / 1000) - 40 * 24 * 60 * 60;
+    sqlite
+      .prepare("INSERT INTO client_errors (tg_id, fingerprint, message, created_at) VALUES (9301, 'old_fp', 'old err', ?)")
+      .run(oldSec);
+    await reportClientError({ message: 'fresh error trigger' }, adminCtx);
+    const remainingOld = sqlite
+      .prepare("SELECT id FROM client_errors WHERE fingerprint = 'old_fp'")
+      .all();
+    const remainingFresh = sqlite
+      .prepare("SELECT id FROM client_errors WHERE message = 'fresh error trigger'")
+      .all();
+    expect(remainingOld).toHaveLength(0);
+    expect(remainingFresh).toHaveLength(1);
   });
 });

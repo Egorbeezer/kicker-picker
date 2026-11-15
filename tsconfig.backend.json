@@ -13,6 +13,9 @@
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
     "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["tgcloud/**/*.js", "support-bot/tgcloud/**/*.js", "tgcloud/sdk.d.ts"]

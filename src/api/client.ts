@@ -1,4 +1,5 @@
 import type { AppStateResponse, ClubPlayer, DypRole, PublicLiveData, TournamentSnapshot } from '../types';
+import { hydrateSnapshotAvatars } from '../utils/snapshotHydrate';
 
 declare global {
   interface Window {
@@ -206,8 +207,16 @@ export function callMutatingEndpoint<T>(
 }
 
 export const apiClient = {
-  getState: (params: { tournamentId?: number; light?: boolean } = {}) =>
-    callEndpoint<AppStateResponse>('getState', params),
+  getState: async (params: { tournamentId?: number; light?: boolean; snapshotVersion?: string } = {}) => {
+    const res = await callEndpoint<AppStateResponse>('getState', params);
+    if (res?.activeTournament) {
+      return {
+        ...res,
+        activeTournament: hydrateSnapshotAvatars(res.activeTournament),
+      };
+    }
+    return res;
+  },
   reportClientError: (params: { message: string; stack?: string; source?: string; context?: string }) =>
     callEndpoint<{ ok: boolean; deduplicated?: boolean; rateLimited?: boolean }>('reportClientError', params),
   createTournament: (input: Record<string, unknown>) =>

@@ -53,6 +53,26 @@ export default async function (input, ctx) {
         code: 'ROUND_IN_PROGRESS',
       });
     }
+
+    // Атомарно забираем право перегенерации до удаления матчей и декремента баев
+    const claimedReset = await db
+      .update(tournaments)
+      .set({ currentRound: 0, lastRoundByes: null })
+      .where(
+        and(
+          eq(tournaments.id, tournamentId),
+          eq(tournaments.status, 'QUALIFICATION'),
+          eq(tournaments.currentRound, 1)
+        )
+      )
+      .returning();
+
+    if (!Array.isArray(claimedReset) || claimedReset.length === 0) {
+      throw new EndpointError('Первый раунд уже перегенерируется или изменён', {
+        code: 'CONFLICT',
+      });
+    }
+
     for (const m of r1Matches) {
       await clearConfirmMessages({ match: m, onlyRemoveButtons: true });
     }
@@ -66,7 +86,7 @@ export default async function (input, ctx) {
         .set({ byesCount: sql`MAX(0, ${tournamentPlayers.byesCount} - 1)` })
         .where(inArray(tournamentPlayers.id, prevByes));
     }
-    const resetTournament = { ...tournament, currentRound: 0, lastRoundByes: null };
+    const resetTournament = { ...claimedReset[0], currentRound: 0, lastRoundByes: null };
     await createNextQualificationRound(resetTournament, {
       preserveOrder,
       targetRoundNumber: 1,

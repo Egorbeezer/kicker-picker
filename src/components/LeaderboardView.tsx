@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, Power, Eye, EyeOff, ArrowUp, ArrowDown, Clock, GripVertical, Share2 } from 'lucide-react';
-import { TieBreakersTooltip } from './InfoTooltip';
+import { SlidersHorizontal, Clock, Share2 } from 'lucide-react';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
 import { haptic, notify } from '../utils/telegram';
 import { renderLeaderboardToPng } from '../utils/exportTableImage';
@@ -11,6 +10,7 @@ import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { ScreenshotIcon } from './ScreenshotIcon';
+import { TableConfigModal, type TableColumnMeta } from './TableConfigModal';
 
 interface Props {
   snapshot: TournamentSnapshot;
@@ -18,16 +18,7 @@ interface Props {
   onSaveTableConfig?: (config: TableColumnConfig[]) => Promise<void>;
 }
 
-interface ColumnMeta {
-  key: TableColumnKey;
-  label: string;
-  shortLabel: string;
-  defaultSort: boolean;
-  defaultVisible: boolean;
-  widthClass: string;
-}
-
-const DEFAULT_META: ColumnMeta[] = [
+const DEFAULT_META: TableColumnMeta[] = [
   { key: 'wins', label: 'Выиграно игр', shortLabel: 'Поб', defaultSort: true, defaultVisible: true, widthClass: 'w-10' },
   { key: 'ppm', label: 'Среднее кол-во очков', shortLabel: 'Ср.очк', defaultSort: true, defaultVisible: true, widthClass: 'w-12' },
   { key: 'fairPpm', label: 'Среднее (честное с порогом)', shortLabel: 'Ч.очк', defaultSort: false, defaultVisible: false, widthClass: 'w-12' },
@@ -44,7 +35,7 @@ const DEFAULT_META: ColumnMeta[] = [
   { key: 'name', label: 'Имя игрока', shortLabel: 'Игрок', defaultSort: false, defaultVisible: true, widthClass: 'flex-1' },
 ];
 
-const META_BY_KEY = new Map<TableColumnKey, ColumnMeta>(DEFAULT_META.map((m) => [m.key, m]));
+const META_BY_KEY = new Map<TableColumnKey, TableColumnMeta>(DEFAULT_META.map((m) => [m.key, m]));
 
 function getNormalizedConfig(raw?: TableColumnConfig[] | null): TableColumnConfig[] {
   if (!Array.isArray(raw) || raw.length === 0) {
@@ -132,8 +123,6 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     hasPlayoff ? 'playoff' : 'group'
   );
   const [editingConfig, setEditingConfig] = useState<TableColumnConfig[] | null>(null);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [sharing, setSharing] = useState(false);
   const [sendingPreview, setSendingPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState<{
@@ -160,24 +149,6 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     .filter((c) => c.sort)
     .map((c) => META_BY_KEY.get(c.key)?.shortLabel)
     .filter(Boolean);
-
-  const moveRow = (index: number, delta: number) => {
-    if (!editingConfig) return;
-    const nextIdx = index + delta;
-    if (nextIdx < 0 || nextIdx >= editingConfig.length) return;
-    const copy = [...editingConfig];
-    [copy[index], copy[nextIdx]] = [copy[nextIdx], copy[index]];
-    setEditingConfig(copy);
-  };
-
-  const reorderRow = (fromIdx: number, toIdx: number) => {
-    if (!editingConfig || fromIdx === toIdx) return;
-    if (fromIdx < 0 || fromIdx >= editingConfig.length || toIdx < 0 || toIdx >= editingConfig.length) return;
-    const copy = [...editingConfig];
-    const [moved] = copy.splice(fromIdx, 1);
-    copy.splice(toIdx, 0, moved);
-    setEditingConfig(copy);
-  };
 
   const isPlayoffView = hasPlayoff && subTab === 'playoff';
 
@@ -511,179 +482,20 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
         </Modal>
       )}
 
-      {/* Table config modal (gym-gym Modal) */}
+      {/* Table config modal */}
       {editingConfig && onSaveTableConfig && (
-        <Modal
-          title="Настройки таблицы"
+        <TableConfigModal
+          config={editingConfig}
+          metaByKey={META_BY_KEY}
+          busy={busy}
+          onChange={setEditingConfig}
+          onResetDefault={() => setEditingConfig(getNormalizedConfig(null))}
+          onSave={async (payload) => {
+            setEditingConfig(null);
+            await onSaveTableConfig(payload);
+          }}
           onClose={() => setEditingConfig(null)}
-          hideClose
-          footer={
-            <div className="btn-row">
-              <button
-                type="button"
-                onClick={() => setEditingConfig(getNormalizedConfig(null))}
-                className="btn btn-ghost"
-              >
-                По умолчанию
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  const payload = editingConfig;
-                  setEditingConfig(null);
-                  await onSaveTableConfig(payload);
-                }}
-                className="btn btn-primary"
-              >
-                Сохранить
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-[var(--muted)] pb-1">
-              <span>Перетаскивайте за ручку (⋮⋮) для изменения приоритета</span>
-              <TieBreakersTooltip />
-            </div>
-            {editingConfig.map((col, idx) => {
-              const meta = META_BY_KEY.get(col.key);
-              const isDragging = dragIndex === idx;
-              const isDropTarget = dragOverIndex === idx && dragIndex !== null && dragIndex !== idx;
-              return (
-                <div
-                  key={col.key}
-                  data-col-idx={idx}
-                  data-testid={`col-row-${col.key}`}
-                  draggable
-                  onDragStart={(e) => {
-                    setDragIndex(idx);
-                    setDragOverIndex(idx);
-                    e.dataTransfer?.setData('text/plain', String(idx));
-                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    if (dragOverIndex !== idx) setDragOverIndex(idx);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const fromRaw = e.dataTransfer?.getData('text/plain');
-                    const fromIdx = dragIndex ?? (fromRaw !== undefined && fromRaw !== '' ? Number(fromRaw) : idx);
-                    reorderRow(fromIdx, idx);
-                    setDragIndex(null);
-                    setDragOverIndex(null);
-                  }}
-                  onDragEnd={() => {
-                    setDragIndex(null);
-                    setDragOverIndex(null);
-                  }}
-                  className={`flex items-center justify-between bg-[var(--bg)] border rounded-2xl px-2.5 py-2 transition-all ${
-                    isDragging
-                      ? 'opacity-50 border-[#2ea6ff]'
-                      : isDropTarget
-                        ? 'border-[#2ea6ff] bg-[#2ea6ff]/10'
-                        : 'border-[var(--border-strong)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0 pr-2">
-                    <button
-                      type="button"
-                      data-testid={`col-drag-handle-${col.key}`}
-                      aria-label={`Перетащить ${meta?.label}`}
-                      onPointerDown={(e) => {
-                        setDragIndex(idx);
-                        setDragOverIndex(idx);
-                        const startTarget = e.currentTarget;
-                        if (startTarget.setPointerCapture) {
-                          try {
-                            startTarget.setPointerCapture(e.pointerId);
-                          } catch {}
-                        }
-                      }}
-                      onPointerMove={(e) => {
-                        if (dragIndex === null) return;
-                        const el = document.elementFromPoint(e.clientX, e.clientY);
-                        const rowEl = el?.closest?.('[data-col-idx]') as HTMLElement | null;
-                        if (rowEl?.dataset?.colIdx !== undefined) {
-                          const targetIdx = Number(rowEl.dataset.colIdx);
-                          if (Number.isInteger(targetIdx) && targetIdx !== dragIndex) {
-                            reorderRow(dragIndex, targetIdx);
-                            setDragIndex(targetIdx);
-                            setDragOverIndex(targetIdx);
-                          }
-                        }
-                      }}
-                      onPointerUp={() => {
-                        setDragIndex(null);
-                        setDragOverIndex(null);
-                      }}
-                      onPointerCancel={() => {
-                        setDragIndex(null);
-                        setDragOverIndex(null);
-                      }}
-                      className="p-1.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)] cursor-grab active:cursor-grabbing touch-none shrink-0"
-                      title="Перетащите для смены порядка"
-                    >
-                      <GripVertical size={16} />
-                    </button>
-                    <span className="text-xs sm:text-sm font-medium text-[var(--text)] truncate">
-                      {meta?.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingConfig((prev) =>
-                          prev ? prev.map((c, i) => (i === idx ? { ...c, sort: !c.sort } : c)) : prev
-                        )
-                      }
-                      className={`p-1.5 rounded-xl transition-colors ${
-                        col.sort ? 'text-[#2ea6ff] bg-[#2ea6ff]/15' : 'text-[var(--muted)] opacity-50'
-                      }`}
-                      title="Учитывать в сортировке"
-                    >
-                      <Power size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingConfig((prev) =>
-                          prev ? prev.map((c, i) => (i === idx ? { ...c, visible: !c.visible } : c)) : prev
-                        )
-                      }
-                      className={`p-1.5 rounded-xl transition-colors ${
-                        col.visible ? 'text-[var(--text)] bg-[var(--card)]' : 'text-[var(--muted)] opacity-50'
-                      }`}
-                      title="Показывать столбец"
-                    >
-                      {col.visible ? <Eye size={15} /> : <EyeOff size={15} />}
-                    </button>
-                    <div className="flex flex-col">
-                      <button
-                        type="button"
-                        disabled={idx === 0}
-                        onClick={() => moveRow(idx, -1)}
-                        className="text-[var(--muted)] disabled:opacity-25 p-0.5"
-                      >
-                        <ArrowUp size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={idx === editingConfig.length - 1}
-                        onClick={() => moveRow(idx, 1)}
-                        className="text-[var(--muted)] disabled:opacity-25 p-0.5"
-                      >
-                        <ArrowDown size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Modal>
+        />
       )}
     </div>
   );

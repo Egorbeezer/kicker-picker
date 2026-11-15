@@ -841,4 +841,40 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       root.unmount();
     });
   });
+
+  it('hydrateSnapshotAvatars restores deduplicated player avatars into leaderboard and matches', async () => {
+    const { hydrateSnapshotAvatars } = await import('../src/utils/snapshotHydrate');
+    const raw = makeSnapshot({
+      players: [
+        { id: 1, tournamentId: 1, tgId: 101, name: 'Егор', initials: 'ЕГ', avatarUrl: 'data:image/jpeg;base64,AV1', isActive: true, isGuest: false, byesCount: 0, points: 4 },
+        { id: 2, tournamentId: 1, tgId: 102, name: 'Макс', initials: 'МК', avatarUrl: null, isActive: true, isGuest: false, byesCount: 0, points: 2 },
+      ],
+      leaderboard: [
+        { rank: 1, playerId: 1, tgId: 101, name: 'Егор', initials: 'ЕГ', isActive: true, points: 4, games: 2, wins: 2, losses: 0, diff: 4, goalsFor: 10, goalsAgainst: 6, ppm: 2, byesCount: 0 },
+      ],
+      currentRoundMatches: [
+        {
+          id: 55,
+          tournamentId: 1,
+          stage: 'QUALIFICATION',
+          roundNumber: 1,
+          tableNumber: 1,
+          status: 'PLAYING',
+          score1: 0,
+          score2: 0,
+          setsWon1: 0,
+          setsWon2: 0,
+          team1Players: [{ id: 1, name: 'Егор', initials: 'ЕГ', isGuest: false }],
+          team2Players: [{ id: 2, name: 'Макс', initials: 'МК', isGuest: false }],
+          team1Label: 'Егор',
+          team2Label: 'Макс',
+          myTeam: 1,
+        },
+      ],
+    });
+    const hydrated = hydrateSnapshotAvatars(raw)!;
+    expect(hydrated.leaderboard[0].avatarUrl).toBe('data:image/jpeg;base64,AV1');
+    expect(hydrated.currentRoundMatches[0].team1Players[0].avatarUrl).toBe('data:image/jpeg;base64,AV1');
+    expect(hydrated.currentRoundMatches[0].team2Players[0].avatarUrl).toBeNull();
+  });
 });

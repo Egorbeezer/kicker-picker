@@ -9,7 +9,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.backend.json --noEmit",
     "typecheck:backend": "tsc -p tsconfig.backend.json --noEmit",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run build",
     "deploy": "npm run build && tgcloud push",
+    "deploy:support": "tgcloud --cwd support-bot push",
     "bot:menu": "tgcloud run endpoints/setupBotMenu '{}'",
     "status": "tgcloud status",
     "run": "tgcloud run"

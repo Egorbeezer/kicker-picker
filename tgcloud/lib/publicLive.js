@@ -112,15 +112,23 @@ function generateLivePath(tournamentId) {
 }
 
 async function writeLivePayload(path, bodyStr) {
-  const res = await fetch(`${LIVE_STORE_BASE}/${encodeURIComponent(path)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: bodyStr,
-  });
-  await res.text();
-  if (!res.ok) {
-    throw new Error(`Live store error HTTP ${res.status}`);
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${LIVE_STORE_BASE}/${encodeURIComponent(path)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: bodyStr,
+      });
+      await res.text();
+      if (res.ok) return;
+      lastErr = new Error(`Live store error HTTP ${res.status}`);
+      if (res.status >= 400 && res.status < 500) break;
+    } catch (err) {
+      lastErr = err;
+    }
   }
+  throw lastErr || new Error('Live store error');
 }
 
 async function writeTelegraphFallback(row, bodyStr) {

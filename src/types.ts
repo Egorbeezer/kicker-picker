@@ -164,6 +164,7 @@ export interface TournamentTimings {
 }
 
 export interface TournamentSnapshot {
+  snapshotVersion?: string;
   tournament: Tournament;
   isAdmin: boolean;
   isCreator?: boolean;
@@ -270,10 +271,12 @@ export interface AppStateResponse {
   };
   tournaments?: Tournament[];
   tournamentHistory?: TournamentHistoryItem[];
-  activeTournament: TournamentSnapshot | null;
+  activeTournament?: TournamentSnapshot | null;
   clubPlayers?: ClubPlayer[];
   playerProfile?: PlayerGlobalProfile | null;
   light?: boolean;
+  unchanged?: boolean;
+  snapshotVersion?: string;
 }
 
 export interface CreateTournamentForm {

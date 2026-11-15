@@ -4,7 +4,67 @@ import { users, tournaments, tournamentPlayers, matches } from '../../schema.js'
 import { computeLeaderboard, computeTournamentTimings } from '../dyp.js';
 import { getActiveTablesList, isTournamentAdmin, sanitizeTournament } from './access.js';
 
-export async function getTournamentSnapshot(tournamentId, callerTgId) {
+/**
+ * Вычисляет компактный детерминированный дайджест состояния турнира
+ * для быстрого отсечения неизменившихся light-поллов.
+ */
+export function computeSnapshotVersion(tournament, players = [], allMatches = [], callerTgId = 0) {
+  if (!tournament) return '';
+  const parts = [
+    tournament.id,
+    tournament.status,
+    tournament.currentRound,
+    tournament.tablesCount,
+    JSON.stringify(tournament.disabledTables || null),
+    tournament.autoRounds ? 1 : 0,
+    tournament.pendingPlayoff ? 1 : 0,
+    tournament.dypMode || '',
+    tournament.teamFormat || '',
+    tournament.roundRobinLoops || 1,
+    tournament.losLives || 3,
+    tournament.skipQualification ? 1 : 0,
+    tournament.useBuckets ? 1 : 0,
+    tournament.playoffSize || 0,
+    tournament.playoffFormat || '',
+    tournament.thirdPlaceMatch ? 1 : 0,
+    tournament.targetScore || 0,
+    tournament.maxScore || 0,
+    tournament.winByTwo ? 1 : 0,
+    tournament.playoffTargetScore || 0,
+    tournament.playoffMaxScore || 0,
+    tournament.playoffWinByTwo ? 1 : 0,
+    tournament.publicPath || '',
+    tournament.creatorTgId || 0,
+    JSON.stringify(tournament.coAdminTgIds || null),
+    JSON.stringify(tournament.tableConfig || null),
+    callerTgId || 0,
+  ];
+  const sortedPlayers = [...players].sort((a, b) => a.id - b.id);
+  for (const p of sortedPlayers) {
+    parts.push(
+      `${p.id}:${p.tgId || 0}:${p.isActive ? 1 : 0}:${p.byesCount || 0}:${p.sortOrder ?? ''}:${p.livesLeft ?? ''}:${p.dypRole || ''}:${p.name || ''}`
+    );
+  }
+  const sortedMatches = [...allMatches].sort((a, b) => a.id - b.id);
+  for (const m of sortedMatches) {
+    parts.push(
+      `${m.id}:${m.stage}:${m.roundNumber}:${m.tableNumber}:${m.status}:${m.score1}:${m.score2}:${m.setsWon1}:${m.setsWon2}:${m.submittedByTeam ?? ''}:${m.coinResult || ''}:${m.reminderStage || 0}:${JSON.stringify(m.setsHistory || null)}`
+    );
+  }
+  const raw = parts.join('|');
+  let hash = 2166136261;
+  for (let i = 0; i < raw.length; i++) {
+    hash ^= raw.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `v1_${(hash >>> 0).toString(36)}_${sortedPlayers.length}_${sortedMatches.length}`;
+}
+
+export async function getTournamentSnapshot(
+  tournamentId,
+  callerTgId,
+  { compactAvatars = false } = {}
+) {
   const tournament = await db
     .select()
     .from(tournaments)
@@ -46,10 +106,14 @@ export async function getTournamentSnapshot(tournamentId, callerTgId) {
     players,
     matches: allMatches,
     tableConfig: tournament.tableConfig,
-  }).map((row) => ({
-    ...row,
-    avatarUrl: row.tgId ? avatarByTgId.get(row.tgId) || null : null,
-  }));
+  }).map((row) =>
+    compactAvatars
+      ? row
+      : {
+          ...row,
+          avatarUrl: row.tgId ? avatarByTgId.get(row.tgId) || null : null,
+        }
+  );
 
   const enrichMatch = (m) => {
     const t1 = [playersById.get(m.team1Player1Id), playersById.get(m.team1Player2Id)].filter(Boolean);
@@ -69,14 +133,14 @@ export async function getTournamentSnapshot(tournamentId, callerTgId) {
         name: p.name,
         initials: p.initials,
         isGuest: p.isGuest,
-        avatarUrl: getAvatar(p),
+        ...(compactAvatars ? {} : { avatarUrl: getAvatar(p) }),
       })),
       team2Players: t2.map((p) => ({
         id: p.id,
         name: p.name,
         initials: p.initials,
         isGuest: p.isGuest,
-        avatarUrl: getAvatar(p),
+        ...(compactAvatars ? {} : { avatarUrl: getAvatar(p) }),
       })),
       team1Label: t1.map((p) => p.name).join(' & '),
       team2Label: t2.map((p) => p.name).join(' & '),
@@ -110,6 +174,7 @@ export async function getTournamentSnapshot(tournamentId, callerTgId) {
   });
 
   return {
+    snapshotVersion: computeSnapshotVersion(tournament, players, allMatches, callerTgId),
     tournament: sanitizeTournament(tournament),
     isAdmin: isTournamentAdmin(tournament, callerTgId),
     isCreator: Number(tournament.creatorTgId) === Number(callerTgId),

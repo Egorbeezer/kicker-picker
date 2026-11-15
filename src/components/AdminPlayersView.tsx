@@ -13,16 +13,18 @@ import {
   ArrowDown,
   Shield,
   RefreshCw,
-  BookmarkCheck,
   Heart,
-  X,
 } from 'lucide-react';
 import type { ClubPlayer, DypRole, TournamentPlayer, TournamentSnapshot } from '../types';
 import { haptic } from '../utils/telegram';
 import { shareTournamentInTelegram } from '../utils/share';
-import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
 import { BucketsTooltip } from './InfoTooltip';
+import {
+  AddPlayersModal,
+  RenamePlayerModal,
+  SubstitutePlayerModal,
+} from './AdminPlayersModals';
 
 interface Props {
   snapshot: TournamentSnapshot;
@@ -88,86 +90,12 @@ export const AdminPlayersView: React.FC<Props> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [rawNames, setRawNames] = useState('');
-  const [guestRole, setGuestRole] = useState<DypRole>(null);
-  const [shuffleOrder, setShuffleOrder] = useState(true);
-  const [saveToClub, setSaveToClub] = useState(true);
-  const [selectedClubIds, setSelectedClubIds] = useState<number[]>([]);
-
   const [renamingPlayer, setRenamingPlayer] = useState<TournamentPlayer | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-
   const [substitutingPlayer, setSubstitutingPlayer] = useState<TournamentPlayer | null>(null);
-  const [subName, setSubName] = useState('');
-  const [subTgId, setSubTgId] = useState<number | null>(null);
 
-  const openAddModal = () => {
-    setRawNames('');
-    setGuestRole(null);
-    setShuffleOrder(true);
-    setSaveToClub(true);
-    setSelectedClubIds([]);
-    setShowAddModal(true);
-  };
-
-  const handleBulkAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const lines = rawNames
-      .split(/[\n,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (lines.length === 0 && selectedClubIds.length === 0) return;
-    haptic('success');
-    await onAddGuest({
-      names: lines.length > 0 ? lines : undefined,
-      clubPlayerIds: selectedClubIds.length > 0 ? selectedClubIds : undefined,
-      shuffle: shuffleOrder,
-      dypRole: useBuckets ? guestRole : null,
-      saveToClub,
-    });
-    setShowAddModal(false);
-  };
-
-  const openRename = (player: TournamentPlayer) => {
-    setRenamingPlayer(player);
-    setRenameValue(player.name);
-  };
-
-  const handleRenameSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!renamingPlayer || !renameValue.trim()) return;
-    haptic('success');
-    await onManagePlayer({
-      playerId: renamingPlayer.id,
-      action: 'rename',
-      name: renameValue.trim(),
-    });
-    setRenamingPlayer(null);
-  };
-
-  const openSubstitute = (player: TournamentPlayer) => {
-    setSubstitutingPlayer(player);
-    setSubName('');
-    setSubTgId(null);
-  };
-
-  const handleSubstituteSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!substitutingPlayer || !subName.trim()) return;
-    haptic('success');
-    await onManagePlayer({
-      playerId: substitutingPlayer.id,
-      action: 'substitute',
-      replacementName: subName.trim(),
-      replacementTgId: subTgId,
-    });
-    setSubstitutingPlayer(null);
-  };
-
-  const toggleClubChip = (id: number) => {
-    haptic('light');
-    setSelectedClubIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
+  const openAddModal = () => setShowAddModal(true);
+  const openRename = (player: TournamentPlayer) => setRenamingPlayer(player);
+  const openSubstitute = (player: TournamentPlayer) => setSubstitutingPlayer(player);
 
   const cycleRole = async (player: TournamentPlayer) => {
     haptic('light');
@@ -184,12 +112,6 @@ export const AdminPlayersView: React.FC<Props> = ({
     haptic('light');
     shareTournamentInTelegram({ id: tournament.id, name: tournament.name });
   };
-
-  const parsedPreviewCount =
-    rawNames
-      .split(/[\n,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean).length + selectedClubIds.length;
 
   const existingNamesSet = new Set(players.map((p) => p.name.trim().toLowerCase()));
   const filteredPlayers = players.filter((p) => {
@@ -468,244 +390,40 @@ export const AdminPlayersView: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Add participants modal with Club Players DB */}
-      {showAddModal && (
-        <Modal
-          title="Добавить участников"
-          onClose={() => setShowAddModal(false)}
-          footer={
-            <div className="btn-row">
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="btn btn-ghost"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                form="bulk-add-form"
-                disabled={busy || parsedPreviewCount === 0}
-                className="btn btn-primary"
-              >
-                Добавить ({parsedPreviewCount})
-              </button>
-            </div>
-          }
-        >
-          <form id="bulk-add-form" onSubmit={handleBulkAdd} className="space-y-3">
-            {clubPlayers.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] flex items-center gap-1.5">
-                  <BookmarkCheck size={12} className="text-[#2ea6ff]" />
-                  Постоянные игроки клуба (выбор в 1 тап)
-                </div>
-                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto py-0.5">
-                  {clubPlayers.map((cp) => {
-                    const alreadyAdded = existingNamesSet.has(cp.name.trim().toLowerCase());
-                    const selected = selectedClubIds.includes(cp.id);
-                    return (
-                      <div
-                        key={cp.id}
-                        className={`inline-flex items-center gap-1 rounded-full border pl-2.5 pr-1.5 py-1 text-xs font-semibold ${
-                          alreadyAdded
-                            ? 'opacity-45 bg-[var(--bg)] border-[var(--border)] text-[var(--muted)]'
-                            : selected
-                              ? 'bg-[#2ea6ff] border-[#2ea6ff] text-white'
-                              : 'bg-[var(--bg)] border-[var(--border)] text-[var(--text)]'
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          disabled={alreadyAdded}
-                          onClick={() => toggleClubChip(cp.id)}
-                          className="text-left"
-                        >
-                          {cp.name}
-                        </button>
-                        {onManageClubPlayer && (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => onManageClubPlayer({ action: 'delete', id: cp.id })}
-                            aria-label={`Удалить ${cp.name} из базы`}
-                            className="p-0.5 opacity-60 hover:opacity-100 disabled:opacity-30"
-                          >
-                            <X size={11} />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+      <AddPlayersModal
+        open={showAddModal}
+        busy={busy}
+        useBuckets={useBuckets}
+        clubPlayers={clubPlayers}
+        existingNamesSet={existingNamesSet}
+        onManageClubPlayer={onManageClubPlayer}
+        onSubmit={onAddGuest}
+        onClose={() => setShowAddModal(false)}
+      />
 
-            <div>
-              <label className="text-xs text-[var(--muted)] block mb-1.5">
-                Новые имена (по одному на строку или через запятую)
-              </label>
-              <textarea
-                rows={4}
-                placeholder={'Например:\nМакс\nОля\nСаша, Дима'}
-                value={rawNames}
-                onChange={(e) => setRawNames(e.target.value)}
-                className="w-full bg-[var(--bg)] border border-[var(--border-strong)] rounded-2xl px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[#2ea6ff] resize-none"
-              />
-            </div>
+      <RenamePlayerModal
+        player={renamingPlayer}
+        busy={busy}
+        onSubmit={async (playerId, name) => {
+          await onManagePlayer({ playerId, action: 'rename', name });
+        }}
+        onClose={() => setRenamingPlayer(null)}
+      />
 
-            {useBuckets && (
-              <div>
-                <div className="text-xs font-medium text-[var(--muted)] mb-1.5">
-                  Корзина для новых участников
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {([null, 'A', 'B'] as DypRole[]).map((roleOpt) => (
-                    <button
-                      key={String(roleOpt)}
-                      type="button"
-                      onClick={() => setGuestRole(roleOpt)}
-                      className={`py-2 rounded-2xl text-xs font-bold border ${
-                        guestRole === roleOpt
-                          ? 'bg-[#2ea6ff] border-[#2ea6ff] text-white'
-                          : 'bg-[var(--bg)] border-[var(--border)] text-[var(--muted)]'
-                      }`}
-                    >
-                      {roleOpt === 'A' ? 'Корзина A' : roleOpt === 'B' ? 'Корзина B' : 'Без корзины'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <label className="flex items-center justify-between gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 cursor-pointer">
-              <span className="flex items-center gap-2 text-xs text-[var(--text)]">
-                <Shuffle size={14} className="text-[#2ea6ff]" />
-                Перемешать порядок при добавлении
-              </span>
-              <input
-                type="checkbox"
-                checked={shuffleOrder}
-                onChange={(e) => setShuffleOrder(e.target.checked)}
-                className="w-4 h-4 accent-[#2ea6ff]"
-              />
-            </label>
-
-            <label className="flex items-center justify-between gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 cursor-pointer">
-              <span className="flex items-center gap-2 text-xs text-[var(--text)]">
-                <BookmarkCheck size={14} className="text-emerald-500" />
-                Сохранить новых игроков в базу клуба
-              </span>
-              <input
-                type="checkbox"
-                checked={saveToClub}
-                onChange={(e) => setSaveToClub(e.target.checked)}
-                className="w-4 h-4 accent-[#2ea6ff]"
-              />
-            </label>
-          </form>
-        </Modal>
-      )}
-
-      {/* Rename Modal */}
-      {renamingPlayer && (
-        <Modal
-          title="Переименовать участника"
-          onClose={() => setRenamingPlayer(null)}
-          footer={
-            <div className="btn-row">
-              <button
-                type="button"
-                onClick={() => setRenamingPlayer(null)}
-                className="btn btn-ghost"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                form="rename-player-form"
-                disabled={busy || !renameValue.trim()}
-                className="btn btn-primary"
-              >
-                Сохранить
-              </button>
-            </div>
-          }
-        >
-          <form id="rename-player-form" onSubmit={handleRenameSubmit}>
-            <input
-              type="text"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              placeholder="Имя игрока"
-              autoFocus
-              className="w-full bg-[var(--bg)] border border-[var(--border-strong)] rounded-2xl px-3.5 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[#2ea6ff]"
-            />
-          </form>
-        </Modal>
-      )}
-
-      {/* Substitute Player Modal */}
-      {substitutingPlayer && (
-        <Modal
-          title={`Заменить: ${substitutingPlayer.name}`}
-          onClose={() => setSubstitutingPlayer(null)}
-          footer={
-            <div className="btn-row">
-              <button
-                type="button"
-                onClick={() => setSubstitutingPlayer(null)}
-                className="btn btn-ghost"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                form="sub-player-form"
-                disabled={busy || !subName.trim()}
-                className="btn btn-primary"
-              >
-                Заменить
-              </button>
-            </div>
-          }
-        >
-          <form id="sub-player-form" onSubmit={handleSubstituteSubmit} className="space-y-3">
-            <p className="text-xs text-[var(--muted)] leading-relaxed">
-              Новый игрок займёт место <strong className="text-[var(--text)]">{substitutingPlayer.name}</strong> во
-              всех текущих матчах и сетке плей-офф, не ломая турнир.
-            </p>
-            {clubPlayers.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                {clubPlayers.map((cp) => (
-                  <button
-                    key={cp.id}
-                    type="button"
-                    onClick={() => {
-                      setSubName(cp.name);
-                      setSubTgId(cp.tgId ?? null);
-                    }}
-                    className="px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-xs font-semibold text-[var(--text)] hover:border-[#2ea6ff]"
-                  >
-                    {cp.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            <input
-              type="text"
-              value={subName}
-              onChange={(e) => {
-                setSubName(e.target.value);
-                setSubTgId(null);
-              }}
-              placeholder="Имя игрока на замену"
-              autoFocus
-              className="w-full bg-[var(--bg)] border border-[var(--border-strong)] rounded-2xl px-3.5 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[#2ea6ff]"
-            />
-          </form>
-        </Modal>
-      )}
+      <SubstitutePlayerModal
+        player={substitutingPlayer}
+        clubPlayers={clubPlayers}
+        busy={busy}
+        onSubmit={async (playerId, replacementName, replacementTgId) => {
+          await onManagePlayer({
+            playerId,
+            action: 'substitute',
+            replacementName,
+            replacementTgId,
+          });
+        }}
+        onClose={() => setSubstitutingPlayer(null)}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { tournaments, tournamentPlayers, tournamentAdmins, matches, clubPlayers 
 import { computeLeaderboard } from '../lib/dyp.js';
 import {
   upsertUser,
+  computeSnapshotVersion,
   getTournamentSnapshot,
   sanitizeTournament,
   buildGlobalPlayerProfile,
@@ -46,10 +47,15 @@ export default async function (input, ctx) {
     };
   }
 
-  const hydratedUser = (await upsertUser(tgUser)) || tgUser;
-
   let targetTournamentId = input?.tournamentId ? Number(input.tournamentId) : null;
   const isLightPoll = Boolean(input?.light) && Boolean(targetTournamentId);
+  const clientSnapshotVersion =
+    typeof input?.snapshotVersion === 'string' && input.snapshotVersion.length > 0
+      ? input.snapshotVersion
+      : null;
+
+  const hydratedUser =
+    isLightPoll && clientSnapshotVersion ? tgUser : (await upsertUser(tgUser)) || tgUser;
 
   if (isLightPoll) {
     const tObj = await db
@@ -58,46 +64,67 @@ export default async function (input, ctx) {
       .where(eq(tournaments.id, targetTournamentId))
       .get();
 
-    if (tObj && (tObj.status === 'QUALIFICATION' || tObj.status === 'PLAYOFF')) {
-      try {
-        const [tPlayers, tMatches] = await Promise.all([
-          db
-            .select()
-            .from(tournamentPlayers)
-            .where(eq(tournamentPlayers.tournamentId, targetTournamentId))
-            .all(),
-          db
-            .select()
-            .from(matches)
-            .where(eq(matches.tournamentId, targetTournamentId))
-            .all(),
-        ]);
-        const expired = await autoFinishExpiredTournaments(
-          [tObj],
-          new Map([[targetTournamentId, tMatches]])
-        );
-        if (expired.length > 0) {
-          await syncPublicLiveIfEnabled(targetTournamentId).catch(() => {});
-        } else {
-          await checkAndSendLongMatchReminders({
-            tournament: tObj,
-            players: tPlayers,
-            allMatches: tMatches,
-          });
+    let tPlayers = [];
+    let tMatches = [];
+    let expired = [];
+
+    if (tObj) {
+      [tPlayers, tMatches] = await Promise.all([
+        db
+          .select()
+          .from(tournamentPlayers)
+          .where(eq(tournamentPlayers.tournamentId, targetTournamentId))
+          .all(),
+        db
+          .select()
+          .from(matches)
+          .where(eq(matches.tournamentId, targetTournamentId))
+          .all(),
+      ]);
+
+      if (tObj.status === 'QUALIFICATION' || tObj.status === 'PLAYOFF') {
+        try {
+          expired = await autoFinishExpiredTournaments(
+            [tObj],
+            new Map([[targetTournamentId, tMatches]])
+          );
+          if (expired.length > 0) {
+            await syncPublicLiveIfEnabled(targetTournamentId).catch(() => {});
+          } else {
+            await checkAndSendLongMatchReminders({
+              tournament: tObj,
+              players: tPlayers,
+              allMatches: tMatches,
+            });
+          }
+        } catch (err) {
+          console.warn('checkAndSendLongMatchReminders error:', err?.message);
         }
-      } catch (err) {
-        console.warn('checkAndSendLongMatchReminders error:', err?.message);
       }
     }
 
+    const currentVersion = tObj
+      ? computeSnapshotVersion(tObj, tPlayers, tMatches, tgUser.id)
+      : null;
+
+    if (clientSnapshotVersion && currentVersion && clientSnapshotVersion === currentVersion && expired.length === 0) {
+      return {
+        user: hydratedUser,
+        light: true,
+        unchanged: true,
+        snapshotVersion: currentVersion,
+      };
+    }
+
     const activeTournament = tObj
-      ? await getTournamentSnapshot(targetTournamentId, tgUser.id)
+      ? await getTournamentSnapshot(targetTournamentId, tgUser.id, { compactAvatars: true })
       : null;
 
     return {
       user: hydratedUser,
       activeTournament,
       light: true,
+      snapshotVersion: activeTournament?.snapshotVersion || currentVersion || undefined,
     };
   }
 
@@ -214,7 +241,7 @@ export default async function (input, ctx) {
   }
 
   const activeTournament = targetTournamentId
-    ? await getTournamentSnapshot(targetTournamentId, tgUser.id)
+    ? await getTournamentSnapshot(targetTournamentId, tgUser.id, { compactAvatars: true })
     : null;
 
   const savedRoster = await db
