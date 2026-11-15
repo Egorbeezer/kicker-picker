@@ -133,6 +133,7 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(playersScrollRoot.className).toContain('h-full');
     expect(playersScrollRoot.className).toContain('overflow-y-auto');
     expect(playersScrollRoot.className).toContain('content-dock-pad');
+    expect(c1.querySelector('[aria-label^="Удалить "]')).not.toBeNull();
 
     const c2 = document.createElement('div');
     document.body.appendChild(c2);

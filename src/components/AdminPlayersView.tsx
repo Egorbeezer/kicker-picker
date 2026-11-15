@@ -422,7 +422,7 @@ export const AdminPlayersView: React.FC<Props> = ({
                   </button>
                 )}
 
-                {tournament.status === 'REGISTRATION' && (
+                {tournament.status !== 'FINISHED' && (
                   <button
                     type="button"
                     disabled={busy}
