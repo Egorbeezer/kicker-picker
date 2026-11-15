@@ -1056,4 +1056,88 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     );
     expect(elapsedMs).toBeLessThan(8000);
   });
+
+  it('excludes absent players from playoff seeding and shifts top-8 cutline down to #9/#10', async () => {
+    const adminCtx = { initData: { user: { id: 8100, first_name: 'Орг' } } };
+    const snap = await createTournament(
+      {
+        name: 'Отсутствующие плей-офф',
+        tablesCount: 2,
+        playoffSize: 8,
+        dypMode: 'monster',
+        teamFormat: 'pairs',
+        autoRounds: false,
+      },
+      adminCtx
+    );
+    const tid = snap.tournament.id;
+
+    for (let i = 1; i <= 10; i++) {
+      await addGuestPlayer({ tournamentId: tid, name: `Участник ${i}` }, adminCtx);
+    }
+
+    let beforePoState = null;
+    for (let round = 1; round <= 2; round++) {
+      await startRound({ tournamentId: tid }, adminCtx);
+      const openMatches = sqlite
+        .prepare("SELECT id FROM matches WHERE tournament_id = ? AND stage = 'QUALIFICATION' AND round_number = ? AND status != 'FINISHED'")
+        .all(tid, round);
+      for (let idx = 0; idx < openMatches.length; idx++) {
+        beforePoState = await submitScore(
+          { matchId: openMatches[idx].id, score1: 7, score2: idx % 3, forceAdmin: true },
+          adminCtx
+        );
+      }
+    }
+
+    expect(beforePoState.leaderboard).toHaveLength(11); // Орг + 10 гостей
+    const rank5 = beforePoState.leaderboard[4];
+    const rank7 = beforePoState.leaderboard[6];
+    const rank9 = beforePoState.leaderboard[8];
+    const rank10 = beforePoState.leaderboard[9];
+
+    // Mark rank #5 and #7 absent
+    await togglePlayerActive({ tournamentId: tid, playerId: rank5.playerId }, adminCtx);
+    await togglePlayerActive({ tournamentId: tid, playerId: rank7.playerId }, adminCtx);
+
+    // Deleting a guest who has played shows updated Russian hint referencing "отсутствующего"
+    await expect(
+      managePlayer({ tournamentId: tid, playerId: rank5.playerId, action: 'delete_player' }, adminCtx)
+    ).rejects.toThrow(/отметьте как отсутствующего/i);
+
+    const poState = await startPlayoff(
+      { tournamentId: tid, playoffSize: 8, thirdPlaceMatch: false },
+      adminCtx
+    );
+    expect(poState.tournament.status).toBe('PLAYOFF');
+    const seededPlayerIds = poState.playoffMatches.flatMap((m) => [
+      ...m.team1Players.map((p) => p.id),
+      ...m.team2Players.map((p) => p.id),
+    ]);
+    expect(seededPlayerIds).toHaveLength(8);
+    expect(seededPlayerIds).not.toContain(rank5.playerId);
+    expect(seededPlayerIds).not.toContain(rank7.playerId);
+    expect(seededPlayerIds).toContain(rank9.playerId);
+    expect(seededPlayerIds).toContain(rank10.playerId);
+  });
+
+  it('rejects startPlayoff when fewer than minimum active participants remain', async () => {
+    const adminCtx = { initData: { user: { id: 8101, first_name: 'Орг2' } } };
+    const snap = await createTournament(
+      { name: 'Мало активных', tablesCount: 1, playoffSize: 4, teamFormat: 'pairs' },
+      adminCtx
+    );
+    const tid = snap.tournament.id;
+    // Creator is auto-joined as player #1; adding 3 guests gives 4 players total.
+    const added = [];
+    for (let i = 1; i <= 3; i++) {
+      const s = await addGuestPlayer({ tournamentId: tid, name: `Игрок ${i}` }, adminCtx);
+      added.push(s.players[s.players.length - 1]);
+    }
+    await togglePlayerActive({ tournamentId: tid, playerId: added[0].id }, adminCtx);
+
+    await expect(
+      startPlayoff({ tournamentId: tid, playoffSize: 4, thirdPlaceMatch: false }, adminCtx)
+    ).rejects.toThrow(/минимум 4 присутствующих/);
+  });
 });

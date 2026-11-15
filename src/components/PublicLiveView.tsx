@@ -20,6 +20,7 @@ import { PlayoffBracketView } from './PlayoffBracketView';
 import { PlayerAvatar } from './PlayerAvatar';
 import { SupportHeaderButton } from './SupportHeaderButton';
 import { openTelegramChat, SUPPORT_BUTTON } from '../support';
+import { getPlayoffQualifiedIds } from '../utils/playoffZone';
 
 interface Props {
   publicPath: string;
@@ -246,6 +247,8 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
     </div>
   );
 
+  const qualifiedIds = getPlayoffQualifiedIds(leaderboard, tournament.playoffSize);
+
   const tableSection = (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
@@ -270,12 +273,16 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
 
         <div className="divide-y divide-[#3a3a3c]/50">
           {leaderboard.map((row) => {
-            const inPlayoffZone = row.rank <= tournament.playoffSize;
+            const inPlayoffZone = qualifiedIds.has(row.playerId);
             return (
               <div
                 key={row.playerId}
                 className={`flex items-center px-3 py-2.5 ${
-                  inPlayoffZone ? '' : 'opacity-75'
+                  !row.isActive
+                    ? 'bg-gray-500/20 opacity-75'
+                    : inPlayoffZone
+                      ? ''
+                      : 'opacity-75'
                 }`}
               >
                 <div
@@ -295,6 +302,11 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
                   <span className="text-sm font-medium text-white truncate">
                     {row.name}
                   </span>
+                  {!row.isActive && (
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-500/20 px-1.5 py-0.5 rounded shrink-0">
+                      Отсутствует
+                    </span>
+                  )}
                   {tournament.useBuckets && row.dypRole && (
                     <span
                       className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${

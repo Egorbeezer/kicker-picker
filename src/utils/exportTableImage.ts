@@ -1,6 +1,7 @@
 import type { TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
 import { canvasToPngResult, loadCanvasImage } from './canvasImage';
 import { currentTheme } from './theme';
+import { getPlayoffQualifiedIds } from './playoffZone';
 
 const COLUMN_META: Record<TableColumnKey, { label: string; width: number }> = {
   wins: { label: 'Поб', width: 58 },
@@ -68,8 +69,10 @@ export async function renderLeaderboardToPng(params: {
         card: '#ffffff',
         cardZone: '#f5f8fc',
         cardMe: '#e6f3ff',
+        cardAbsent: '#dfe4ea',
         border: '#d6e0ea',
         borderMe: '#0b74d1',
+        borderAbsent: '#c2cbd6',
         text: '#12212e',
         muted: '#63788c',
         accent: '#0b74d1',
@@ -84,8 +87,10 @@ export async function renderLeaderboardToPng(params: {
         card: '#232e3c',
         cardZone: '#283647',
         cardMe: '#1e3a56',
+        cardAbsent: '#2d323b',
         border: 'rgba(255,255,255,0.1)',
         borderMe: '#2ea6ff',
+        borderAbsent: 'rgba(156,163,175,0.28)',
         text: '#f5f7fa',
         muted: '#8ea0b2',
         accent: '#2ea6ff',
@@ -109,8 +114,17 @@ export async function renderLeaderboardToPng(params: {
   const statsWidth = visibleStatCols.reduce((acc, c) => acc + (COLUMN_META[c.key]?.width || 60), 0);
   const width = Math.max(520, padX * 2 + 34 + (nameVisible ? 200 : 32) + statsWidth);
   const rowsCount = Math.max(1, leaderboard.length);
+  const qualifiedIds = getPlayoffQualifiedIds(leaderboard, tournament.playoffSize);
+  let lastQualifiedIdx = -1;
+  for (let i = 0; i < leaderboard.length; i++) {
+    if (qualifiedIds.has(leaderboard[i].playerId)) lastQualifiedIdx = i;
+  }
+  const cutoffRowIdx = lastQualifiedIdx + 1;
   const hasCutoff =
-    tournament.playoffSize > 0 && leaderboard.length > tournament.playoffSize;
+    tournament.playoffSize > 0 &&
+    qualifiedIds.size >= tournament.playoffSize &&
+    cutoffRowIdx > 0 &&
+    cutoffRowIdx < leaderboard.length;
   const cutoffExtra = hasCutoff ? 14 : 0;
   const height = headerH + colHeaderH + rowsCount * (rowH + rowGap) + cutoffExtra + footerH + 16;
 
@@ -220,9 +234,9 @@ export async function renderLeaderboardToPng(params: {
     for (let i = 0; i < leaderboard.length; i++) {
       const row = leaderboard[i];
       const isMe = row.playerId === myPlayerId;
-      const inPlayoffZone = row.rank <= tournament.playoffSize;
+      const inPlayoffZone = qualifiedIds.has(row.playerId);
 
-      if (hasCutoff && i === tournament.playoffSize) {
+      if (hasCutoff && i === cutoffRowIdx) {
         ctx.strokeStyle = palette.accent;
         ctx.globalAlpha = 0.45;
         ctx.setLineDash([5, 4]);
@@ -236,10 +250,20 @@ export async function renderLeaderboardToPng(params: {
       }
 
       drawRoundedRect(ctx, padX, y, width - padX * 2, rowH, 12);
-      ctx.fillStyle = isMe ? palette.cardMe : inPlayoffZone ? palette.cardZone : palette.card;
+      ctx.fillStyle = !row.isActive
+        ? palette.cardAbsent
+        : isMe
+          ? palette.cardMe
+          : inPlayoffZone
+            ? palette.cardZone
+            : palette.card;
       ctx.fill();
-      ctx.strokeStyle = isMe ? palette.borderMe : palette.border;
-      ctx.lineWidth = isMe ? 1.5 : 1;
+      ctx.strokeStyle = !row.isActive
+        ? palette.borderAbsent
+        : isMe
+          ? palette.borderMe
+          : palette.border;
+      ctx.lineWidth = isMe && row.isActive ? 1.5 : 1;
       ctx.stroke();
 
       const midY = y + rowH / 2;
@@ -284,7 +308,7 @@ export async function renderLeaderboardToPng(params: {
       if (nameVisible) {
         const nameX = avX + avSize + 10;
         const maxNameW = Math.max(80, statRight - nameX - 10);
-        const displayName = row.name + (isMe ? ' (Вы)' : '') + (!row.isActive ? ' • пауза' : '');
+        const displayName = row.name + (isMe ? ' (Вы)' : '') + (!row.isActive ? ' • отсутствует' : '');
         ctx.font = isMe
           ? '700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           : '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';

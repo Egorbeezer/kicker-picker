@@ -48,9 +48,10 @@ export default async function (input, ctx) {
     .where(eq(tournamentPlayers.tournamentId, tournamentId))
     .all();
 
+  const activePlayers = players.filter((p) => p.isActive);
   const minPlayers = tournament.teamFormat === 'single' ? 2 : 4;
-  if (players.length < minPlayers) {
-    throw new EndpointError(`Для плей-офф нужно минимум ${minPlayers} участника`, {
+  if (activePlayers.length < minPlayers) {
+    throw new EndpointError(`Для плей-офф нужно минимум ${minPlayers} присутствующих участника`, {
       code: 'CANNOT_START_PLAYOFF',
     });
   }

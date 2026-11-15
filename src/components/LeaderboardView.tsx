@@ -4,6 +4,7 @@ import { TieBreakersTooltip } from './InfoTooltip';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
 import { haptic, notify } from '../utils/telegram';
 import { renderLeaderboardToPng } from '../utils/exportTableImage';
+import { getPlayoffQualifiedIds } from '../utils/playoffZone';
 import { renderPlayoffToPng } from '../utils/exportPlayoffImage';
 import { shareImageFile } from '../utils/share';
 import { Modal } from './Modal';
@@ -232,6 +233,8 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     }
   };
 
+  const qualifiedIds = getPlayoffQualifiedIds(leaderboard, tournament.playoffSize);
+
   return (
     <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
       <div className="p-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg)] z-10">
@@ -346,17 +349,19 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
         <div className="p-2 space-y-1">
           {leaderboard.map((row) => {
             const isMe = row.playerId === myPlayerId;
-            const inPlayoffZone = row.rank <= tournament.playoffSize;
+            const inPlayoffZone = qualifiedIds.has(row.playerId);
 
             return (
               <div
                 key={row.playerId}
                 className={`flex items-center px-2 py-3 rounded-xl border ${
-                  isMe
-                    ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/30'
-                    : inPlayoffZone
-                      ? 'bg-[#2c2c2e]/50 border-transparent'
-                      : 'border-transparent opacity-80'
+                  !row.isActive
+                    ? 'bg-gray-500/20 border-gray-500/30 opacity-75'
+                    : isMe
+                      ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/30'
+                      : inPlayoffZone
+                        ? 'bg-[#2c2c2e]/50 border-transparent'
+                        : 'border-transparent opacity-80'
                 }`}
               >
                 <div
@@ -399,7 +404,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
                         )}
                       </div>
                       {!row.isActive && (
-                        <span className="text-[10px] text-gray-500">На паузе</span>
+                        <span className="text-[10px] font-medium text-gray-400">Отсутствует</span>
                       )}
                     </div>
                   )}

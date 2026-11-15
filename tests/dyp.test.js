@@ -419,4 +419,72 @@ describe('DYP formats, buckets, activeTables & extended stats', () => {
     expect(timings.remainingMinutes).toBe(5);
     expect(timings.estimatedEndAt).toBe(t0 + 900_000);
   });
+
+  it('skips absent (isActive: false) players in playoff seeding and promotes #9/#10 into top-8', () => {
+    const leaderboard = Array.from({ length: 12 }, (_, idx) => ({
+      playerId: idx + 1,
+      rank: idx + 1,
+      isActive: idx + 1 !== 5 && idx + 1 !== 7,
+    }));
+
+    const matches = generatePlayoffFirstRound({
+      leaderboard,
+      playoffSize: 8,
+      tablesCount: 2,
+      teamFormat: 'pairs',
+    });
+
+    const seededIds = matches.flatMap((m) => [...m.team1, ...m.team2]);
+    expect(seededIds).toHaveLength(8);
+    expect(seededIds).not.toContain(5);
+    expect(seededIds).not.toContain(7);
+    expect(new Set(seededIds)).toEqual(new Set([1, 2, 3, 4, 6, 8, 9, 10]));
+
+    // With rank 5 absent and everyone else present -> takes 1..4 and 6..9 (8 players)
+    const oneAbsentBoard = Array.from({ length: 10 }, (_, idx) => ({
+      playerId: idx + 1,
+      rank: idx + 1,
+      isActive: idx + 1 !== 5,
+    }));
+    const oneAbsentMatches = generatePlayoffFirstRound({
+      leaderboard: oneAbsentBoard,
+      playoffSize: 8,
+      tablesCount: 2,
+      teamFormat: 'pairs',
+    });
+    const oneAbsentIds = oneAbsentMatches.flatMap((m) => [...m.team1, ...m.team2]);
+    expect(oneAbsentIds).not.toContain(5);
+    expect(oneAbsentIds).toContain(9);
+    expect(new Set(oneAbsentIds)).toEqual(new Set([1, 2, 3, 4, 6, 7, 8, 9]));
+
+    // Single format also skips absent ranked players
+    const singleMatches = generatePlayoffFirstRound({
+      leaderboard: [
+        { playerId: 1, rank: 1, isActive: true },
+        { playerId: 2, rank: 2, isActive: false },
+        { playerId: 3, rank: 3, isActive: true },
+        { playerId: 4, rank: 4, isActive: true },
+        { playerId: 5, rank: 5, isActive: true },
+      ],
+      playoffSize: 4,
+      tablesCount: 2,
+      teamFormat: 'single',
+    });
+    const singleIds = singleMatches.flatMap((m) => [...m.team1, ...m.team2]).filter(Boolean);
+    expect(new Set(singleIds)).toEqual(new Set([1, 3, 4, 5]));
+
+    expect(() =>
+      generatePlayoffFirstRound({
+        leaderboard: [
+          { playerId: 1, rank: 1, isActive: true },
+          { playerId: 2, rank: 2, isActive: false },
+          { playerId: 3, rank: 3, isActive: true },
+          { playerId: 4, rank: 4, isActive: true },
+        ],
+        playoffSize: 4,
+        tablesCount: 1,
+        teamFormat: 'pairs',
+      })
+    ).toThrow(/минимум 4 присутствующих/);
+  });
 });

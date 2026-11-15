@@ -512,4 +512,90 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       rCreate.unmount();
     });
   });
+
+  it('labels inactive players as "Отсутствует", highlights absent leaderboard rows gray, and shifts playoff zone past absent rows', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const { LeaderboardView } = await import('../src/components/LeaderboardView');
+    const { AdminPlayersView } = await import('../src/components/AdminPlayersView');
+    const { getPlayoffQualifiedIds } = await import('../src/utils/playoffZone');
+
+    const snapshot = makePlayoffSnapshot({ isAdmin: true });
+    snapshot.tournament.status = 'QUALIFICATION';
+    snapshot.tournament.playoffSize = 4;
+    snapshot.players = [
+      { id: 1, tournamentId: 77, tgId: 10, name: 'Первый', initials: 'П1', isActive: true, isGuest: false, byesCount: 0 },
+      { id: 2, tournamentId: 77, tgId: 11, name: 'Отсутствующий Второй', initials: 'О2', isActive: false, isGuest: false, byesCount: 0 },
+      { id: 3, tournamentId: 77, tgId: 12, name: 'Третий', initials: 'Т3', isActive: true, isGuest: false, byesCount: 0 },
+      { id: 4, tournamentId: 77, tgId: 13, name: 'Четвертый', initials: 'Ч4', isActive: true, isGuest: false, byesCount: 0 },
+      { id: 5, tournamentId: 77, tgId: 14, name: 'Пятый Запасной', initials: 'П5', isActive: true, isGuest: false, byesCount: 0 },
+    ];
+    snapshot.leaderboard = snapshot.players.map((p, idx) => ({
+      rank: idx + 1,
+      playerId: p.id,
+      name: p.name,
+      initials: p.initials,
+      isActive: p.isActive,
+      byesCount: 0,
+      games: 3,
+      wins: 3 - idx,
+      points: (3 - idx) * 2,
+      goalsFor: 15,
+      goalsAgainst: 6,
+      diff: 9 - idx,
+      ppm: 2,
+    }));
+
+    // Qualified top-4 skips absent #2 and includes #5
+    const qualified = getPlayoffQualifiedIds(snapshot.leaderboard, 4);
+    expect([...qualified]).toEqual([1, 3, 4, 5]);
+
+    const cLb = document.createElement('div');
+    document.body.appendChild(cLb);
+    const rLb = createRoot(cLb);
+    await act(async () => {
+      rLb.render(
+        <LeaderboardView
+          snapshot={snapshot}
+          initialSubTab="group"
+          onUpdateTableConfig={async () => {}}
+          onToast={() => {}}
+          busy={false}
+        />
+      );
+    });
+    expect(cLb.textContent).toContain('Отсутствует');
+    expect(cLb.textContent).not.toContain('На паузе');
+    const absentRow = Array.from(cLb.querySelectorAll('div.rounded-xl')).find((el) =>
+      el.textContent?.includes('Отсутствующий Второй')
+    );
+    expect(absentRow?.className).toContain('bg-gray-500/20');
+
+    const cPlayers = document.createElement('div');
+    document.body.appendChild(cPlayers);
+    const rPlayers = createRoot(cPlayers);
+    await act(async () => {
+      rPlayers.render(
+        <AdminPlayersView
+          snapshot={snapshot}
+          onBack={() => {}}
+          onAddGuest={async () => {}}
+          onManagePlayer={async () => {}}
+          onToggleActive={async () => {}}
+          onSwapSeed={async () => {}}
+          onSeedTop={async () => {}}
+          busy={false}
+        />
+      );
+    });
+    expect(cPlayers.textContent).toContain('Отсутствует');
+    expect(cPlayers.textContent).toContain('Вернуть');
+    expect(cPlayers.textContent).not.toContain('На паузе');
+    expect(cPlayers.innerHTML).not.toContain('Поставить на паузу');
+
+    await act(async () => {
+      rLb.unmount();
+      rPlayers.unmount();
+    });
+  });
 });

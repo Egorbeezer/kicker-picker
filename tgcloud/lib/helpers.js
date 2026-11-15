@@ -886,7 +886,7 @@ export async function createPlayoffFirstRound(
     (m) => m.status === 'FINISHED' && (!m.stage || m.stage === 'QUALIFICATION')
   ).length;
 
-  const leaderboard =
+  const rawLeaderboard =
     qualFinishedCount > 0
       ? computeLeaderboard({
           players,
@@ -898,7 +898,9 @@ export async function createPlayoffFirstRound(
           .map((p, idx) => ({
             playerId: p.id,
             rank: idx + 1,
+            isActive: true,
           }));
+  const leaderboard = rawLeaderboard.filter((row) => row.isActive !== false);
 
   let firstRound;
   try {

@@ -335,7 +335,11 @@ export const AdminDashboardView: React.FC<Props> = ({
                   <>
                     <button
                       type="button"
-                      disabled={busy || players.length < (tournament.teamFormat === 'single' ? 2 : 4)}
+                      disabled={
+                        busy ||
+                        players.filter((p) => p.isActive).length <
+                          (tournament.teamFormat === 'single' ? 2 : 4)
+                      }
                       onClick={() => {
                         setPromptPlayoffSize(tournament.playoffSize || 8);
                         setPromptThirdPlace(Boolean(tournament.thirdPlaceMatch));

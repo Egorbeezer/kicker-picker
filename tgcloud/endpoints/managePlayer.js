@@ -106,7 +106,7 @@ export default async function (input, ctx) {
     );
     if (hasPlayed) {
       throw new EndpointError(
-        'Игрок уже участвовал в матчах — поставьте на паузу или используйте «Заменить»',
+        'Игрок уже участвовал в матчах — отметьте как отсутствующего или используйте «Заменить»',
         { code: 'PLAYER_HAS_MATCHES' }
       );
     }

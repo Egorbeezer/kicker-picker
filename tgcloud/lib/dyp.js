@@ -1058,19 +1058,23 @@ export function generatePlayoffFirstRound({
   activeTables = null,
   teamFormat = 'pairs',
 }) {
+  // Absent participants (isActive === false) stay in standings for stats,
+  // but are skipped during playoff seeding so lower-ranked active players move up.
+  const eligible = (leaderboard || []).filter((row) => row && row.isActive !== false);
+
   if (teamFormat === 'single') {
     const validSingleSizes = [2, 4, 8, 16, 32];
     const requested = validSingleSizes.includes(playoffSize) ? playoffSize : 4;
     let effectiveSize = 0;
     for (const candidate of validSingleSizes) {
-      if (candidate <= requested && candidate <= leaderboard.length) {
+      if (candidate <= requested && candidate <= eligible.length) {
         effectiveSize = candidate;
       }
     }
     if (effectiveSize < 2) {
-      throw new Error('Для плей-офф 1×1 нужно минимум 2 участника');
+      throw new Error('Для плей-офф 1×1 нужно минимум 2 присутствующих участника');
     }
-    const top = leaderboard.slice(0, effectiveSize);
+    const top = eligible.slice(0, effectiveSize);
     const teams = top.map((p, idx) => ({
       seed: idx + 1,
       players: [p.playerId, null],
@@ -1127,12 +1131,12 @@ export function generatePlayoffFirstRound({
   }
 
   const validSize = [4, 8, 16, 32].includes(playoffSize) ? playoffSize : 8;
-  const effectiveSize = Math.min(validSize, Math.floor(leaderboard.length / 4) * 4);
+  const effectiveSize = Math.min(validSize, Math.floor(eligible.length / 4) * 4);
   if (effectiveSize < 4) {
-    throw new Error('Для плей-офф нужно минимум 4 участника');
+    throw new Error('Для плей-офф нужно минимум 4 присутствующих участника');
   }
 
-  const top = leaderboard.slice(0, effectiveSize);
+  const top = eligible.slice(0, effectiveSize);
   const teamCount = effectiveSize / 2;
   const teams = [];
   for (let i = 0; i < teamCount; i++) {

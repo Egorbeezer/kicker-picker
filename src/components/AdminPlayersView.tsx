@@ -363,7 +363,7 @@ export const AdminPlayersView: React.FC<Props> = ({
                     )}
                   </div>
                   <div className="text-[11px] text-[var(--muted)]">
-                    Отдыхов: {p.byesCount} {!p.isActive && '• На паузе'}
+                    Отдыхов: {p.byesCount} {!p.isActive && '• Отсутствует'}
                   </div>
                 </div>
               </div>
@@ -447,9 +447,20 @@ export const AdminPlayersView: React.FC<Props> = ({
                       ? 'bg-[var(--bg)] border-[var(--border)] text-[var(--muted)]'
                       : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-500'
                   }`}
-                  title={p.isActive ? 'Поставить на паузу' : 'Вернуть в игру'}
+                  title={p.isActive ? 'Отметить как отсутствующего' : 'Вернуть в турнир'}
+                  aria-label={p.isActive ? 'Отметить как отсутствующего' : 'Вернуть в турнир'}
                 >
-                  {p.isActive ? <Pause size={11} /> : <Play size={11} />}
+                  {p.isActive ? (
+                    <>
+                      <Pause size={11} />
+                      <span>Отсутствует</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={11} />
+                      <span>Вернуть</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
