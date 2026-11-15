@@ -647,4 +647,75 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       rPlayers.unmount();
     });
   });
+
+  it('ProfileView tournament statistics view uses non-sticky shrink-0 header and independent min-h-0 scroll container', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const { ProfileView } = await import('../src/components/ProfileView');
+
+    const snapshot = makePlayoffSnapshot({ isAdmin: false });
+    snapshot.myPlayerId = 1;
+    snapshot.players = [
+      { id: 1, tournamentId: 77, tgId: 10, name: 'Иван', initials: 'ИВ', isActive: true, isGuest: false, byesCount: 0 },
+    ];
+    snapshot.leaderboard = [
+      {
+        rank: 1,
+        playerId: 1,
+        name: 'Иван',
+        initials: 'ИВ',
+        isActive: true,
+        byesCount: 0,
+        games: 2,
+        wins: 2,
+        points: 4,
+        goalsFor: 10,
+        goalsAgainst: 4,
+        diff: 6,
+        ppm: 2,
+      },
+    ];
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <ProfileView
+          snapshot={snapshot}
+          tournamentHistory={[
+            {
+              ...snapshot.tournament,
+              participantsCount: 8,
+              myStats: { rank: 1, wins: 2, games: 2, points: 4, diff: 6, ppm: 2 },
+            },
+          ]}
+          theme="dark"
+          onChangeTheme={() => {}}
+          onSelectTournament={() => {}}
+          onLeave={async () => {}}
+          busy={false}
+        />
+      );
+    });
+
+    const historyBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Вечерний кикер')
+    );
+    expect(historyBtn).toBeDefined();
+    await act(async () => {
+      historyBtn!.click();
+    });
+
+    const scrollBox = container.querySelector('[data-testid="profile-tournament-stats-scroll"]') as HTMLElement | null;
+    expect(scrollBox).not.toBeNull();
+    expect(scrollBox!.className).toContain('overflow-y-auto');
+    expect(scrollBox!.className).toContain('min-h-0');
+    expect(scrollBox!.className).not.toContain('flex-col');
+    expect(scrollBox!.parentElement?.className).toContain('min-h-0');
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
 });

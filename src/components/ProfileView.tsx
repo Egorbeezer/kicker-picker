@@ -104,8 +104,8 @@ export const ProfileView: React.FC<Props> = ({
     const isCurrentActive = t.id === snapshot.tournament.id;
 
     return (
-      <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
-        <div className="p-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-2)]/95 backdrop-blur-md z-10 flex items-center justify-between gap-2">
+      <div className="flex flex-col h-full min-h-0">
+        <div className="shrink-0 p-4 border-b border-[var(--border)] bg-[var(--bg-2)]/95 backdrop-blur-md z-10 flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => setInspectedSnapshot(null)}
@@ -132,7 +132,12 @@ export const ProfileView: React.FC<Props> = ({
           )}
         </div>
 
-        <div className="p-4 space-y-4">
+        <div
+          data-testid="profile-tournament-stats-scroll"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain content-dock-pad"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <div className="p-4 space-y-4">
           {/* Tournament header card */}
           <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
@@ -375,13 +380,18 @@ export const ProfileView: React.FC<Props> = ({
               />
             </div>
           )}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto content-dock-pad p-4">
+    <div
+      className="h-full min-h-0 overflow-y-auto overscroll-y-contain content-dock-pad p-4"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
+      <div className="flex flex-col min-h-full">
       <div className="flex flex-col items-center text-center py-6 bg-[#2c2c2e] rounded-2xl border border-[#3a3a3c] mb-4">
         {myStats?.avatarUrl ? (
           <PlayerAvatar
@@ -613,6 +623,7 @@ export const ProfileView: React.FC<Props> = ({
           </p>
         </Modal>
       )}
+      </div>
     </div>
   );
 };
