@@ -512,6 +512,9 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
     expect(cCreate.querySelectorAll('input[type="checkbox"]').length).toBe(0);
     expect(cCreate.querySelectorAll('[role="radio"]').length).toBeGreaterThanOrEqual(8);
+    const qualScoreGroup = cCreate.querySelector('[role="radiogroup"][aria-label="Голов до победы"]');
+    const checkedScoreRadio = qualScoreGroup?.querySelector('[role="radio"][aria-checked="true"]');
+    expect(checkedScoreRadio?.textContent?.trim()).toBe('7');
     const createSwitches = Array.from(cCreate.querySelectorAll('[role="switch"]')) as HTMLButtonElement[];
     expect(createSwitches.length).toBeGreaterThanOrEqual(4);
     const autoRoundsSwitch = createSwitches.find((sw) => sw.getAttribute('aria-label') === 'Автоматические раунды');
