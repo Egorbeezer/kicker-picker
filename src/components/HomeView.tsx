@@ -3,51 +3,36 @@ import {
   Plus,
   Trophy,
   Users,
-  Calendar,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
-  Radio,
   Crown,
   Swords,
   HeartHandshake,
   TrendingUp,
 } from 'lucide-react';
 import type { PlayerGlobalProfile, TournamentHistoryItem } from '../types';
-import { formatDateRu } from '../utils/date';
 import { haptic } from '../utils/telegram';
+import { PlayerAvatar } from './PlayerAvatar';
+import { TournamentHistoryCard } from './TournamentHistoryCard';
 
 interface Props {
   tournaments: TournamentHistoryItem[];
   currentTournamentId: number | null;
   playerProfile?: PlayerGlobalProfile | null;
   userName?: string;
+  userAvatarUrl?: string | null;
   onSelectTournament: (id: number) => void;
   onCreateTournament: () => void;
 }
 
-const STATUS_META: Record<string, { label: string; badgeCls: string }> = {
-  REGISTRATION: { label: 'Регистрация', badgeCls: 'bg-[#2ea6ff]/15 text-[#2ea6ff]' },
-  QUALIFICATION: { label: 'Квалификация', badgeCls: 'bg-amber-500/15 text-amber-500' },
-  PLAYOFF: { label: 'Плей-офф', badgeCls: 'bg-purple-500/15 text-purple-500' },
-  FINISHED: { label: 'Завершён', badgeCls: 'bg-emerald-500/15 text-emerald-500' },
-};
-
-const MODE_LABELS: Record<string, string> = {
-  monster: 'Monster DYP',
-  classic: 'Classic DYP',
-  random_dyp: 'Random DYP',
-  swiss: 'Швейцарка',
-  round_robin: 'Круговой',
-  last_one_standing: 'Last One Standing',
-  whist: 'Whist',
-  elimination: 'Плей-офф',
-};
-
-function formatTournamentDate(item: TournamentHistoryItem): string {
-  const raw = item.finishedAt || item.startedAt || item.createdAt;
-  if (!raw) return '';
-  return formatDateRu(raw);
+function getInitials(name?: string): string {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return 'И';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
 const AvgPointsSparkline: React.FC<{
@@ -133,6 +118,7 @@ export const HomeView: React.FC<Props> = ({
   currentTournamentId,
   playerProfile,
   userName,
+  userAvatarUrl,
   onSelectTournament,
   onCreateTournament,
 }) => {
@@ -142,85 +128,14 @@ export const HomeView: React.FC<Props> = ({
   const activeTournaments = tournaments.filter((t) => t.status !== 'FINISHED');
   const finishedTournaments = tournaments.filter((t) => t.status === 'FINISHED');
 
-  const renderCard = (t: TournamentHistoryItem) => {
-    const meta = STATUS_META[t.status] || STATUS_META.REGISTRATION;
-    const isCurrent = t.id === currentTournamentId;
-    const dateLabel = formatTournamentDate(t);
-    const modeTitle = MODE_LABELS[t.dypMode || 'monster'] || 'DYP';
-
-    return (
-      <button
-        key={t.id}
-        type="button"
-        onClick={() => {
-          haptic('light');
-          onSelectTournament(t.id);
-        }}
-        className={`w-full text-left bg-[var(--card)] border rounded-3xl p-4 transition-all active:scale-[0.985] space-y-2.5 ${
-          isCurrent
-            ? 'border-[#2ea6ff]/60 shadow-[0_0_0_1px_rgba(46,166,255,0.2)]'
-            : 'border-[var(--border)] hover:border-[var(--border-strong)]'
-        }`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="font-bold text-sm text-[var(--text)] truncate">{t.name}</div>
-            <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[11px] text-[var(--muted)] mt-1">
-              {dateLabel && (
-                <span className="inline-flex items-center gap-1">
-                  <Calendar size={11} />
-                  {dateLabel}
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1">
-                <Users size={11} />
-                {t.participantsCount}
-              </span>
-              <span>
-                {modeTitle}
-                {t.teamFormat === 'single' ? ' 1×1' : ''}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {t.publicPath && t.status !== 'FINISHED' && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">
-                <Radio size={10} />
-                LIVE
-              </span>
-            )}
-            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${meta.badgeCls}`}>
-              {meta.label}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)] text-xs">
-          {t.myStats ? (
-            <div className="flex items-center gap-3 text-[var(--muted)]">
-              <span className="inline-flex items-center gap-1 font-bold text-[var(--text)]">
-                <Trophy size={12} className="text-amber-500" />
-                #{t.myStats.rank}
-              </span>
-              <span>
-                Поб: <strong className="text-[var(--text)]">{t.myStats.wins}</strong>/{t.myStats.games}
-              </span>
-              <span>
-                Ср.очк: <strong className="text-[#2ea6ff]">{t.myStats.ppm}</strong>
-              </span>
-            </div>
-          ) : (
-            <span className="text-[11px] text-[var(--muted)]">Вы организатор</span>
-          )}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2ea6ff]">
-            Открыть
-            <ChevronRight size={14} />
-          </span>
-        </div>
-      </button>
-    );
-  };
+  const renderCard = (t: TournamentHistoryItem) => (
+    <TournamentHistoryCard
+      key={t.id}
+      item={t}
+      isCurrent={t.id === currentTournamentId}
+      onClick={() => onSelectTournament(t.id)}
+    />
+  );
 
   return (
     <div className="space-y-4 pb-8">
@@ -254,15 +169,24 @@ export const HomeView: React.FC<Props> = ({
               setProfileExpanded((v) => !v);
             }
           }}
-          className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 space-y-3 cursor-pointer select-none transition-colors hover:border-[var(--border-strong)]"
+          className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 cursor-pointer select-none transition-colors hover:border-[var(--border-strong)]"
         >
           <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-[#2ea6ff]">
-                Мой профиль
-              </div>
-              <div className="text-base font-extrabold text-[var(--text)]">
-                {userName || 'Игрок кикера'}
+            <div className="flex items-center gap-3 min-w-0">
+              <PlayerAvatar
+                avatarUrl={userAvatarUrl}
+                initials={getInitials(userName)}
+                name={userName || 'Игрок кикера'}
+                size="md"
+                className="border-[#2ea6ff] bg-[#2ea6ff]/15 text-[#2ea6ff]"
+              />
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[#2ea6ff]">
+                  Мой профиль
+                </div>
+                <div className="text-base font-extrabold text-[var(--text)] truncate">
+                  {userName || 'Игрок кикера'}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -272,15 +196,16 @@ export const HomeView: React.FC<Props> = ({
                   {playerProfile.championCount} {playerProfile.championCount === 1 ? 'титул' : 'титула'}
                 </span>
               )}
-              {profileExpanded ? (
-                <ChevronUp size={16} className="text-[var(--muted)]" />
-              ) : (
-                <ChevronDown size={16} className="text-[var(--muted)]" />
-              )}
+              <ChevronDown
+                size={16}
+                className={`text-[var(--muted)] transition-transform duration-300 ease-out ${
+                  profileExpanded ? 'rotate-180' : ''
+                }`}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="grid grid-cols-4 gap-2 text-center mt-3">
             <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
               <div className="text-sm font-extrabold text-[var(--text)] leading-tight">
                 {playerProfile.tournamentsPlayed}
@@ -307,8 +232,17 @@ export const HomeView: React.FC<Props> = ({
             </div>
           </div>
 
-          {profileExpanded && (
-            <div className="space-y-3 pt-1" data-testid="home-profile-details">
+          <div
+            data-testid="home-profile-details"
+            aria-hidden={!profileExpanded}
+            className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+              profileExpanded
+                ? 'grid-rows-[1fr] opacity-100'
+                : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+            }`}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <div className="space-y-3 pt-3">
               {/* Напарники и неудобный соперник */}
               {(playerProfile.mostFrequentPartner || playerProfile.bestPartner || playerProfile.toughestOpponent) && (
                 <div className="grid grid-cols-1 gap-2">
@@ -385,8 +319,9 @@ export const HomeView: React.FC<Props> = ({
                   </div>
                 </div>
               )}
+              </div>
             </div>
-          )}
+          </div>
         </section>
       )}
 

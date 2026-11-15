@@ -172,6 +172,10 @@ export default function App() {
         appState.user.username ||
         'Игрок'
       : 'Игрок';
+    const myLeaderboardAvatar = snapshot
+      ? snapshot.leaderboard.find((r) => r.playerId === snapshot.myPlayerId)?.avatarUrl
+      : null;
+    const userAvatarUrl = appState?.user.avatarUrl || myLeaderboardAvatar || null;
 
     return (
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
@@ -222,6 +226,7 @@ export default function App() {
             currentTournamentId={snapshot?.tournament.id ?? null}
             playerProfile={appState?.playerProfile ?? null}
             userName={fullUserName}
+            userAvatarUrl={userAvatarUrl}
             onSelectTournament={handleSelectTournament}
             onCreateTournament={() => setIsCreating(true)}
           />

@@ -305,16 +305,20 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
           tournaments={history}
           currentTournamentId={101}
           playerProfile={profile}
-          userName="Егор"
+          userName="Егор Балагуров"
+          userAvatarUrl="https://example.com/avatar.jpg"
           onSelectTournament={() => {}}
           onCreateTournament={() => {}}
         />
       );
     });
 
-    // Collapsed by default: shows 4 circular metrics only, details hidden
+    // Collapsed by default: shows avatar + 4 circular metrics, details accordion collapsed cleanly
     const profileCard = container.querySelector('[data-testid="home-profile-card"]') as HTMLElement | null;
     expect(profileCard).not.toBeNull();
+    expect(profileCard?.getAttribute('aria-expanded')).toBe('false');
+    const avatarImg = profileCard?.querySelector('img[alt="Егор Балагуров"]') as HTMLImageElement | null;
+    expect(avatarImg?.getAttribute('src')).toBe('https://example.com/avatar.jpg');
     expect(container.textContent).toContain('Мой профиль');
     expect(container.textContent).toContain('75%');
     expect(container.textContent).toContain('Турниров');
@@ -322,15 +326,19 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(container.textContent).toContain('Винрейт');
     expect(container.textContent).toContain('Гол/матч');
     expect(profileCard!.querySelectorAll('.rounded-full').length).toBeGreaterThanOrEqual(4);
-    expect(container.querySelector('[data-testid="home-profile-details"]')).toBeNull();
-    expect(container.textContent).not.toContain('Маша');
-    expect(container.textContent).not.toContain('Победитель турнира');
+    const detailsEl = container.querySelector('[data-testid="home-profile-details"]') as HTMLElement | null;
+    expect(detailsEl).not.toBeNull();
+    expect(detailsEl?.getAttribute('aria-hidden')).toBe('true');
+    expect(detailsEl?.className).toContain('grid-rows-[0fr]');
+    expect(detailsEl?.className).toContain('transition-[grid-template-rows,opacity]');
 
-    // First tap expands full stats
+    // First tap expands full stats smoothly
     await act(async () => {
       profileCard!.click();
     });
-    expect(container.querySelector('[data-testid="home-profile-details"]')).not.toBeNull();
+    expect(profileCard?.getAttribute('aria-expanded')).toBe('true');
+    expect(detailsEl?.getAttribute('aria-hidden')).toBe('false');
+    expect(detailsEl?.className).toContain('grid-rows-[1fr]');
     expect(container.textContent).toContain('Маша');
     expect(container.textContent).toContain('Петя');
     expect(container.textContent).toContain('Костя');
@@ -339,11 +347,13 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(container.textContent).toContain('Победитель турнира');
     expect(container.textContent).toContain('Камбэк дня');
 
-    // Second tap collapses back
+    // Second tap collapses back smoothly
     await act(async () => {
       profileCard!.click();
     });
-    expect(container.querySelector('[data-testid="home-profile-details"]')).toBeNull();
+    expect(profileCard?.getAttribute('aria-expanded')).toBe('false');
+    expect(detailsEl?.getAttribute('aria-hidden')).toBe('true');
+    expect(detailsEl?.className).toContain('grid-rows-[0fr]');
 
     await act(async () => {
       root.unmount();
@@ -718,6 +728,114 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       confirmLeaveBtn!.click();
     });
     expect(onLeave).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('ProfileView uses unified TournamentHistoryCard design and HomeView falls back to user initials without avatarUrl', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const history: TournamentHistoryItem[] = [
+      {
+        id: 201,
+        name: 'Friday Cup',
+        status: 'QUALIFICATION',
+        dypMode: 'monster',
+        teamFormat: 'dyp',
+        tables: 2,
+        goalsToWin: 7,
+        publicPath: 'live-201',
+        createdAt: 1700000000,
+        startedAt: 1700000000,
+        finishedAt: null,
+        participantsCount: 12,
+        isAdmin: true,
+        myStats: {
+          rank: 2,
+          wins: 5,
+          losses: 1,
+          games: 6,
+          points: 11,
+          ppm: 1.83,
+          buchholz: 20,
+          pointsDiff: 12,
+          isEliminated: false,
+        },
+      },
+      {
+        id: 202,
+        name: 'Singles Open',
+        status: 'FINISHED',
+        dypMode: 'swiss',
+        teamFormat: 'single',
+        tables: 2,
+        goalsToWin: 7,
+        publicPath: null,
+        createdAt: 1699000000,
+        startedAt: 1699000000,
+        finishedAt: 1699005000,
+        participantsCount: 8,
+        isAdmin: true,
+        myStats: null,
+      },
+    ];
+
+    await act(async () => {
+      root.render(
+        <ProfileView
+          snapshot={makeSnapshot()}
+          tournamentHistory={history}
+          theme="dark"
+          onChangeTheme={() => {}}
+          onSelectTournament={() => {}}
+          onLeave={async () => {}}
+          busy={false}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain('Friday Cup');
+    expect(container.textContent).toContain('LIVE');
+    expect(container.textContent).toContain('Monster DYP');
+    expect(container.textContent).toContain('#2');
+    expect(container.textContent).toContain('Ср.очк: 1.83');
+    expect(container.textContent).toContain('Швейцарка 1×1');
+    expect(container.textContent).toContain('Вы организатор');
+    expect(container.textContent).toContain('Открыть');
+
+    await act(async () => {
+      root.render(
+        <HomeView
+          tournaments={history}
+          currentTournamentId={201}
+          playerProfile={{
+            tournamentsPlayed: 2,
+            totalMatches: 6,
+            totalWins: 5,
+            winRate: 83,
+            championCount: 0,
+            avgGoalsPerMatch: 4.5,
+            mostFrequentPartner: null,
+            bestPartner: null,
+            toughestOpponent: null,
+            timeline: [],
+            badges: [],
+          }}
+          userName="Егор Балагуров"
+          onSelectTournament={() => {}}
+          onCreateTournament={() => {}}
+        />
+      );
+    });
+
+    const profileCard = container.querySelector('[data-testid="home-profile-card"]');
+    expect(profileCard?.textContent).toContain('ЕБ');
 
     await act(async () => {
       root.unmount();

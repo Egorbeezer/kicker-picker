@@ -46,7 +46,7 @@ export default async function (input, ctx) {
     };
   }
 
-  await upsertUser(tgUser);
+  const hydratedUser = (await upsertUser(tgUser)) || tgUser;
 
   let targetTournamentId = input?.tournamentId ? Number(input.tournamentId) : null;
   const isLightPoll = Boolean(input?.light) && Boolean(targetTournamentId);
@@ -95,7 +95,7 @@ export default async function (input, ctx) {
       : null;
 
     return {
-      user: tgUser,
+      user: hydratedUser,
       activeTournament,
       light: true,
     };
@@ -232,7 +232,7 @@ export default async function (input, ctx) {
   });
 
   return {
-    user: tgUser,
+    user: hydratedUser,
     tournaments: myTournaments.map(sanitizeTournament),
     tournamentHistory,
     activeTournament,

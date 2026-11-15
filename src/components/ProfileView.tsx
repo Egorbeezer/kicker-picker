@@ -6,10 +6,7 @@ import {
   Sun,
   Moon,
   History,
-  ChevronRight,
   ArrowLeft,
-  Medal,
-  Users,
   ExternalLink,
 } from 'lucide-react';
 import type { TournamentHistoryItem, TournamentSnapshot } from '../types';
@@ -21,6 +18,7 @@ import { PlayerAvatar } from './PlayerAvatar';
 import { Toggle } from './Toggle';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { formatBracketSlotLabel } from './MatchCard';
+import { TournamentHistoryCard } from './TournamentHistoryCard';
 
 interface Props {
   snapshot: TournamentSnapshot;
@@ -467,66 +465,16 @@ export const ProfileView: React.FC<Props> = ({
         </div>
       )}
 
-      <div className="space-y-2 mb-5">
-        {tournamentHistory.map((item) => {
-          const badge = getStatusBadge(item.status);
-          const dateLabel = formatDateRu(item.finishedAt || item.startedAt || item.createdAt);
-          const isCurrent = item.id === snapshot.tournament.id;
-          const isLoadingItem = inspectLoadingId === item.id;
-
-          return (
-            <button
-              key={item.id}
-              type="button"
-              disabled={isLoadingItem}
-              onClick={() => handleOpenTournamentDetails(item)}
-              className={`w-full text-left bg-[#2c2c2e] border rounded-2xl p-3.5 flex items-center justify-between gap-3 active:scale-[0.99] transition-transform ${
-                isCurrent ? 'border-[#2ea6ff]/40' : 'border-[#3a3a3c]'
-              }`}
-            >
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-bold text-sm text-white truncate max-w-[190px]">
-                    {item.name}
-                  </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badge.cls}`}>
-                    {badge.label}
-                  </span>
-                </div>
-
-                <div className="text-[11px] text-gray-400 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  {dateLabel && <span>{dateLabel}</span>}
-                  <span>• {item.dypMode === 'classic' ? 'Classic' : 'Monster'}</span>
-                  <span className="inline-flex items-center gap-0.5">
-                    • <Users size={10} /> {item.participantsCount}
-                  </span>
-                </div>
-
-                {item.myStats ? (
-                  <div className="text-xs font-semibold text-[#2ea6ff] flex items-center gap-2 pt-0.5">
-                    <span className="inline-flex items-center gap-1 text-yellow-500">
-                      <Medal size={12} /> #{item.myStats.rank}
-                    </span>
-                    <span>
-                      Побед: {item.myStats.wins}/{item.myStats.games}
-                    </span>
-                    <span className="text-gray-300">{item.myStats.points} очк.</span>
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-gray-500 pt-0.5">Только организатор</div>
-                )}
-              </div>
-
-              <div className="text-gray-400 shrink-0">
-                {isLoadingItem ? (
-                  <span className="loading loading-spinner loading-xs text-[#2ea6ff]" />
-                ) : (
-                  <ChevronRight size={18} />
-                )}
-              </div>
-            </button>
-          );
-        })}
+      <div className="space-y-2.5 mb-5">
+        {tournamentHistory.map((item) => (
+          <TournamentHistoryCard
+            key={item.id}
+            item={item}
+            isCurrent={item.id === snapshot.tournament.id}
+            loading={inspectLoadingId === item.id}
+            onClick={() => handleOpenTournamentDetails(item)}
+          />
+        ))}
 
         {tournamentHistory.length === 0 && (
           <div className="text-center text-gray-500 text-sm py-6 bg-[#2c2c2e]/40 rounded-xl border border-[#3a3a3c]/50">

@@ -266,6 +266,7 @@ export interface AppStateResponse {
     first_name: string;
     last_name?: string;
     username?: string;
+    avatarUrl?: string | null;
   };
   tournaments?: Tournament[];
   tournamentHistory?: TournamentHistoryItem[];

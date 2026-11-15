@@ -137,7 +137,10 @@ export async function upsertUser(tgUser, { refreshAvatar = false } = {}) {
         photoUrl,
       },
     });
-  return tgUser;
+  return {
+    ...tgUser,
+    avatarUrl: photoUrl || null,
+  };
 }
 
 /**
