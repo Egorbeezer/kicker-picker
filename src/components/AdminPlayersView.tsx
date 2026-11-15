@@ -199,7 +199,7 @@ export const AdminPlayersView: React.FC<Props> = ({
   });
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="h-full overflow-y-auto content-dock-pad p-4 space-y-4">
       {/* Header action strip */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 space-y-3">
         <div className="flex justify-between items-center">

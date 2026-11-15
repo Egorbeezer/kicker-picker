@@ -122,8 +122,8 @@ export const AdminSettingsView: React.FC<Props> = ({
     });
 
   return (
-    <div className="pb-24 space-y-4">
-      <div className="flex items-center justify-between pt-2 pb-1">
+    <div className="h-full overflow-y-auto content-dock-pad px-3.5 pt-2 space-y-4">
+      <div className="flex items-center justify-between py-1">
         <button
           type="button"
           onClick={onBack}

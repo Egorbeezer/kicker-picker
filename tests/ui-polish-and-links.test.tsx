@@ -129,6 +129,10 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
     expect(c1.textContent).toContain('Пригласить');
     expect(c1.textContent).not.toContain('Поделиться в Telegram');
+    const playersScrollRoot = c1.firstElementChild as HTMLElement;
+    expect(playersScrollRoot.className).toContain('h-full');
+    expect(playersScrollRoot.className).toContain('overflow-y-auto');
+    expect(playersScrollRoot.className).toContain('content-dock-pad');
 
     const c2 = document.createElement('div');
     document.body.appendChild(c2);
@@ -452,6 +456,10 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(cAdmin.textContent).toContain('Удалить турнир');
     expect(cAdmin.textContent).not.toContain('Удалить дип');
     expect(cAdmin.innerHTML).not.toContain('#2c2c2e');
+    const settingsScrollRoot = cAdmin.firstElementChild as HTMLElement;
+    expect(settingsScrollRoot.className).toContain('h-full');
+    expect(settingsScrollRoot.className).toContain('overflow-y-auto');
+    expect(settingsScrollRoot.className).toContain('content-dock-pad');
 
     // 2. CreateTournamentView replaces checkboxes with radio buttons and blocks double submit
     let resolveSubmit: () => void = () => {};
