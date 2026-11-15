@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BellRing, ChevronDown, ChevronUp, Heart, Minus, Plus, RotateCw } from 'lucide-react';
+import { BellRing, ChevronDown, ChevronUp, Heart, RotateCw } from 'lucide-react';
 import type { DypMode, PlayoffFormat, TeamFormat } from '../types';
 import { haptic } from '../utils/telegram';
 import { BucketsTooltip, ModeInfoTooltip, TOURNAMENT_MODE_CATALOG } from './InfoTooltip';
@@ -364,35 +364,10 @@ export const TournamentSettingsFields: React.FC<Props> = ({
 
         {/* Количество столов */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <label className="text-xs font-medium text-[var(--muted)]">
-              Количество столов:{' '}
-              <span className="text-[var(--text)] font-bold">{value.tablesCount}</span>
-            </label>
-            <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl p-0.5">
-              <button
-                type="button"
-                aria-label="Уменьшить столы"
-                disabled={disabled || value.tablesCount <= 1}
-                onClick={() => handleTablesCountChange(value.tablesCount - 1)}
-                className="w-7 h-7 flex items-center justify-center text-[var(--muted)] disabled:opacity-40"
-              >
-                <Minus size={14} />
-              </button>
-              <span className="text-xs font-bold w-5 text-center text-[var(--text)]">
-                {value.tablesCount}
-              </span>
-              <button
-                type="button"
-                aria-label="Увеличить столы"
-                disabled={disabled || value.tablesCount >= 20}
-                onClick={() => handleTablesCountChange(value.tablesCount + 1)}
-                className="w-7 h-7 flex items-center justify-center text-[var(--muted)] disabled:opacity-40"
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-          </div>
+          <label className="block text-xs font-medium text-[var(--muted)]">
+            Количество столов:{' '}
+            <span className="text-[var(--text)] font-bold">{value.tablesCount}</span>
+          </label>
           <div role="radiogroup" aria-label="Количество столов" className="grid grid-cols-6 gap-1.5">
             {[1, 2, 3, 4, 6, 8].map((n) => {
               const selected = value.tablesCount === n;

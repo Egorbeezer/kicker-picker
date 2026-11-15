@@ -513,6 +513,10 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     const qualScoreGroup = cCreate.querySelector('[role="radiogroup"][aria-label="Голов до победы"]');
     const checkedScoreRadio = qualScoreGroup?.querySelector('[role="radio"][aria-checked="true"]');
     expect(checkedScoreRadio?.textContent?.trim()).toBe('7');
+    expect(cCreate.querySelector('[aria-label="Увеличить столы"]')).toBeNull();
+    expect(cCreate.querySelector('[aria-label="Уменьшить столы"]')).toBeNull();
+    const tablesGroup = cCreate.querySelector('[role="radiogroup"][aria-label="Количество столов"]');
+    expect(tablesGroup?.querySelectorAll('[role="radio"]').length).toBe(6);
     const createSwitches = Array.from(cCreate.querySelectorAll('[role="switch"]')) as HTMLButtonElement[];
     expect(createSwitches.length).toBeGreaterThanOrEqual(4);
     const autoRoundsSwitch = createSwitches.find((sw) => sw.getAttribute('aria-label') === 'Автоматические раунды');
