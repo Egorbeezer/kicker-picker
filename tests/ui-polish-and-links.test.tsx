@@ -265,6 +265,10 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(getTournamentInviteLink(77)).toBe('https://t.me/kickerpickerbot?startapp=77');
 
     const sendMessage = vi.fn().mockResolvedValue({ message_id: 1 });
+    const pinChatMessage = vi.fn().mockResolvedValue(true);
+    const unpinAllChatMessages = vi.fn().mockResolvedValue(true);
+    const setMyCommands = vi.fn().mockResolvedValue(true);
+    const setChatMenuButton = vi.fn().mockResolvedValue(true);
     vi.doMock('sdk', () => ({
       db: {
         select: () => ({
@@ -275,7 +279,7 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
           }),
         }),
       },
-      api: { sendMessage },
+      api: { sendMessage, pinChatMessage, unpinAllChatMessages, setMyCommands, setChatMenuButton },
       EndpointError: Error,
     }));
     vi.doMock('sdk/db', () => ({
@@ -300,13 +304,22 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     }));
 
     const { default: messageHandler } = await import('../tgcloud/handlers/message.js');
-    await messageHandler({ chat: { id: 99 }, text: '/start 77', from: { id: 99, first_name: 'Test' } });
+    await messageHandler({
+      chat: { id: 99, type: 'private' },
+      text: '/start 77',
+      from: { id: 99, first_name: 'Test' },
+    });
     expect(sendMessage).toHaveBeenCalledTimes(1);
     const btn = sendMessage.mock.calls[0][0].reply_markup.inline_keyboard[0][0];
     expect(btn.url).toBe('https://t.me/kickerpickerbot?startapp=77');
     expect(btn.web_app).toBeUndefined();
+    expect(pinChatMessage).not.toHaveBeenCalled();
 
-    await messageHandler({ chat: { id: 99 }, text: '/start', from: { id: 99, first_name: 'Test' } });
+    await messageHandler({
+      chat: { id: 99, type: 'private' },
+      text: '/start',
+      from: { id: 99, first_name: 'Test' },
+    });
     const startText = sendMessage.mock.calls[1][0].text as string;
     expect(startText).toContain('Кикер Пикер');
     expect(startText).not.toContain('Kicker Picker');
@@ -318,6 +331,21 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(startBtn.text).toContain('Кикер Пикер');
     expect(startBtn.url).toBe('https://t.me/kickerpickerbot?startapp=open');
     expect(startBtn.web_app).toBeUndefined();
+    expect(unpinAllChatMessages).toHaveBeenCalledWith({ chat_id: 99 });
+    expect(pinChatMessage).toHaveBeenCalledWith({
+      chat_id: 99,
+      message_id: 1,
+      disable_notification: true,
+    });
+
+    const { syncBotMenuSettings } = await import('../tgcloud/lib/botMenu.js');
+    await syncBotMenuSettings();
+    expect(setMyCommands).toHaveBeenCalledWith({
+      commands: [{ command: 'start', description: 'Открыть Кикер Пикер' }],
+    });
+    expect(setChatMenuButton).toHaveBeenCalledWith({
+      menu_button: { type: 'commands' },
+    });
 
     // Ensure no bot handler or helper uses inline web_app URL buttons or leftover MINI_APP_URL
     const helpersSrc = fs.readFileSync(path.resolve(process.cwd(), 'tgcloud/lib/helpers.js'), 'utf8');

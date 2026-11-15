@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.backend.json --noEmit",
     "typecheck:backend": "tsc -p tsconfig.backend.json --noEmit",
     "deploy": "npm run build && tgcloud push",
+    "bot:menu": "tgcloud run lib/botMenu",
     "status": "tgcloud status",
     "run": "tgcloud run"
   },

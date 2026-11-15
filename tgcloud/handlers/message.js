@@ -56,7 +56,7 @@ export default async function (message) {
     }
   }
 
-  await api.sendMessage({
+  const sent = await api.sendMessage({
     chat_id: message.chat.id,
     text: greeting,
     parse_mode: 'HTML',
@@ -64,4 +64,24 @@ export default async function (message) {
       inline_keyboard: [[{ text: buttonText, url: appUrl }]],
     },
   });
+
+  // Закрепляем главное сообщение с кнопкой входа в Main Mini App только в личном чате на чистом /start
+  const isPureStart = !startTournamentId && /^\/start(?:@\S+)?\s*$/i.test(text);
+  const isPrivateChat = message.chat.type === 'private';
+  if (isPureStart && isPrivateChat && sent?.message_id) {
+    try {
+      if (typeof api.unpinAllChatMessages === 'function') {
+        await api.unpinAllChatMessages({ chat_id: message.chat.id });
+      }
+      if (typeof api.pinChatMessage === 'function') {
+        await api.pinChatMessage({
+          chat_id: message.chat.id,
+          message_id: sent.message_id,
+          disable_notification: true,
+        });
+      }
+    } catch (err) {
+      console.warn('Pin /start launcher failed:', err?.description || err?.message);
+    }
+  }
 }
