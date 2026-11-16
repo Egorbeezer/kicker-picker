@@ -162,6 +162,22 @@ function generateRandomDypRound({ active, usableTables, teamFormat, preserveOrde
   };
 }
 
+/**
+ * @param {{
+ *   players: any[];
+ *   previousMatches?: any[];
+ *   tablesCount?: number;
+ *   activeTables?: number[] | null;
+ *   dypMode?: string;
+ *   teamFormat?: string;
+ *   roundRobinLoops?: number;
+ *   roundNumber?: number;
+ *   losLives?: number;
+ *   useBuckets?: boolean;
+ *   preserveOrder?: boolean;
+ *   randomFn?: () => number;
+ * }} params
+ */
 export function generateDypRound({
   players,
   previousMatches = [],

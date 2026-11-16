@@ -558,7 +558,9 @@ export default function App() {
                   runAction(() => apiClient.publishLive(snapshot.tournament.id, enabled))
                 }
                 onOpenSettings={() => setAdminTab('settings')}
-                onRefresh={() => fetchState(snapshot.tournament.id)}
+                onRefresh={async () => {
+                  await fetchState(snapshot.tournament.id);
+                }}
               />
             )}
             {adminTab === 'players' && (

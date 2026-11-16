@@ -6,6 +6,7 @@ import { pickTableNumber } from './config.js';
  * Top-8  -> 4 teams  -> Semifinals: (1+8 vs 4+5) and (2+7 vs 3+6)
  * Top-16 -> 8 teams  -> Quarterfinals: QF1..QF4
  * Top-32 -> 16 teams -> 1/8 Finals: EF1..EF8
+ * @param {{ leaderboard: any[]; playoffSize?: number; tablesCount?: number; activeTables?: number[] | null; teamFormat?: string }} params
  */
 export function generatePlayoffFirstRound({
   leaderboard,
@@ -150,6 +151,9 @@ export function generatePlayoffFirstRound({
   }));
 }
 
+/**
+ * @param {{ currentRoundMatches: any[]; thirdPlaceMatch?: boolean; tablesCount?: number; activeTables?: number[] | null }} params
+ */
 export function getNextPlayoffMatches({ currentRoundMatches, thirdPlaceMatch = true, tablesCount = 2, activeTables = null }) {
   if (!currentRoundMatches.length || currentRoundMatches.some((m) => m.status !== 'FINISHED')) {
     return { done: false, nextMatches: [] };

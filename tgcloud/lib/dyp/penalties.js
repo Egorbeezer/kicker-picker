@@ -48,6 +48,13 @@ export function calcTeamBucketPenalty(id1, id2, rolesMap) {
   return 0;
 }
 
+/**
+ * @param {any[]} order
+ * @param {Map<any, any>} partnerCount
+ * @param {Map<any, any>} opponentCount
+ * @param {Map<any, any> | null} [rolesMap]
+ * @param {boolean} [useBuckets]
+ */
 export function calcArrangementPenalty(
   order,
   partnerCount,

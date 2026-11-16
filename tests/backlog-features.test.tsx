@@ -877,4 +877,44 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(hydrated.currentRoundMatches[0].team1Players[0].avatarUrl).toBe('data:image/jpeg;base64,AV1');
     expect(hydrated.currentRoundMatches[0].team2Players[0].avatarUrl).toBeNull();
   });
+
+  it('callEndpoint times out hung WebView calls cleanly and clears inFlightMutations lock', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    vi.useFakeTimers();
+    try {
+      const { callEndpoint, callMutatingEndpoint } = await import('../src/api/client');
+      let callCount = 0;
+      window.Telegram = {
+        WebApp: {
+          initData: 'user=%7B%22id%22%3A1%7D',
+          Serverless: {
+            call: (_name, _input, cb) => {
+              callCount += 1;
+              // Первый вызов "зависает", второй отвечает сразу
+              if (callCount === 2) {
+                cb(null, { ok: true });
+              }
+            },
+          },
+        },
+      };
+
+      const firstPromise = callEndpoint('getState', {}, { timeoutMs: 100 });
+      vi.advanceTimersByTime(110);
+      await expect(firstPromise).rejects.toThrow(/Превышено время ожидания ответа сервера/);
+
+      // Дедуплицированная мутация после таймаута сбрасывает lock и повторяется успешно
+      callCount = 0;
+      const hungMutation = callMutatingEndpoint('submitScore', { matchId: 1 });
+      vi.advanceTimersByTime(15_010);
+      await expect(hungMutation).rejects.toThrow(/Превышено время ожидания ответа сервера/);
+
+      const retryMutation = callMutatingEndpoint<{ ok: boolean }>('submitScore', { matchId: 1 });
+      await expect(retryMutation).resolves.toEqual({ ok: true });
+      expect(callCount).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

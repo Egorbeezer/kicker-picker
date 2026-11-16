@@ -41,6 +41,8 @@ export function useAppController() {
     appState?.activeTournament?.snapshotVersion ?? null
   );
   snapshotVersionRef.current = appState?.activeTournament?.snapshotVersion ?? null;
+  const consecutivePollErrorsRef = useRef(0);
+  const pollToastShownRef = useRef(false);
 
   const showError = useCallback((err: unknown) => {
     const msg = err instanceof Error ? err.message : 'Произошла ошибка';
@@ -49,11 +51,11 @@ export function useAppController() {
   }, []);
 
   const fetchState = useCallback(
-    async (tId?: number | null, opts?: { light?: boolean }) => {
+    async (tId?: number | null, opts?: { light?: boolean; background?: boolean }): Promise<boolean> => {
       try {
         if (livePath || !isTelegramEnv()) {
           setLoading(false);
-          return;
+          return true;
         }
         const startTournamentId = !startHandledRef.current ? getStartTournamentId() : null;
         if (startTournamentId && !startHandledRef.current) {
@@ -64,8 +66,10 @@ export function useAppController() {
             setShowHome(false);
             const res = await apiClient.getState({ tournamentId: joined.tournament.id });
             setAppState(res);
+            consecutivePollErrorsRef.current = 0;
+            pollToastShownRef.current = false;
             setLoading(false);
-            return;
+            return true;
           } catch (joinErr) {
             showError(joinErr);
           }
@@ -84,10 +88,13 @@ export function useAppController() {
             : {}
         );
 
+        consecutivePollErrorsRef.current = 0;
+        pollToastShownRef.current = false;
+
         if (res.light) {
           if (res.unchanged) {
             setLoading(false);
-            return;
+            return true;
           }
           let needsFullRefresh = false;
           setAppState((prev) => {
@@ -119,8 +126,18 @@ export function useAppController() {
             setMode('ADMIN');
           }
         }
+        return true;
       } catch (err) {
-        showError(err);
+        if (opts?.background) {
+          consecutivePollErrorsRef.current += 1;
+          if (!pollToastShownRef.current) {
+            pollToastShownRef.current = true;
+            showError(err);
+          }
+        } else {
+          showError(err);
+        }
+        return false;
       } finally {
         setLoading(false);
       }
@@ -191,13 +208,53 @@ export function useAppController() {
 
   useEffect(() => {
     if (livePath || !isTelegramEnv() || isCreating) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible' && !supersededRef.current) {
-        const useLight = Boolean(!showHome && selectedTournamentId);
-        fetchState(selectedTournamentId, { light: useLight });
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let pollInFlight = false;
+
+    const getPollDelay = () => {
+      const errs = consecutivePollErrorsRef.current;
+      if (errs <= 0) return 2500;
+      return Math.min(20_000, 2500 * Math.pow(2, errs));
+    };
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(runPoll, getPollDelay());
+    };
+
+    const runPoll = () => {
+      if (cancelled) return;
+      if (document.visibilityState !== 'visible' || supersededRef.current || pollInFlight) {
+        scheduleNext();
+        return;
       }
-    }, 2500);
-    return () => clearInterval(timer);
+      pollInFlight = true;
+      const useLight = Boolean(!showHome && selectedTournamentId);
+      void fetchState(selectedTournamentId, { light: useLight, background: true }).finally(() => {
+        pollInFlight = false;
+        scheduleNext();
+      });
+    };
+
+    const onReconnectOrWake = () => {
+      if (document.visibilityState !== 'visible' || supersededRef.current) return;
+      consecutivePollErrorsRef.current = 0;
+      pollToastShownRef.current = false;
+      runPoll();
+    };
+
+    scheduleNext();
+    window.addEventListener('online', onReconnectOrWake);
+    document.addEventListener('visibilitychange', onReconnectOrWake);
+
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
+      window.removeEventListener('online', onReconnectOrWake);
+      document.removeEventListener('visibilitychange', onReconnectOrWake);
+    };
   }, [fetchState, selectedTournamentId, isCreating, showHome, livePath]);
 
   const applySnapshot = useCallback((snap: TournamentSnapshot) => {

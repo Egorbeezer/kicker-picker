@@ -35,6 +35,9 @@ export function formatMatchStageLabel(match, tournament) {
   return `Раунд ${match.roundNumber}`;
 }
 
+/**
+ * @param {{ match: any; replacementText?: string; onlyRemoveButtons?: boolean; excludeMessage?: { chatId: number | string; messageId: number | string } | null }} params
+ */
 export async function clearConfirmMessages({
   match,
   replacementText = undefined,

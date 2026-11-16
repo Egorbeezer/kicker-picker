@@ -9,6 +9,7 @@
     "noEmit": true,
     "skipLibCheck": true,
     "strict": false,
+    "strictNullChecks": true,
     "noImplicitAny": false,
     "strictFunctionTypes": true,
     "strictBindCallApply": true,

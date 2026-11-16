@@ -45,7 +45,7 @@ export default async function (input, ctx) {
     if (match.status === 'FINISHED' && match.stage === 'QUALIFICATION') {
       const rules = getMatchRules(tournament, match.stage);
       const v = validateMatchScore(score1, score2, rules);
-      if (!v.valid) throw new EndpointError(v.reason, { code: 'INVALID_SCORE' });
+      if (!v.valid) throw new EndpointError(v.reason || 'Неверный счёт', { code: 'INVALID_SCORE' });
       await db
         .update(matches)
         .set({ score1, score2, confirmMessages: null })
@@ -84,7 +84,7 @@ export default async function (input, ctx) {
   const rules = getMatchRules(tournament, match.stage);
   const validation = validateMatchScore(score1, score2, rules);
   if (!validation.valid) {
-    throw new EndpointError(validation.reason, { code: 'INVALID_SCORE' });
+    throw new EndpointError(validation.reason || 'Неверный счёт', { code: 'INVALID_SCORE' });
   }
 
   const submittedByTeam = inTeam1 ? 1 : 2;

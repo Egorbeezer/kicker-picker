@@ -88,13 +88,17 @@ function validatePublicLivePayload(parsed: unknown): PublicLiveData {
 async function fetchWithRetry(url: string, init?: RequestInit, attempts = 2): Promise<Response> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const abortTimer = controller ? setTimeout(() => controller.abort(), 8000) : null;
     try {
-      const res = await fetch(url, init);
+      const res = await fetch(url, controller ? { ...init, signal: controller.signal } : init);
+      if (abortTimer) clearTimeout(abortTimer);
       if (res.ok || res.status < 500 || i === attempts - 1) {
         return res;
       }
       lastError = new Error(`HTTP ${res.status}`);
     } catch (err) {
+      if (abortTimer) clearTimeout(abortTimer);
       lastError = err;
       if (i === attempts - 1) throw err;
     }
@@ -151,15 +155,35 @@ export function getStartTournamentId(): number | null {
 }
 
 const inFlightMutations = new Map<string, Promise<unknown>>();
+export const DEFAULT_ENDPOINT_TIMEOUT_MS = 15_000;
 
-export async function callEndpoint<T>(name: string, input: Record<string, unknown> = {}): Promise<T> {
+export async function callEndpoint<T>(
+  name: string,
+  input: Record<string, unknown> = {},
+  opts?: { timeoutMs?: number }
+): Promise<T> {
   const serverless = window.Telegram?.WebApp?.Serverless;
   if (!serverless || !window.Telegram?.WebApp?.initData) {
     throw new Error('Откройте приложение внутри Telegram для работы с сервером');
   }
 
+  const timeoutMs = opts?.timeoutMs ?? DEFAULT_ENDPOINT_TIMEOUT_MS;
+
   return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const timer =
+      timeoutMs > 0
+        ? setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            reject(new Error('Превышено время ожидания ответа сервера — проверьте интернет'));
+          }, timeoutMs)
+        : null;
+
     serverless.call(name, input, (err, result) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
       if (err) {
         const message = err.message || 'Ошибка сервера';
         if (err.type !== 'ENDPOINT_ERROR' && name !== 'reportClientError') {
@@ -208,7 +232,9 @@ export function callMutatingEndpoint<T>(
 
 export const apiClient = {
   getState: async (params: { tournamentId?: number; light?: boolean; snapshotVersion?: string } = {}) => {
-    const res = await callEndpoint<AppStateResponse>('getState', params);
+    const res = await callEndpoint<AppStateResponse>('getState', params, {
+      timeoutMs: params.light ? 10_000 : DEFAULT_ENDPOINT_TIMEOUT_MS,
+    });
     if (res?.activeTournament) {
       return {
         ...res,

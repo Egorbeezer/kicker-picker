@@ -207,6 +207,9 @@ function formatDateRuShort(epochOrDate) {
   return `${dd}.${mm}.${yyyy}`;
 }
 
+/**
+ * @param {{ callerTgId: number; myTournaments?: any[]; allPlayers?: any[]; allMatches?: any[] }} params
+ */
 export function buildGlobalPlayerProfile({ callerTgId, myTournaments = [], allPlayers = [], allMatches = [] }) {
   const playersById = new Map(allPlayers.map((p) => [p.id, p]));
   const playersByTournament = new Map();

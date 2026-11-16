@@ -11,6 +11,9 @@ import {
 import { VALID_DYP_MODES, getActiveTablesList, getMatchRules, getSetsNeededToWin } from './access.js';
 import { notifyRoundStart } from './notifications.js';
 
+/**
+ * @param {{ tournament: any; match: any; score1: number; score2: number; expectedStatuses?: string[] | null }} params
+ */
 export async function applyMatchFinish({
   tournament,
   match,
@@ -21,7 +24,7 @@ export async function applyMatchFinish({
   const rules = getMatchRules(tournament, match.stage);
   const validation = validateMatchScore(score1, score2, rules);
   if (!validation.valid) {
-    throw new EndpointError(validation.reason, { code: 'INVALID_SCORE' });
+    throw new EndpointError(validation.reason || 'Неверный счёт', { code: 'INVALID_SCORE' });
   }
 
   const neededSets = getSetsNeededToWin(rules.format);
@@ -209,6 +212,10 @@ export async function applyMatchFinish({
   return { seriesOver: true, nextRoundCreated: false };
 }
 
+/**
+ * @param {any} tournament
+ * @param {{ silentIfLowPlayers?: boolean; preserveOrder?: boolean; targetRoundNumber?: number | null }} [opts]
+ */
 export async function createNextQualificationRound(
   tournament,
   { silentIfLowPlayers = false, preserveOrder = false, targetRoundNumber = null } = {}
@@ -330,6 +337,10 @@ export async function createNextQualificationRound(
 
   return true;
 }
+/**
+ * @param {any} tournament
+ * @param {{ silentIfLowPlayers?: boolean; overrides?: { playoffSize?: number; thirdPlaceMatch?: boolean } | null }} [opts]
+ */
 export async function createPlayoffFirstRound(
   tournament,
   { silentIfLowPlayers = false, overrides = null } = {}

@@ -311,6 +311,11 @@ export async function dialogName(userChatId) {
   return (row?.userName || '').trim() || 'человеку';
 }
 
+/**
+ * @param {number | string} chatId
+ * @param {string} text
+ * @param {any} [keyboard]
+ */
 export async function sendSupportMessage(chatId, text, keyboard = undefined) {
   try {
     const body = {
@@ -337,6 +342,12 @@ export async function sendSupportMessage(chatId, text, keyboard = undefined) {
   }
 }
 
+/**
+ * @param {number | string} fromChatId
+ * @param {number} messageId
+ * @param {number | string} toChatId
+ * @param {string} [caption]
+ */
 export async function copySupportMessage(fromChatId, messageId, toChatId, caption = undefined) {
   try {
     const body = {

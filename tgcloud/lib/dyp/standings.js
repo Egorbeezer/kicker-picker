@@ -161,6 +161,9 @@ export function toEpochMs(val) {
 /**
  * Рассчитывает тайминги и прогресс турнира по истории матчей.
  */
+/**
+ * @param {{ tournament: any; matches?: any[]; activeTablesCount?: number | null; nowMs?: number }} params
+ */
 export function computeTournamentTimings({ tournament, matches = [], activeTablesCount = null, nowMs = Date.now() }) {
   const nonCancelled = matches.filter((m) => m.status !== 'CANCELLED');
   const finished = nonCancelled.filter((m) => m.status === 'FINISHED');
