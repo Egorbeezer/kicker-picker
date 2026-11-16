@@ -20,7 +20,9 @@ import { PlayoffBracketView } from './PlayoffBracketView';
 import { PlayerAvatar } from './PlayerAvatar';
 import { SupportHeaderButton } from './SupportHeaderButton';
 import { openTelegramChat, SUPPORT_BUTTON } from '../support';
+import { formatTimeHm, formatTimeHms } from '../utils/date';
 import { getPlayoffQualifiedIds } from '../utils/playoffZone';
+import { getDypModeLabel } from './InfoTooltip';
 
 interface Props {
   publicPath: string;
@@ -53,16 +55,6 @@ const DEFAULT_LIVE_COLS: TableColumnConfig[] = [
   { key: 'games', sort: true, visible: true },
   { key: 'name', sort: false, visible: true },
 ];
-
-function formatTimeHms(ms: number): string {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-}
-
-function formatTimeHm(ms: number): string {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 function renderCell(key: TableColumnKey, row: LeaderboardRow) {
   if (key === 'wins') return <span className="font-bold text-sm text-white">{row.wins}</span>;
@@ -394,7 +386,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
               {tournament.status === 'PLAYOFF' && `Плей-офф • Раунд ${tournament.currentRound}`}
               {tournament.status === 'FINISHED' && 'Турнир завершен'}
               {' • '}
-              {tournament.dypMode === 'classic' ? 'Classic DYP' : 'Monster DYP'}
+              {getDypModeLabel(tournament.dypMode)}
             </div>
           </div>
 

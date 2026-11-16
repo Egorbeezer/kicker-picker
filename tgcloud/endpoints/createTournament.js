@@ -7,6 +7,7 @@ import {
   makeInitials,
   formatPlayerDisplayName,
   getTournamentSnapshot,
+  parseBoundedInt,
   syncTournamentAdminIndex,
 } from '../lib/helpers.js';
 
@@ -48,14 +49,14 @@ export default async function (input, ctx) {
     });
   }
 
-  const name = String(input?.name || formatDefaultTournamentName()).trim();
+  const name = String(input?.name || formatDefaultTournamentName()).trim().slice(0, 80);
   if (!name) throw new EndpointError('Укажите название турнира', { code: 'INVALID_NAME' });
 
-  const tablesCount = Math.max(1, Math.min(20, Number(input?.tables) || 2));
+  const tablesCount = parseBoundedInt(input?.tables, 2, 1, 20);
   const autoRounds = input?.autoRounds !== undefined ? Boolean(input.autoRounds) : true;
-  const targetScore = Math.max(1, Math.min(21, Number(input?.targetScore) || 7));
+  const targetScore = parseBoundedInt(input?.targetScore, 7, 1, 21);
   const winByTwo = Boolean(input?.winByTwo);
-  const maxScore = Math.max(targetScore, Number(input?.maxScore) || targetScore + 2);
+  const maxScore = parseBoundedInt(input?.maxScore, targetScore + 2, targetScore, 30);
   const dypMode = VALID_DYP_MODES.includes(input?.dypMode) ? input.dypMode : 'monster';
   const teamFormat =
     input?.teamFormat === 'single' && ['swiss', 'round_robin', 'random_dyp', 'last_one_standing', 'elimination'].includes(dypMode)
@@ -69,18 +70,20 @@ export default async function (input, ctx) {
   const playoffFormat = ['best_of_1', 'best_of_3', 'best_of_5'].includes(input?.playoffFormat)
     ? input.playoffFormat
     : 'best_of_3';
-  const playoffTargetScore = Math.max(1, Math.min(21, Number(input?.playoffTargetScore) || 5));
+  const playoffTargetScore = parseBoundedInt(input?.playoffTargetScore, 5, 1, 21);
   const playoffWinByTwo = Boolean(input?.playoffWinByTwo);
-  const playoffMaxScore = Math.max(
+  const playoffMaxScore = parseBoundedInt(
+    input?.playoffMaxScore,
+    playoffTargetScore + 2,
     playoffTargetScore,
-    Number(input?.playoffMaxScore) || playoffTargetScore + 2
+    30
   );
   const useBuckets = Boolean(input?.useBuckets);
-  const roundRobinLoops = Math.max(1, Math.min(2, Number(input?.roundRobinLoops) || 1));
-  const losLives = Math.max(1, Math.min(10, Number(input?.losLives) || 3));
+  const roundRobinLoops = parseBoundedInt(input?.roundRobinLoops, 1, 1, 2);
+  const losLives = parseBoundedInt(input?.losLives, 3, 1, 10);
   const skipQualification = Boolean(input?.skipQualification || dypMode === 'elimination');
-  const longMatchAlertMin = Math.max(1, Math.min(180, Number(input?.longMatchAlertMin) || 15));
-  const scoreReminderMin = Math.max(1, Math.min(60, Number(input?.scoreReminderMin) || 3));
+  const longMatchAlertMin = parseBoundedInt(input?.longMatchAlertMin, 15, 1, 180);
+  const scoreReminderMin = parseBoundedInt(input?.scoreReminderMin, 3, 1, 60);
 
   const [created] = await db
     .insert(tournaments)

@@ -1,5 +1,5 @@
 import { api, db } from 'sdk';
-import { and, eq } from 'sdk/db';
+import { and, eq, inArray } from 'sdk/db';
 import { matches, tournaments } from '../../schema.js';
 import { toEpochMs } from '../dyp.js';
 import { buildMainAppLink, escapeHtml, safeSendMessage } from './telegram.js';
@@ -303,6 +303,23 @@ export async function autoFinishExpiredTournaments(
         pendingPlayoff: false,
       })
       .where(and(eq(tournaments.id, t.id), eq(tournaments.status, t.status)));
+
+    await db
+      .update(matches)
+      .set({
+        status: 'CANCELLED',
+        confirmMessages: null,
+        finishedAt,
+      })
+      .where(and(eq(matches.tournamentId, t.id), inArray(matches.status, ['PLAYING', 'WAITING_CONFIRM'])));
+
+    for (const m of tMatches) {
+      if (m.status === 'PLAYING' || m.status === 'WAITING_CONFIRM') {
+        m.status = 'CANCELLED';
+        m.confirmMessages = null;
+        m.finishedAt = finishedAt;
+      }
+    }
 
     t.status = 'FINISHED';
     t.finishedAt = finishedAt;

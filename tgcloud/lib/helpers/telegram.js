@@ -1,5 +1,5 @@
 import { api, db } from 'sdk';
-import { eq, inArray } from 'sdk/db';
+import { eq, inArray, isNotNull } from 'sdk/db';
 import { users } from '../../schema.js';
 
 export const BOT_USERNAME = 'kickerpickerbot';
@@ -23,11 +23,22 @@ export async function notifyBotOwnerAlert({
   context = null,
 } = {}) {
   try {
-    const owner = await db
+    let owner = await db
       .select({ tgId: users.tgId })
       .from(users)
-      .where(inArray(users.username, [BOT_OWNER_USERNAME, 'Egor_Beezer', 'EGOR_BEEZER']))
+      .where(inArray(users.username, [BOT_OWNER_USERNAME, 'Egor_Beezer', 'EGOR_BEEZER', 'Egor_beezer']))
       .get();
+    if (!owner?.tgId) {
+      const candidates = await db
+        .select({ tgId: users.tgId, username: users.username })
+        .from(users)
+        .where(isNotNull(users.username))
+        .all();
+      owner =
+        candidates.find(
+          (u) => String(u.username || '').trim().toLowerCase() === BOT_OWNER_USERNAME
+        ) || null;
+    }
     if (!owner?.tgId) return false;
 
     const who = tgUser
@@ -57,11 +68,14 @@ export async function notifyBotOwnerAlert({
 }
 
 export function makeInitials(name) {
-  const parts = String(name || 'P').trim().split(/\s+/).filter(Boolean);
+  const safeName = String(name ?? '').trim() || 'P';
+  const parts = safeName.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    const firstChar = Array.from(parts[0])[0] || 'P';
+    const secondChar = Array.from(parts[1])[0] || '';
+    return (firstChar + secondChar).toUpperCase();
   }
-  return parts[0].slice(0, 2).toUpperCase();
+  return Array.from(parts[0] || 'P').slice(0, 2).join('').toUpperCase();
 }
 
 function uint8ToBase64(bytes) {

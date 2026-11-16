@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SlidersHorizontal, Clock, Share2 } from 'lucide-react';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
 import { haptic, notify } from '../utils/telegram';
+import { formatTimeHm } from '../utils/date';
 import { renderLeaderboardToPng } from '../utils/exportTableImage';
 import { getPlayoffQualifiedIds } from '../utils/playoffZone';
 import { renderPlayoffToPng } from '../utils/exportPlayoffImage';
@@ -104,11 +105,6 @@ function renderStatCell(key: TableColumnKey, row: LeaderboardRow, isPrimary: boo
   if (key === 'avgBuchholz') return <span className={mutedCls}>{row.avgBuchholz ?? 0}</span>;
   if (key === 'sonnebornBerger') return <span className={mutedCls}>{row.sonnebornBerger ?? 0}</span>;
   return null;
-}
-
-function formatTimeHm(ms: number): string {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSaveTableConfig }) => {
@@ -256,6 +252,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
                     onClick={() => setEditingConfig(activeConfig)}
                     className="p-1.5 rounded-full bg-[#2c2c2e] border border-[#3a3a3c] text-gray-300 hover:text-white active:scale-95"
                     title="Настроить таблицу"
+                    aria-label="Настроить таблицу"
                   >
                     <SlidersHorizontal size={16} />
                   </button>

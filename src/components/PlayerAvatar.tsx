@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface PlayerAvatarProps {
   avatarUrl?: string | null;
@@ -25,6 +25,10 @@ export const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
   className = '',
 }) => {
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [avatarUrl]);
 
   const showImg = Boolean(avatarUrl) && !imgError;
 

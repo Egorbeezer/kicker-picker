@@ -72,6 +72,11 @@ function compileWhere(node, params) {
     params.push(toDbVal(node.col, node.val));
     return `${node.col.colName} > ?`;
   }
+  if (node.kind === 'lt') {
+    if (node.val instanceof Date) throw new TypeError('db: unsupported value type: object');
+    params.push(toDbVal(node.col, node.val));
+    return `${node.col.colName} < ?`;
+  }
   return '1=1';
 }
 
@@ -112,6 +117,8 @@ vi.mock('sdk', () => {
       const tblMeta = t.__meta;
       let payload = null;
       let conflict = null;
+      let upsertPatch = null;
+      let conflictCol = null;
       const execInsert = () => {
         const cols = [];
         const qs = [];
@@ -123,12 +130,27 @@ vi.mock('sdk', () => {
           qs.push('?');
           vals.push(toDbVal(col, v));
         }
+        if (conflict === 'update' && upsertPatch && conflictCol) {
+          const updates = [];
+          for (const [k, v] of Object.entries(upsertPatch)) {
+            const col = tblMeta.cols[k];
+            if (!col || v === undefined) continue;
+            updates.push(`${col.colName} = ?`);
+            vals.push(toDbVal(col, v));
+          }
+          return sqlite
+            .prepare(
+              `INSERT INTO ${tblMeta.tableName} (${cols.join(', ')}) VALUES (${qs.join(', ')}) ON CONFLICT(${conflictCol.colName}) DO UPDATE SET ${updates.join(', ')}`
+            )
+            .run(...vals);
+        }
         const verb = conflict === 'nothing' ? 'INSERT OR IGNORE' : 'INSERT';
         return sqlite.prepare(`${verb} INTO ${tblMeta.tableName} (${cols.join(', ')}) VALUES (${qs.join(', ')})`).run(...vals);
       };
       const b = {
         values(v) { payload = v; return b; },
         onConflictDoNothing() { conflict = 'nothing'; return b; },
+        onConflictDoUpdate(opts) { conflict = 'update'; conflictCol = opts.target; upsertPatch = opts.set; return b; },
         then(res, rej) { return Promise.resolve(execInsert()).then(res, rej); },
       };
       return b;
@@ -200,6 +222,7 @@ vi.mock('sdk/db', () => {
     index: () => ({ on: () => ({}) }),
     eq: (col, val) => ({ kind: 'eq', col, val }),
     gt: (col, val) => ({ kind: 'gt', col, val }),
+    lt: (col, val) => ({ kind: 'lt', col, val }),
     desc: (col) => ({ col, dir: 'DESC' }),
     sql: (strings) => ({ kind: 'sql', strings }),
   };
@@ -395,5 +418,51 @@ describe('Support bot (@kickerpickersupportbot) end-to-end flow', () => {
         text: expect.stringContaining('удалил переписку с ботом'),
       })
     );
+  });
+
+  it('clips oversized messages under Telegram 4096 limit and keeps reply link on fallback', async () => {
+    await handleMessage({
+      chat: { id: 777, type: 'private' },
+      from: { id: 777, first_name: 'Егор', username: 'egor_beezer' },
+      text: '/setadmin',
+    });
+    sendMessageMock.mockClear();
+
+    const longBody = 'А'.repeat(5200);
+    await handleMessage({
+      message_id: 55,
+      chat: { id: 610, type: 'private' },
+      from: { id: 610, first_name: 'Иван' },
+      text: longBody,
+    });
+    const forwardedCall = sendMessageMock.mock.calls.find((c) => c[0]?.chat_id === '777');
+    expect(forwardedCall).toBeDefined();
+    expect(forwardedCall[0].text.length).toBeLessThanOrEqual(4096);
+    expect(forwardedCall[0].text).toContain('…');
+
+    // Fallback при ошибке copyMessage (например несовместимое вложение) сохраняет adminMessageId для reply
+    sendMessageMock.mockClear();
+    copyMessageMock.mockResolvedValueOnce({ ok: false, errorCode: 400, reason: 'Bad Request' });
+    copyMessageMock.mockRejectedValueOnce({ code: 400, description: 'Bad Request' });
+    await handleMessage({
+      message_id: 56,
+      chat: { id: 611, type: 'private' },
+      from: { id: 611, first_name: 'Оля' },
+      sticker: { file_id: 'st_1' },
+    });
+    const fbAdminMsg = (await sendMessageMock.mock.results[0].value).message_id;
+    copyMessageMock.mockClear();
+    await handleMessage({
+      message_id: 950,
+      chat: { id: 777, type: 'private' },
+      from: { id: 777, first_name: 'Егор', username: 'egor_beezer' },
+      reply_to_message: { message_id: fbAdminMsg },
+      text: 'Получил стикер!',
+    });
+    expect(copyMessageMock).toHaveBeenCalledWith({
+      chat_id: '611',
+      from_chat_id: '777',
+      message_id: 950,
+    });
   });
 });

@@ -109,3 +109,10 @@ export function getSetsNeededToWin(format) {
   if (format === 'best_of_3') return 2;
   return 1;
 }
+
+export function parseBoundedInt(value, fallback, min, max) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(min, Math.min(max, Math.trunc(num)));
+}

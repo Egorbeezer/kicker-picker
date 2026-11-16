@@ -12,6 +12,7 @@ import {
 import type { TournamentHistoryItem, TournamentSnapshot } from '../types';
 import { apiClient } from '../api/client';
 import { formatDateRu, getPlayoffPodium } from '../utils/date';
+import { getDypModeLabel } from './InfoTooltip';
 import type { Theme } from '../utils/theme';
 import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
@@ -146,7 +147,7 @@ export const ProfileView: React.FC<Props> = ({
             </div>
             <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-2 gap-y-1">
               {tDate && <span>{tDate}</span>}
-              <span>• {t.dypMode === 'classic' ? 'Classic DYP' : 'Monster DYP'}</span>
+              <span>• {getDypModeLabel(t.dypMode)}</span>
               <span>• Участников: {inspectedSnapshot.players.length}</span>
             </div>
 

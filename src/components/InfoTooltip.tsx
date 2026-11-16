@@ -161,6 +161,11 @@ export const TOURNAMENT_MODE_CATALOG: TournamentModeInfo[] = [
   },
 ];
 
+export function getDypModeLabel(mode?: string | null): string {
+  const found = TOURNAMENT_MODE_CATALOG.find((m) => m.key === mode);
+  return found ? found.title : 'Monster DYP';
+}
+
 export const ModeInfoTooltip: React.FC<{ mode: TournamentModeInfo }> = ({ mode }) => (
   <InfoTooltip title={`${mode.emoji} ${mode.title}`} ariaLabel={`Подробнее про ${mode.title}`}>
     <p className="text-[var(--text)] font-medium">{mode.kidExplanation}</p>

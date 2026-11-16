@@ -2,6 +2,7 @@ import { db, EndpointError } from 'sdk';
 import { eq } from 'sdk/db';
 import { tournaments, tournamentPlayers, matches } from '../schema.js';
 import {
+  clearConfirmMessages,
   makeInitials,
   getTournamentSnapshot,
   isTournamentAdmin,
@@ -29,6 +30,9 @@ export default async function (input, ctx) {
 
   // Tournament-wide seeding shuffle / reorder actions don't require single playerId
   if (action === 'shuffle_seeding') {
+    if (tournament.status === 'FINISHED') {
+      throw new EndpointError('Турнир уже завершён', { code: 'INVALID_STATE' });
+    }
     const allPlayers = await db
       .select()
       .from(tournamentPlayers)
@@ -94,6 +98,9 @@ export default async function (input, ctx) {
       }
     }
   } else if (action === 'delete_player') {
+    if (tournament.status === 'FINISHED') {
+      throw new EndpointError('Нельзя удалять участников завершённого турнира', { code: 'INVALID_STATE' });
+    }
     const tMatches = await db
       .select()
       .from(matches)
@@ -112,11 +119,29 @@ export default async function (input, ctx) {
     }
     await db.delete(tournamentPlayers).where(eq(tournamentPlayers.id, playerId));
   } else if (action === 'substitute') {
+    if (tournament.status === 'FINISHED') {
+      throw new EndpointError('Нельзя заменять участников завершённого турнира', { code: 'INVALID_STATE' });
+    }
     const newName = String(input?.replacementName || '').trim().slice(0, 60);
     if (!newName) {
       throw new EndpointError('Укажите имя нового игрока для замены', { code: 'INVALID_NAME' });
     }
-    const replacementTgId = input?.replacementTgId ? Number(input.replacementTgId) : null;
+    const rawRepTgId =
+      input?.replacementTgId !== undefined && input?.replacementTgId !== null
+        ? Number(input.replacementTgId)
+        : null;
+    const replacementTgId =
+      rawRepTgId !== null && Number.isInteger(rawRepTgId) && rawRepTgId > 0 ? rawRepTgId : null;
+    if (replacementTgId) {
+      const allPlayers = await db
+        .select({ id: tournamentPlayers.id, tgId: tournamentPlayers.tgId })
+        .from(tournamentPlayers)
+        .where(eq(tournamentPlayers.tournamentId, tournamentId))
+        .all();
+      if (allPlayers.some((p) => Number(p.tgId) === replacementTgId)) {
+        throw new EndpointError('Этот пользователь уже участвует в турнире', { code: 'DUPLICATE_PLAYER' });
+      }
+    }
     const [inserted] = await db
       .insert(tournamentPlayers)
       .values({
@@ -151,6 +176,10 @@ export default async function (input, ctx) {
       if (m.team2Player1Id === playerId) patch.team2Player1Id = inserted.id;
       if (m.team2Player2Id === playerId) patch.team2Player2Id = inserted.id;
       if (Object.keys(patch).length > 0) {
+        if (m.status === 'WAITING_CONFIRM') {
+          await clearConfirmMessages({ match: m, onlyRemoveButtons: true });
+          patch.confirmMessages = null;
+        }
         await db.update(matches).set(patch).where(eq(matches.id, m.id));
       }
     }

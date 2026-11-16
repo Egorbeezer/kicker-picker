@@ -6,7 +6,24 @@ import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
 
 export default async function (input, ctx) {
   const tgUser = ctx.initData?.user;
+  if (!tgUser?.id) throw new EndpointError('Необходима авторизация', { code: 'UNAUTHORIZED' });
+
   const tournamentId = Number(input?.tournamentId);
+  if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
+    throw new EndpointError('Укажите турнир', { code: 'INVALID_INPUT' });
+  }
+
+  const tournament = await db
+    .select()
+    .from(tournaments)
+    .where(eq(tournaments.id, tournamentId))
+    .get();
+
+  if (!tournament) throw new EndpointError('Турнир не найден', { code: 'NOT_FOUND' });
+  if (!isTournamentAdmin(tournament, tgUser.id)) {
+    throw new EndpointError('Только организатор может добавлять игроков', { code: 'FORBIDDEN' });
+  }
+
   const dypRole = input?.dypRole === 'A' || input?.dypRole === 'B' ? input.dypRole : null;
   const shuffle = Boolean(input?.shuffle);
   const saveToClub = Boolean(input?.saveToClub);
@@ -19,12 +36,12 @@ export default async function (input, ctx) {
     const selectedClub = await db
       .select()
       .from(clubPlayers)
-      .where(inArray(clubPlayers.id, clubPlayerIds))
+      .where(inArray(clubPlayers.id, clubPlayerIds.slice(0, 64)))
       .all();
     for (const cp of selectedClub) {
-      if (cp.ownerTgId === tgUser?.id) {
+      if (cp.ownerTgId === tgUser.id) {
         entries.push({
-          name: cp.name,
+          name: String(cp.name || '').trim().slice(0, 60),
           tgId: cp.tgId ?? null,
           dypRole: cp.dypRole ?? dypRole,
         });
@@ -33,37 +50,26 @@ export default async function (input, ctx) {
   }
 
   if (Array.isArray(input?.names)) {
-    for (const s of input.names) {
-      const name = String(s || '').trim();
+    for (const s of input.names.slice(0, 65)) {
+      const name = String(s || '').trim().slice(0, 60);
       if (name) entries.push({ name, tgId: null, dypRole });
     }
   } else if (typeof input?.names === 'string') {
-    for (const s of input.names.split(/[\n,;]+/)) {
-      const name = s.trim();
+    for (const s of input.names.split(/[\n,;]+/).slice(0, 65)) {
+      const name = s.trim().slice(0, 60);
       if (name) entries.push({ name, tgId: null, dypRole });
     }
   } else {
-    const single = String(input?.name || '').trim();
+    const single = String(input?.name || '').trim().slice(0, 60);
     if (single) entries.push({ name: single, tgId: null, dypRole });
   }
 
-  if (!tournamentId || entries.length === 0) {
+  if (entries.length === 0) {
     throw new EndpointError('Укажите имя игрока', { code: 'INVALID_INPUT' });
   }
 
   if (entries.length > 64) {
     throw new EndpointError('За один раз можно добавить не более 64 игроков', { code: 'TOO_MANY' });
-  }
-
-  const tournament = await db
-    .select()
-    .from(tournaments)
-    .where(eq(tournaments.id, tournamentId))
-    .get();
-
-  if (!tournament) throw new EndpointError('Турнир не найден', { code: 'NOT_FOUND' });
-  if (!isTournamentAdmin(tournament, tgUser?.id)) {
-    throw new EndpointError('Только организатор может добавлять игроков', { code: 'FORBIDDEN' });
   }
 
   if (shuffle && entries.length > 1) {

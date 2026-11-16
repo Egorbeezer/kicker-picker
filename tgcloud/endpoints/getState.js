@@ -187,18 +187,20 @@ export default async function (input, ctx) {
     );
   }
 
+  const leaderboardsByTournament = new Map();
   const tournamentHistory = myTournaments.map((t) => {
     const clean = sanitizeTournament(t);
     const tPlayers = playersByTournament.get(t.id) || [];
     const tMatches = matchesByTournament.get(t.id) || [];
+    const lb = computeLeaderboard({
+      players: tPlayers,
+      matches: tMatches,
+      tableConfig: t.tableConfig,
+    });
+    leaderboardsByTournament.set(t.id, lb);
     const myPlayer = tPlayers.find((p) => p.tgId === tgUser.id) || null;
     let myStats = null;
     if (myPlayer) {
-      const lb = computeLeaderboard({
-        players: tPlayers,
-        matches: tMatches,
-        tableConfig: t.tableConfig,
-      });
       const row = lb.find((r) => r.playerId === myPlayer.id);
       if (row) {
         myStats = {
@@ -256,6 +258,7 @@ export default async function (input, ctx) {
     myTournaments,
     allPlayers,
     allMatches,
+    leaderboardsByTournament,
   });
 
   return {

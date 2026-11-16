@@ -20,6 +20,7 @@ export {
   sanitizeTournament,
   getMatchRules,
   getSetsNeededToWin,
+  parseBoundedInt,
 } from './helpers/access.js';
 export {
   formatMatchTeamsSummary,
@@ -37,6 +38,7 @@ export {
   applyMatchFinish,
   createNextQualificationRound,
   createPlayoffFirstRound,
+  processScoreConfirmation,
 } from './helpers/engine.js';
 export {
   computeSnapshotVersion,

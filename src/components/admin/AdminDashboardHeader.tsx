@@ -3,6 +3,7 @@ import { Clock, Radio, RefreshCw, Settings, Share2 } from 'lucide-react';
 import type { Tournament, TournamentTimings } from '../../types';
 import { formatTimeHm } from '../../utils/date';
 import { shareTournamentInTelegram } from '../../utils/share';
+import { getDypModeLabel } from '../InfoTooltip';
 
 interface Props {
   tournament: Tournament;
@@ -38,6 +39,7 @@ export const AdminDashboardHeader: React.FC<Props> = ({
               : 'bg-[#1c1c1d] text-gray-300 border-[#3a3a3c]'
           }`}
           title="Публичная Live-ссылка"
+          aria-label="Публичная Live-ссылка"
         >
           <Radio size={15} />
         </button>
@@ -46,6 +48,7 @@ export const AdminDashboardHeader: React.FC<Props> = ({
           onClick={() => shareTournamentInTelegram({ id: tournament.id, name: tournament.name })}
           className="bg-[#2ea6ff]/15 text-[#2ea6ff] border border-[#2ea6ff]/30 p-1.5 rounded-lg active:scale-95"
           title="Поделиться ссылкой"
+          aria-label="Поделиться ссылкой"
         >
           <Share2 size={15} />
         </button>
@@ -54,6 +57,7 @@ export const AdminDashboardHeader: React.FC<Props> = ({
           onClick={onRefresh}
           className="bg-[#1c1c1d] text-gray-300 border border-[#3a3a3c] p-1.5 rounded-lg active:scale-95"
           title="Обновить"
+          aria-label="Обновить"
         >
           <RefreshCw size={15} />
         </button>
@@ -62,6 +66,7 @@ export const AdminDashboardHeader: React.FC<Props> = ({
           onClick={onOpenSettings}
           className="bg-[#1c1c1d] text-gray-200 border border-[#3a3a3c] p-1.5 rounded-lg active:scale-95"
           title="Настройки турнира"
+          aria-label="Настройки турнира"
         >
           <Settings size={15} />
         </button>
@@ -75,7 +80,7 @@ export const AdminDashboardHeader: React.FC<Props> = ({
         {tournament.status === 'PLAYOFF' && `Плей-офф • Раунд ${tournament.currentRound}`}
         {tournament.status === 'FINISHED' && 'Турнир завершен'}
         {' • '}
-        {tournament.dypMode === 'classic' ? 'Classic DYP' : 'Monster DYP'}
+        {getDypModeLabel(tournament.dypMode)}
         {tournament.useBuckets ? ' (A/B)' : ''}
         {' • '}Столов: {activeTablesCount}/{tournament.tablesCount}
         {tournament.autoRounds ? ' • Авто' : ''}

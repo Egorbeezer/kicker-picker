@@ -1,5 +1,6 @@
 import type { TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
 import { canvasToPngResult, loadCanvasImage } from './canvasImage';
+import { formatDateRu } from './date';
 import { currentTheme } from './theme';
 import { getPlayoffQualifiedIds } from './playoffZone';
 
@@ -19,14 +20,6 @@ const COLUMN_META: Record<TableColumnKey, { label: string; width: number }> = {
   sonnebornBerger: { label: 'SB', width: 58 },
   name: { label: 'Игрок', width: 0 },
 };
-
-function formatTodayRu(): string {
-  const now = new Date();
-  const dd = String(now.getDate()).padStart(2, '0');
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const yyyy = now.getFullYear();
-  return `${dd}.${mm}.${yyyy}`;
-}
 
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -175,7 +168,7 @@ export async function renderLeaderboardToPng(params: {
 
   ctx.font = '500 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = palette.muted;
-  ctx.fillText(`${stageLabel} • ${formatTodayRu()}`, padX + 16, 63);
+  ctx.fillText(`${stageLabel} • ${formatDateRu(new Date())}`, padX + 16, 63);
 
   // Top-N badge
   const badgeText = `Топ-${tournament.playoffSize} в плей-офф`;

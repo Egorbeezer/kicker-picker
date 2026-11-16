@@ -92,10 +92,14 @@ async function handlePerson(message, chatId, adminChatId) {
   }
 
   if (!delivered) {
-    await sendSupportMessage(adminChatId, fallbackText(info, message));
+    const fbSent = await sendSupportMessage(adminChatId, fallbackText(info, message));
+    if (fbSent.ok && fbSent.messageId !== null) {
+      await rememberAdminMessage(fbSent.messageId, chatId);
+      delivered = true;
+    }
   }
 
-  if (first) {
+  if (first && delivered) {
     await sendSupportMessage(chatId, USER_ACK);
   }
 }
@@ -149,33 +153,37 @@ async function handleAdmin(message, adminId) {
 
 export default async function (message) {
   if (!message || message.chat?.type !== 'private') return;
-  const chatId = String(message.chat.id);
-  const text = String(message.text || '');
+  try {
+    const chatId = String(message.chat.id);
+    const text = String(message.text || '');
 
-  if (text.trim() === '/setadmin') {
-    if (!isSupportOwner(message.from)) {
-      await sendSupportMessage(chatId, '⛔ Команда /setadmin доступна только владельцу бота.');
+    if (text.trim() === '/setadmin') {
+      if (!isSupportOwner(message.from)) {
+        await sendSupportMessage(chatId, '⛔ Команда /setadmin доступна только владельцу бота.');
+        return;
+      }
+      const claim = await claimAdminChatId(chatId, Date.now(), { force: true });
+      if (claim.ok) {
+        await sendSupportMessage(chatId, `✅ Вы назначены администратором поддержки.\n\n${ADMIN_HELLO}`);
+      } else {
+        await sendSupportMessage(chatId, '⛔ Не удалось привязать администратора поддержки.');
+      }
       return;
     }
-    const claim = await claimAdminChatId(chatId, Date.now(), { force: true });
-    if (claim.ok) {
-      await sendSupportMessage(chatId, `✅ Вы назначены администратором поддержки.\n\n${ADMIN_HELLO}`);
-    } else {
-      await sendSupportMessage(chatId, '⛔ Не удалось привязать администратора поддержки.');
+
+    const adminChatId = await getAdminChatId();
+    if (adminChatId && chatId === adminChatId) {
+      await handleAdmin(message, chatId);
+      return;
     }
-    return;
-  }
 
-  const adminChatId = await getAdminChatId();
-  if (adminChatId && chatId === adminChatId) {
-    await handleAdmin(message, chatId);
-    return;
-  }
+    if (!adminChatId && text.startsWith('/admin')) {
+      await sendSupportMessage(chatId, NO_ADMIN_YET);
+      return;
+    }
 
-  if (!adminChatId && text.startsWith('/admin')) {
-    await sendSupportMessage(chatId, NO_ADMIN_YET);
-    return;
+    await handlePerson(message, chatId, adminChatId);
+  } catch (err) {
+    console.error('[SUPPORT_BOT] message handler error:', err?.message || err);
   }
-
-  await handlePerson(message, chatId, adminChatId);
 }

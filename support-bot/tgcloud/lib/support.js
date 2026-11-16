@@ -1,5 +1,5 @@
 import { api, db } from 'sdk';
-import { desc, eq, gt } from 'sdk/db';
+import { desc, eq, gt, lt } from 'sdk/db';
 import {
   supportConfig,
   supportDialogs,
@@ -87,8 +87,10 @@ export function dialogHeader(user, first) {
 
 export function withHeader(header, text) {
   const trimmed = String(text ?? '').trim();
-  const body = trimmed ? `\n\n${escapeHtml(trimmed)}` : '';
-  return `${header}${body}`;
+  if (!trimmed) return header;
+  const maxBodyLen = Math.max(200, 3900 - header.length);
+  const clipped = trimmed.length > maxBodyLen ? `${trimmed.slice(0, maxBodyLen - 1)}…` : trimmed;
+  return `${header}\n\n${escapeHtml(clipped)}`;
 }
 
 const ATTACHMENTS = [
@@ -116,10 +118,13 @@ export function attachmentWord(message) {
 export function fallbackText(user, message) {
   const attachment = attachmentWord(message);
   const text = String(message?.text ?? message?.caption ?? '').trim();
-  const parts = [
-    `📨 ${user.username ? `${escapeHtml(user.name)} (@${escapeHtml(user.username)})` : escapeHtml(user.name)}`,
-  ];
-  if (text) parts.push(escapeHtml(text));
+  const header = `📨 ${user.username ? `${escapeHtml(user.name)} (@${escapeHtml(user.username)})` : escapeHtml(user.name)}`;
+  const suffix = attachment ? `\n(во вложении было: ${attachment})` : '';
+  const maxBodyLen = Math.max(200, 3900 - header.length - suffix.length);
+  const clippedText =
+    text.length > maxBodyLen ? `${text.slice(0, maxBodyLen - 1)}…` : text;
+  const parts = [header];
+  if (clippedText) parts.push(escapeHtml(clippedText));
   if (attachment) parts.push(`(во вложении было: ${attachment})`);
   return parts.join('\n');
 }
@@ -202,52 +207,53 @@ export async function claimAdminChatId(chatId, nowMs = Date.now(), { force = fal
 
 export async function rememberDialog(user, nowMs = Date.now()) {
   const existing = await db
-    .select()
+    .select({ id: supportDialogs.id })
     .from(supportDialogs)
     .where(eq(supportDialogs.userChatId, user.chatId))
     .get();
-  if (existing) {
-    await db
-      .update(supportDialogs)
-      .set({
+  await db
+    .insert(supportDialogs)
+    .values({
+      userChatId: user.chatId,
+      userTelegramId: user.telegramId,
+      userName: user.name,
+      userUsername: user.username,
+      lastMessageAt: nowMs,
+    })
+    .onConflictDoUpdate({
+      target: supportDialogs.userChatId,
+      set: {
         userName: user.name,
         userUsername: user.username,
         userTelegramId: user.telegramId,
         lastMessageAt: nowMs,
-      })
-      .where(eq(supportDialogs.userChatId, user.chatId));
-    return false;
-  }
-  await db.insert(supportDialogs).values({
-    userChatId: user.chatId,
-    userTelegramId: user.telegramId,
-    userName: user.name,
-    userUsername: user.username,
-    lastMessageAt: nowMs,
-  });
-  return true;
+      },
+    });
+  return !existing;
 }
 
 export async function rememberAdminMessage(adminMessageId, userChatId) {
   if (adminMessageId === undefined || adminMessageId === null) return;
   const key = String(adminMessageId);
-  const existing = await db
-    .select({ id: supportMessages.id })
-    .from(supportMessages)
-    .where(eq(supportMessages.adminMessageId, key))
-    .get();
-  if (existing) {
-    await db
-      .update(supportMessages)
-      .set({ userChatId: String(userChatId), answeredAt: null })
-      .where(eq(supportMessages.adminMessageId, key));
-    return;
+  await db
+    .insert(supportMessages)
+    .values({
+      adminMessageId: key,
+      userChatId: String(userChatId),
+      answeredAt: null,
+    })
+    .onConflictDoUpdate({
+      target: supportMessages.adminMessageId,
+      set: { userChatId: String(userChatId), answeredAt: null },
+    });
+
+  // Ротация старых связок писем (>30 дней), чтобы таблица не росла бесконечно
+  const cutoffSec = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
+  try {
+    await db.delete(supportMessages).where(lt(supportMessages.createdAt, cutoffSec));
+  } catch {
+    // ignore rotation failure
   }
-  await db.insert(supportMessages).values({
-    adminMessageId: key,
-    userChatId: String(userChatId),
-    answeredAt: null,
-  });
 }
 
 export async function findByAdminMessage(adminMessageId) {
@@ -269,23 +275,17 @@ export async function markAnswered(adminMessageId, nowMs = Date.now()) {
 }
 
 export async function setAdminTarget(adminChatId, userChatId, nowMs = Date.now()) {
-  const existing = await db
-    .select({ id: supportTargets.id })
-    .from(supportTargets)
-    .where(eq(supportTargets.adminChatId, String(adminChatId)))
-    .get();
-  if (existing) {
-    await db
-      .update(supportTargets)
-      .set({ userChatId: String(userChatId), updatedAt: nowMs })
-      .where(eq(supportTargets.adminChatId, String(adminChatId)));
-    return;
-  }
-  await db.insert(supportTargets).values({
-    adminChatId: String(adminChatId),
-    userChatId: String(userChatId),
-    updatedAt: nowMs,
-  });
+  await db
+    .insert(supportTargets)
+    .values({
+      adminChatId: String(adminChatId),
+      userChatId: String(userChatId),
+      updatedAt: nowMs,
+    })
+    .onConflictDoUpdate({
+      target: supportTargets.adminChatId,
+      set: { userChatId: String(userChatId), updatedAt: nowMs },
+    });
 }
 
 export async function clearAdminTarget(adminChatId) {

@@ -533,4 +533,80 @@ describe('Playoff share & PNG export', () => {
     expect(drawnTexts).toContain('1/16 ФИНАЛА');
     expect(drawnTexts.some((t) => t.startsWith('1/16 финала 1'))).toBe(true);
   });
+
+  it('renderPodiumToPng renders tournament podium with mode label and places', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const drawnTexts: string[] = [];
+    const origCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'canvas') {
+        const fakeCtx = {
+          scale: vi.fn(),
+          createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+          createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+          fillRect: vi.fn(),
+          fillText: vi.fn((text: string) => drawnTexts.push(String(text))),
+          measureText: vi.fn((text: string) => ({ width: String(text).length * 8 })),
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          lineTo: vi.fn(),
+          quadraticCurveTo: vi.fn(),
+          closePath: vi.fn(),
+          fill: vi.fn(),
+          stroke: vi.fn(),
+          arc: vi.fn(),
+          clip: vi.fn(),
+          save: vi.fn(),
+          restore: vi.fn(),
+          drawImage: vi.fn(),
+        };
+        return {
+          width: 0,
+          height: 0,
+          getContext: () => fakeCtx,
+          toDataURL: () => `data:image/png;base64,${'A'.repeat(200)}`,
+        } as unknown as HTMLCanvasElement;
+      }
+      return origCreate(tag);
+    });
+
+    const snap = makePlayoffSnapshot();
+    snap.tournament.status = 'FINISHED';
+    snap.tournament.dypMode = 'swiss';
+    snap.playoffMatches = [
+      {
+        ...snap.playoffMatches[0],
+        id: 801,
+        bracketSlot: 'FINAL',
+        status: 'FINISHED',
+        score1: 5,
+        score2: 2,
+        setsWon1: 2,
+        setsWon2: 0,
+        team1Label: 'Алиса & Боб',
+        team2Label: 'Вика & Глеб',
+      },
+      {
+        ...snap.playoffMatches[0],
+        id: 802,
+        bracketSlot: 'THIRD_PLACE',
+        status: 'FINISHED',
+        score1: 5,
+        score2: 3,
+        setsWon1: 2,
+        setsWon2: 1,
+        team1Label: 'Даня & Женя',
+        team2Label: 'Кира & Лёша',
+      },
+    ];
+
+    const { renderPodiumToPng } = await import('../src/utils/exportPodiumImage');
+    const res = await renderPodiumToPng(snap);
+    expect(res.dataUrl).toContain('data:image/png;base64,');
+    expect(drawnTexts).toContain('Алиса & Боб');
+    expect(drawnTexts).toContain('Вика & Глеб');
+    expect(drawnTexts).toContain('Даня & Женя');
+    expect(drawnTexts.some((t) => t.includes('Швейцарка (Swiss)'))).toBe(true);
+  });
 });

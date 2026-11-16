@@ -30,7 +30,7 @@ export function loadCanvasImage(url: string, timeoutMs = 450): Promise<HTMLImage
       finish(img.naturalWidth > 0 && img.naturalHeight > 0 ? img : null);
     };
     img.onerror = () => {
-      imageCache.set(url, null);
+      // Не кэшируем транзиентную ошибку сети навсегда, чтобы повторный экспорт мог догрузить аватар
       finish(null);
     };
     img.src = url;
@@ -38,28 +38,15 @@ export function loadCanvasImage(url: string, timeoutMs = 450): Promise<HTMLImage
 }
 
 /**
- * Кодирует canvas в PNG за один проход для предпросмотра
- * и готовит компактный JPEG payload (в 5-8x меньше) для быстрой отправки в Telegram.
+ * Кодирует canvas в PNG за один проход для предпросмотра и клиентского шаринга.
  */
 export function canvasToPngResult(canvas: HTMLCanvasElement): {
   dataUrl: string;
   base64: string;
-  shareBase64: string;
   blob: Blob;
 } {
   const dataUrl = canvas.toDataURL('image/png');
   const base64 = dataUrl.split(',')[1] || '';
-
-  let shareBase64 = base64;
-  try {
-    const jpegUrl = canvas.toDataURL('image/jpeg', 0.9);
-    const jpegPart = jpegUrl.split(',')[1] || '';
-    if (jpegPart && jpegPart.length < base64.length) {
-      shareBase64 = jpegPart;
-    }
-  } catch {
-    // fallback к PNG base64
-  }
 
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -67,5 +54,5 @@ export function canvasToPngResult(canvas: HTMLCanvasElement): {
     bytes[i] = binary.charCodeAt(i);
   }
   const blob = new Blob([bytes], { type: 'image/png' });
-  return { dataUrl, base64, shareBase64, blob };
+  return { dataUrl, base64, blob };
 }

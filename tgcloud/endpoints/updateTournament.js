@@ -2,7 +2,13 @@ import { db, EndpointError } from 'sdk';
 import { eq } from 'sdk/db';
 import { tournaments } from '../schema.js';
 import { normalizeTableConfig } from '../lib/dyp.js';
-import { VALID_DYP_MODES, getTournamentSnapshot, isTournamentAdmin, syncTournamentAdminIndex } from '../lib/helpers.js';
+import {
+  VALID_DYP_MODES,
+  getTournamentSnapshot,
+  isTournamentAdmin,
+  parseBoundedInt,
+  syncTournamentAdminIndex,
+} from '../lib/helpers.js';
 import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
 
 export default async function (input, ctx) {
@@ -21,12 +27,12 @@ export default async function (input, ctx) {
   }
 
   const name =
-    input?.name !== undefined ? String(input.name).trim() : tournament.name;
+    input?.name !== undefined ? String(input.name).trim().slice(0, 80) : tournament.name;
   if (!name) throw new EndpointError('Название не может быть пустым', { code: 'INVALID_NAME' });
 
   const tablesCount =
     input?.tablesCount !== undefined
-      ? Math.max(1, Math.min(20, Number(input.tablesCount) || 1))
+      ? parseBoundedInt(input.tablesCount, 1, 1, 20)
       : tournament.tablesCount;
 
   const autoRounds =
@@ -34,7 +40,7 @@ export default async function (input, ctx) {
 
   const targetScore =
     input?.targetScore !== undefined
-      ? Math.max(1, Math.min(21, Number(input.targetScore) || 7))
+      ? parseBoundedInt(input.targetScore, 7, 1, 21)
       : tournament.targetScore;
 
   const winByTwo =
@@ -42,8 +48,8 @@ export default async function (input, ctx) {
 
   const maxScore =
     input?.maxScore !== undefined
-      ? Math.max(targetScore, Number(input.maxScore) || targetScore + 2)
-      : Math.max(targetScore, tournament.maxScore);
+      ? parseBoundedInt(input.maxScore, targetScore + 2, targetScore, 30)
+      : Math.max(targetScore, Math.min(30, tournament.maxScore));
 
   const teamFormat =
     input?.teamFormat !== undefined && ['pairs', 'single'].includes(input.teamFormat)
@@ -69,7 +75,7 @@ export default async function (input, ctx) {
 
   const playoffTargetScore =
     input?.playoffTargetScore !== undefined
-      ? Math.max(1, Math.min(21, Number(input.playoffTargetScore) || 5))
+      ? parseBoundedInt(input.playoffTargetScore, 5, 1, 21)
       : tournament.playoffTargetScore;
 
   const playoffWinByTwo =
@@ -79,8 +85,8 @@ export default async function (input, ctx) {
 
   const playoffMaxScore =
     input?.playoffMaxScore !== undefined
-      ? Math.max(playoffTargetScore, Number(input.playoffMaxScore) || playoffTargetScore + 2)
-      : Math.max(playoffTargetScore, tournament.playoffMaxScore);
+      ? parseBoundedInt(input.playoffMaxScore, playoffTargetScore + 2, playoffTargetScore, 30)
+      : Math.max(playoffTargetScore, Math.min(30, tournament.playoffMaxScore));
 
   const tableConfig =
     input?.tableConfig !== undefined
@@ -98,12 +104,12 @@ export default async function (input, ctx) {
 
   const roundRobinLoops =
     input?.roundRobinLoops !== undefined
-      ? Math.max(1, Math.min(2, Number(input.roundRobinLoops) || 1))
+      ? parseBoundedInt(input.roundRobinLoops, 1, 1, 2)
       : tournament.roundRobinLoops || 1;
 
   const losLives =
     input?.losLives !== undefined
-      ? Math.max(1, Math.min(10, Number(input.losLives) || 3))
+      ? parseBoundedInt(input.losLives, 3, 1, 10)
       : tournament.losLives || 3;
 
   const skipQualification =
@@ -113,12 +119,12 @@ export default async function (input, ctx) {
 
   const longMatchAlertMin =
     input?.longMatchAlertMin !== undefined
-      ? Math.max(1, Math.min(180, Number(input.longMatchAlertMin) || 15))
+      ? parseBoundedInt(input.longMatchAlertMin, 15, 1, 180)
       : tournament.longMatchAlertMin || 15;
 
   const scoreReminderMin =
     input?.scoreReminderMin !== undefined
-      ? Math.max(1, Math.min(60, Number(input.scoreReminderMin) || 3))
+      ? parseBoundedInt(input.scoreReminderMin, 3, 1, 60)
       : tournament.scoreReminderMin || 3;
 
   const coAdminTgIds =
@@ -128,6 +134,21 @@ export default async function (input, ctx) {
 
   const useBuckets =
     input?.useBuckets !== undefined ? Boolean(input.useBuckets) : Boolean(tournament.useBuckets);
+
+  if (tournament.status !== 'REGISTRATION') {
+    const formatChanged =
+      dypMode !== (tournament.dypMode || 'monster') ||
+      teamFormat !== (tournament.teamFormat || 'pairs') ||
+      roundRobinLoops !== (tournament.roundRobinLoops || 1) ||
+      losLives !== (tournament.losLives || 3) ||
+      skipQualification !== Boolean(tournament.skipQualification) ||
+      useBuckets !== Boolean(tournament.useBuckets);
+    if (formatChanged) {
+      throw new EndpointError('Базовый формат турнира можно менять только до старта первого раунда', {
+        code: 'FORMAT_LOCKED',
+      });
+    }
+  }
 
   let disabledTables = Array.isArray(tournament.disabledTables) ? tournament.disabledTables : [];
   if (input?.disabledTables !== undefined) {

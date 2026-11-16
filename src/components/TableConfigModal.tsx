@@ -176,6 +176,7 @@ export const TableConfigModal: React.FC<Props> = ({
                     col.sort ? 'text-[#2ea6ff] bg-[#2ea6ff]/15' : 'text-[var(--muted)] opacity-50'
                   }`}
                   title="Учитывать в сортировке"
+                  aria-label={`Сортировка: ${meta?.label}`}
                 >
                   <Power size={15} />
                 </button>
@@ -190,6 +191,7 @@ export const TableConfigModal: React.FC<Props> = ({
                       : 'text-[var(--muted)] opacity-50'
                   }`}
                   title="Показывать столбец"
+                  aria-label={`Видимость: ${meta?.label}`}
                 >
                   {col.visible ? <Eye size={15} /> : <EyeOff size={15} />}
                 </button>
@@ -198,6 +200,7 @@ export const TableConfigModal: React.FC<Props> = ({
                     type="button"
                     disabled={idx === 0}
                     onClick={() => moveRow(idx, -1)}
+                    aria-label={`Переместить ${meta?.label} выше`}
                     className="text-[var(--muted)] disabled:opacity-25 p-0.5"
                   >
                     <ArrowUp size={12} />
@@ -206,6 +209,7 @@ export const TableConfigModal: React.FC<Props> = ({
                     type="button"
                     disabled={idx === config.length - 1}
                     onClick={() => moveRow(idx, 1)}
+                    aria-label={`Переместить ${meta?.label} ниже`}
                     className="text-[var(--muted)] disabled:opacity-25 p-0.5"
                   >
                     <ArrowDown size={12} />

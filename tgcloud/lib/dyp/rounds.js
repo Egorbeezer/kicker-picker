@@ -113,7 +113,16 @@ function sortBySeedOrByes(list, preserveOrder, randomFn) {
   return shuffled;
 }
 
-function generateSingleRandomRound({ active, usableTables, preserveOrder, randomFn }) {
+/**
+ * @param {{ active: any[]; previousMatches?: any[]; usableTables: number[]; preserveOrder?: boolean; randomFn: () => number }} params
+ */
+function generateSingleRandomRound({
+  active,
+  previousMatches = [],
+  usableTables,
+  preserveOrder,
+  randomFn,
+}) {
   if (active.length < 2) {
     throw new Error('Для одиночного раунда 1×1 нужно минимум 2 активных игрока');
   }
@@ -121,24 +130,58 @@ function generateSingleRandomRound({ active, usableTables, preserveOrder, random
   const playingCount = Math.min(usableTables.length * 2, Math.floor(ordered.length / 2) * 2);
   const playing = ordered.slice(0, playingCount);
   const resting = ordered.slice(playingCount);
+
+  let bestOrder = playing;
+  let bestPenalty = 0;
+
+  if (!preserveOrder && previousMatches.length > 0 && playing.length >= 4) {
+    const { opponentCount } = buildPenaltyMaps(previousMatches);
+    const calcSinglePenalty = (arr) => {
+      let total = 0;
+      for (let i = 0; i < arr.length; i += 2) {
+        total += (opponentCount.get(pairKey(arr[i].id, arr[i + 1].id)) || 0) * OPPONENT_PENALTY;
+      }
+      return total;
+    };
+    bestPenalty = calcSinglePenalty(bestOrder);
+    for (let iter = 0; iter < 150 && bestPenalty > 0; iter++) {
+      const candidate = shuffleInPlace([...playing], randomFn);
+      const p = calcSinglePenalty(candidate);
+      if (p < bestPenalty) {
+        bestPenalty = p;
+        bestOrder = candidate;
+      }
+    }
+  }
+
   const pairings = [];
-  for (let i = 0; i < playing.length; i += 2) {
+  for (let i = 0; i < bestOrder.length; i += 2) {
     pairings.push({
       tableNumber: usableTables[i / 2],
-      team1: [playing[i].id, null],
-      team2: [playing[i + 1].id, null],
+      team1: [bestOrder[i].id, null],
+      team2: [bestOrder[i + 1].id, null],
     });
   }
   return {
     pairings,
     byePlayerIds: resting.map((p) => p.id),
-    penalty: 0,
+    penalty: bestPenalty,
   };
 }
 
-function generateRandomDypRound({ active, usableTables, teamFormat, preserveOrder, randomFn }) {
+/**
+ * @param {{ active: any[]; previousMatches?: any[]; usableTables: number[]; teamFormat?: string; preserveOrder?: boolean; randomFn: () => number }} params
+ */
+function generateRandomDypRound({
+  active,
+  previousMatches = [],
+  usableTables,
+  teamFormat,
+  preserveOrder,
+  randomFn,
+}) {
   if (teamFormat === 'single') {
-    return generateSingleRandomRound({ active, usableTables, preserveOrder, randomFn });
+    return generateSingleRandomRound({ active, previousMatches, usableTables, preserveOrder, randomFn });
   }
   const ordered = sortBySeedOrByes(active, preserveOrder, randomFn);
   const playingCount = Math.min(usableTables.length * 4, Math.floor(ordered.length / 4) * 4);
@@ -220,6 +263,15 @@ export function generateDypRound({
   }
 
   if (dypMode === 'classic') {
+    if (teamFormat === 'single') {
+      return generateSingleRandomRound({
+        active,
+        previousMatches,
+        usableTables,
+        preserveOrder,
+        randomFn,
+      });
+    }
     return generateClassicDypRound({
       active,
       previousMatches,
@@ -232,6 +284,7 @@ export function generateDypRound({
   if (dypMode === 'random_dyp') {
     return generateRandomDypRound({
       active,
+      previousMatches,
       usableTables,
       teamFormat,
       preserveOrder,
@@ -268,6 +321,7 @@ export function generateDypRound({
   if (dypMode === 'last_one_standing' && (teamFormat === 'single' || active.length <= 3)) {
     return generateSingleRandomRound({
       active,
+      previousMatches,
       usableTables,
       preserveOrder,
       randomFn,
@@ -277,6 +331,7 @@ export function generateDypRound({
   if (teamFormat === 'single') {
     return generateSingleRandomRound({
       active,
+      previousMatches,
       usableTables,
       preserveOrder,
       randomFn,

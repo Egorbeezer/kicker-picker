@@ -393,6 +393,7 @@ vi.mock('sdk', () => {
       editMessageText: vi.fn().mockResolvedValue(true),
       editMessageReplyMarkup: vi.fn().mockResolvedValue(true),
       answerCallbackQuery: vi.fn().mockResolvedValue(true),
+      getUserProfilePhotos: vi.fn().mockResolvedValue({ photos: [] }),
       savePreparedInlineMessage: vi.fn().mockResolvedValue({ id: 'prep_1' }),
     },
     InputFile: class InputFile {
@@ -477,7 +478,10 @@ const reportClientError = (await import('../tgcloud/endpoints/reportClientError.
 const remindConfirm = (await import('../tgcloud/endpoints/remindConfirm.js')).default;
 const updateTournament = (await import('../tgcloud/endpoints/updateTournament.js')).default;
 const adminManageMatch = (await import('../tgcloud/endpoints/adminManageMatch.js')).default;
+const manageClubPlayer = (await import('../tgcloud/endpoints/manageClubPlayer.js')).default;
+const publishLive = (await import('../tgcloud/endpoints/publishLive.js')).default;
 const { publishPublicLivePage } = await import('../tgcloud/lib/publicLive.js');
+const { autoFinishExpiredTournaments } = await import('../tgcloud/lib/helpers.js');
 
 beforeEach(() => {
   sqlite = new DatabaseSync(':memory:');
@@ -717,7 +721,7 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
 
   it('detaches tgId on leaveTournament even after player has matches so tournament disappears from player active state', async () => {
     const snap = await createTournament(
-      { name: 'Финал выписки', targetScore: 5 },
+      { name: 'Финал выписки', targetScore: 5, autoRounds: false },
       { initData: { user: { id: 100, first_name: 'Админ' } } }
     );
     await joinTournament(
@@ -728,8 +732,12 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
       { tournamentId: snap.tournament.id, names: ['Г1', 'Г2'] },
       { initData: { user: { id: 100, first_name: 'Админ' } } }
     );
-    await startRound(
+    const r1 = await startRound(
       { tournamentId: snap.tournament.id },
+      { initData: { user: { id: 100, first_name: 'Админ' } } }
+    );
+    await submitScore(
+      { matchId: r1.currentRoundMatches[0].id, score1: 5, score2: 1, forceAdmin: true },
       { initData: { user: { id: 100, first_name: 'Админ' } } }
     );
 
@@ -1356,5 +1364,91 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     await expect(
       submitScore({ matchId: m2.id, score1: 5, score2: 1, forceAdmin: true }, orgCtx)
     ).rejects.toThrow(/Отменённый матч/);
+  });
+
+  it('covers manageClubPlayer, publishLive, updateTournament format lock, leaveTournament guards, adminManageMatch, and autoFinishExpiredTournaments', async () => {
+    const orgCtx = { initData: { user: { id: 9601, first_name: 'КлубОрг' } } };
+    const p2Ctx = { initData: { user: { id: 9602, first_name: 'Петя' } } };
+
+    // 1. manageClubPlayer: add, list, delete
+    const afterAddClub = await manageClubPlayer(
+      { action: 'add', name: 'Клубный Игрок', tgId: 7777, dypRole: 'A' },
+      orgCtx
+    );
+    expect(afterAddClub.clubPlayers).toHaveLength(1);
+    expect(afterAddClub.clubPlayers[0].tgId).toBe(7777);
+    const listedClub = await manageClubPlayer({ action: 'list' }, orgCtx);
+    expect(listedClub.clubPlayers).toHaveLength(1);
+    const afterDelClub = await manageClubPlayer(
+      { action: 'delete', id: listedClub.clubPlayers[0].id },
+      orgCtx
+    );
+    expect(afterDelClub.clubPlayers).toHaveLength(0);
+
+    // 2. publishLive enable + disable
+    const snap = await createTournament(
+      { name: 'P2 Coverage', tables: 2, dypMode: 'monster', targetScore: 5, autoRounds: false },
+      orgCtx
+    );
+    const tid = snap.tournament.id;
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, result: { access_token: 'tok_p2' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, result: { path: 'P2-Live-11-16' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, result: { path: 'P2-Live-11-16' } }),
+      });
+    const liveOn = await publishLive({ tournamentId: tid, enabled: true }, orgCtx);
+    expect(liveOn.tournament.publicPath).toBe('P2-Live-11-16');
+
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+    const liveOff = await publishLive({ tournamentId: tid, enabled: false }, orgCtx);
+    expect(liveOff.tournament.publicPath).toBeNull();
+
+    // 3. leaveTournament запрещён во время активного матча и updateTournament блокирует смену формата после старта
+    await joinTournament({ tournamentId: tid }, p2Ctx);
+    await addGuestPlayer({ tournamentId: tid, names: ['Г1', 'Г2'] }, orgCtx);
+    const r1 = await startRound({ tournamentId: tid }, orgCtx);
+    const m1 = r1.currentRoundMatches[0];
+
+    await expect(leaveTournament({ tournamentId: tid }, p2Ctx)).rejects.toThrow(/текущий матч/);
+    await expect(
+      updateTournament({ tournamentId: tid, dypMode: 'swiss' }, orgCtx)
+    ).rejects.toThrow(/только до старта первого раунда/);
+
+    // 4. adminManageMatch: set_table и reset + проверка autoFinishExpiredTournaments на открытых матчах
+    const moved = await adminManageMatch({ matchId: m1.id, action: 'set_table', tableNumber: 2 }, orgCtx);
+    expect(moved.currentRoundMatches[0].tableNumber).toBe(2);
+    await submitScore({ matchId: m1.id, score1: 5, score2: 2, forceAdmin: true }, orgCtx);
+    const resetRes = await adminManageMatch({ matchId: m1.id, action: 'reset' }, orgCtx);
+    expect(resetRes.currentRoundMatches[0].status).toBe('PLAYING');
+    expect(resetRes.currentRoundMatches[0].score1).toBe(0);
+
+    // За 25 часов неактивности авто-завершение закрывает висячий матч в CANCELLED
+    const staleRow = sqlite.prepare('SELECT * FROM tournaments WHERE id = ?').get(tid);
+    const staleMatches = sqlite.prepare('SELECT * FROM matches WHERE tournament_id = ?').all(tid);
+    const tObj = {
+      id: staleRow.id,
+      status: staleRow.status,
+      startedAt: new Date(Date.now() - 25 * 3600_000),
+      createdAt: new Date(Date.now() - 25 * 3600_000),
+    };
+    const mObjs = staleMatches.map((m) => ({
+      id: m.id,
+      tournamentId: m.tournament_id,
+      status: m.status,
+      createdAt: new Date(Date.now() - 25 * 3600_000),
+      finishedAt: null,
+    }));
+    const autoFinished = await autoFinishExpiredTournaments([tObj], new Map([[tid, mObjs]]));
+    expect(autoFinished).toEqual([tid]);
+    const matchAfterAuto = sqlite.prepare('SELECT status FROM matches WHERE id = ?').get(m1.id);
+    expect(matchAfterAuto.status).toBe('CANCELLED');
   });
 });

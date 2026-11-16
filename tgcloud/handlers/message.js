@@ -4,14 +4,16 @@ import { tournaments } from '../schema.js';
 import { upsertUser, escapeHtml, buildMainAppLink } from '../lib/helpers.js';
 
 export default async function (message) {
-  if (!message?.chat?.id) return;
+  if (!message?.chat?.id || message.chat.type !== 'private') return;
 
   if (message.from) {
     await upsertUser(message.from, { refreshAvatar: true });
   }
 
-  const text = String(message.text || '').trim();
-  const matchStart = text.match(/^\/start(?:\s+(\d+))?/);
+  if (typeof message.text !== 'string' || !message.text.trim()) return;
+
+  const text = message.text.trim();
+  const matchStart = text.match(/^\/start(?:@\S+)?(?:\s+(\d+))?/i);
   const parsedId = matchStart?.[1] ? Number(matchStart[1]) : null;
   const startTournamentId = parsedId && Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
 
@@ -45,10 +47,11 @@ export default async function (message) {
       .get();
 
     if (tournament) {
+      const shortTitle = tournament.name.length > 36 ? `${tournament.name.slice(0, 35)}…` : tournament.name;
       greeting =
         `⚽ Приглашение в турнир <b>«${escapeHtml(tournament.name)}»</b>\n\n` +
         `Нажмите кнопку ниже, чтобы присоединиться в «Кикер Пикер».`;
-      buttonText = `⚽ Войти в «${tournament.name}»`;
+      buttonText = `⚽ Войти в «${shortTitle}»`;
     } else {
       greeting =
         `⚽ Добро пожаловать в <b>Кикер Пикер</b>!\n\n` +
@@ -56,19 +59,23 @@ export default async function (message) {
     }
   }
 
-  const sent = await api.sendMessage({
-    chat_id: message.chat.id,
-    text: greeting,
-    parse_mode: 'HTML',
-    reply_markup: {
-      inline_keyboard: [[{ text: buttonText, url: appUrl }]],
-    },
-  });
+  let sent = null;
+  try {
+    sent = await api.sendMessage({
+      chat_id: message.chat.id,
+      text: greeting,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: buttonText, url: appUrl }]],
+      },
+    });
+  } catch (err) {
+    console.warn('Send /start message failed:', err?.code, err?.description || err?.message);
+  }
 
   // Закрепляем главное сообщение с кнопкой входа в Main Mini App только в личном чате на чистом /start
   const isPureStart = !startTournamentId && /^\/start(?:@\S+)?\s*$/i.test(text);
-  const isPrivateChat = message.chat.type === 'private';
-  if (isPureStart && isPrivateChat && sent?.message_id) {
+  if (isPureStart && sent?.message_id) {
     try {
       if (typeof api.unpinAllChatMessages === 'function') {
         await api.unpinAllChatMessages({ chat_id: message.chat.id });

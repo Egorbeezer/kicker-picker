@@ -61,6 +61,7 @@ export const AdminSettingsView: React.FC<Props> = ({
   const opLockRef = useRef(false);
 
   const isLocked = busy || localOp !== null;
+  const canEditFormat = tournament.status === 'REGISTRATION';
   const canEditPlayoff = tournament.status !== 'PLAYOFF' && tournament.status !== 'FINISHED';
   const transferCandidates = players.filter(
     (p) => Boolean(p.tgId) && p.tgId !== tournament.creatorTgId
@@ -139,7 +140,7 @@ export const AdminSettingsView: React.FC<Props> = ({
         value={settings}
         onChange={(patch) => setSettings((prev) => ({ ...prev, ...patch }))}
         disabled={isLocked}
-        canEditFormat={true}
+        canEditFormat={canEditFormat}
         canEditPlayoff={canEditPlayoff}
         showDisabledTables={true}
         defaultShowAdvancedRules={true}

@@ -1047,4 +1047,83 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       root.unmount();
     });
   });
+
+  it('date.ts formats epoch 0, YYYY-MM-DD without UTC shift, and HH:MM:SS', async () => {
+    const { formatDateRu, formatTimeHm, formatTimeHms } = await import('../src/utils/date');
+    expect(formatDateRu('2026-11-16')).toBe('16.11.2026');
+    expect(formatDateRu(0)).toBe('01.01.1970');
+    expect(formatDateRu('')).toBe('');
+    expect(formatTimeHm(new Date(2026, 10, 16, 9, 5, 7))).toBe('09:05');
+    expect(formatTimeHms(new Date(2026, 10, 16, 9, 5, 7))).toBe('09:05:07');
+  });
+
+  it('PlayerMatchView renders WAITING_CONFIRM actions for opponent and remind button for submitter', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const { PlayerMatchView } = await import('../src/components/PlayerMatchView');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    const onRemind = vi.fn().mockResolvedValue(undefined);
+
+    const baseSnap = makeSnapshot();
+    const waitMatch = {
+      ...baseSnap.currentRoundMatches[0],
+      status: 'WAITING_CONFIRM' as const,
+      score1: 5,
+      score2: 3,
+      submittedByTeam: 2,
+      myTeam: 1,
+    };
+
+    await act(async () => {
+      root.render(
+        <PlayerMatchView
+          snapshot={{ ...baseSnap, myCurrentMatch: waitMatch }}
+          busy={false}
+          onSubmitScore={async () => {}}
+          onConfirmScore={onConfirm}
+          onRemindConfirm={onRemind}
+          onOpenTable={() => {}}
+        />
+      );
+    });
+    expect(container.textContent).toContain('Подтвердить');
+    expect(container.textContent).toContain('Оспорить');
+
+    const confirmBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Подтвердить')
+    ) as HTMLButtonElement;
+    await act(async () => {
+      confirmBtn.click();
+    });
+    expect(onConfirm).toHaveBeenCalledWith(waitMatch.id, 'confirm');
+
+    await act(async () => {
+      root.render(
+        <PlayerMatchView
+          snapshot={{ ...baseSnap, myCurrentMatch: { ...waitMatch, submittedByTeam: 1 } }}
+          busy={false}
+          onSubmitScore={async () => {}}
+          onConfirmScore={onConfirm}
+          onRemindConfirm={onRemind}
+          onOpenTable={() => {}}
+        />
+      );
+    });
+    const remindBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Напомнить')
+    ) as HTMLButtonElement;
+    expect(remindBtn).toBeDefined();
+    await act(async () => {
+      remindBtn.click();
+    });
+    expect(onRemind).toHaveBeenCalledWith(waitMatch.id);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
 });

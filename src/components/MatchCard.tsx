@@ -33,14 +33,8 @@ interface Props {
 
 function getElapsedPlayingMin(match: MatchItem): number {
   if (match.status !== 'PLAYING' || !match.createdAt) return 0;
-  const raw = match.createdAt;
-  const ms =
-    typeof raw === 'number'
-      ? raw < 1e12
-        ? raw * 1000
-        : raw
-      : new Date(raw).getTime();
-  if (!Number.isFinite(ms)) return 0;
+  const ms = toEpochMs(match.createdAt);
+  if (!ms) return 0;
   return Math.max(0, Math.floor((Date.now() - ms) / 60000));
 }
 
@@ -75,16 +69,29 @@ export const MatchCard: React.FC<Props> = ({
     match.stage === 'PLAYOFF' &&
     (match.setsWon1 > 0 || match.setsWon2 > 0);
 
+  const interactiveProps = onClick
+    ? {
+        onClick,
+        role: 'button' as const,
+        tabIndex: 0,
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+          }
+        },
+      }
+    : {};
+
   return (
     <div
-      onClick={onClick}
       className={`p-3.5 rounded-2xl border shadow-sm relative overflow-hidden bg-[#2c2c2e] ${
         match.status === 'CANCELLED'
           ? 'border-[#3a3a3c] opacity-65'
           : isMyMatch
             ? 'border-[#2ea6ff]/45'
             : 'border-[#3a3a3c]'
-      } ${onClick ? 'cursor-pointer transition-transform active:scale-[0.98]' : ''}`}
+      } ${onClick ? 'transition-transform active:scale-[0.98]' : ''}`}
     >
       {match.status === 'PLAYING' && (
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-500" />
@@ -99,7 +106,8 @@ export const MatchCard: React.FC<Props> = ({
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-500" />
       )}
 
-      <div className="flex justify-between items-center gap-2 mb-2.5 pl-1">
+      <div {...interactiveProps} className={onClick ? 'cursor-pointer' : undefined}>
+        <div className="flex justify-between items-center gap-2 mb-2.5 pl-1">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <span className="font-bold text-[11px] bg-[#1c1c1d] px-2.5 py-1 rounded-full border border-[#3a3a3c] text-white">
             Стол {match.tableNumber}
@@ -223,10 +231,10 @@ export const MatchCard: React.FC<Props> = ({
           Ожидается подтверждение от: <span className="font-bold">{waitingFromLabel}</span>
         </div>
       )}
+      </div>
 
       {inlineFooter && (
         <div
-          onClick={(e) => e.stopPropagation()}
           className="mt-2.5 ml-1 pt-2.5 border-t border-[var(--border)]"
         >
           {inlineFooter}

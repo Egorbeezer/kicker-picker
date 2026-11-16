@@ -1,14 +1,16 @@
 import type { MatchItem } from '../types';
 
 function toValidDate(val?: string | number | Date | null): Date | null {
-  if (!val) return null;
+  if (val === null || val === undefined || val === '') return null;
   if (val instanceof Date) return Number.isNaN(val.getTime()) ? null : val;
   if (typeof val === 'number') {
+    if (!Number.isFinite(val)) return null;
     const ms = val < 1e12 ? val * 1000 : val;
     const d = new Date(ms);
     return Number.isNaN(d.getTime()) ? null : d;
   }
   const s = String(val).trim();
+  if (!s) return null;
   const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (ymd) {
     return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
@@ -30,6 +32,12 @@ export function formatTimeHm(val?: string | number | Date | null): string {
   const d = toValidDate(val);
   if (!d) return '';
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+export function formatTimeHms(val?: string | number | Date | null): string {
+  const d = toValidDate(val);
+  if (!d) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
 export interface PodiumPlaces {

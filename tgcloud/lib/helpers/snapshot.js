@@ -156,7 +156,7 @@ export async function getTournamentSnapshot(
     .sort((a, b) => a.tableNumber - b.tableNumber);
 
   const myCurrentMatch =
-    myPlayer
+    myPlayer && tournament.status !== 'FINISHED'
       ? enrichedMatches.find(
           (m) => m.myTeam !== null && m.status !== 'FINISHED' && m.status !== 'CANCELLED'
         ) || null
@@ -208,9 +208,15 @@ function formatDateRuShort(epochOrDate) {
 }
 
 /**
- * @param {{ callerTgId: number; myTournaments?: any[]; allPlayers?: any[]; allMatches?: any[] }} params
+ * @param {{ callerTgId: number; myTournaments?: any[]; allPlayers?: any[]; allMatches?: any[]; leaderboardsByTournament?: Map<number, any[]> | null }} params
  */
-export function buildGlobalPlayerProfile({ callerTgId, myTournaments = [], allPlayers = [], allMatches = [] }) {
+export function buildGlobalPlayerProfile({
+  callerTgId,
+  myTournaments = [],
+  allPlayers = [],
+  allMatches = [],
+  leaderboardsByTournament = null,
+}) {
   const playersById = new Map(allPlayers.map((p) => [p.id, p]));
   const playersByTournament = new Map();
   for (const p of allPlayers) {
@@ -252,7 +258,9 @@ export function buildGlobalPlayerProfile({ callerTgId, myTournaments = [], allPl
     );
     if (myFinished.length > 0) tournamentsPlayed += 1;
 
-    const lb = computeLeaderboard({ players: tPlayers, matches: tMatches, tableConfig: t.tableConfig });
+    const lb =
+      leaderboardsByTournament?.get(t.id) ||
+      computeLeaderboard({ players: tPlayers, matches: tMatches, tableConfig: t.tableConfig });
     const myQualRow = lb.find((r) => r.playerId === myPlayer.id);
     if (myQualRow && myQualRow.rank === 1 && myQualRow.games > 0) {
       qualFirstCount += 1;
@@ -285,8 +293,19 @@ export function buildGlobalPlayerProfile({ callerTgId, myTournaments = [], allPl
         tourneyWins += 1;
       }
 
-      const myGoals = inT1 ? m.score1 : m.score2;
-      const oppGoals = inT1 ? m.score2 : m.score1;
+      let myGoals = 0;
+      let oppGoals = 0;
+      if (Array.isArray(m.setsHistory) && m.setsHistory.length > 0) {
+        for (const s of m.setsHistory) {
+          const s1 = Number(s?.score1) || 0;
+          const s2 = Number(s?.score2) || 0;
+          myGoals += inT1 ? s1 : s2;
+          oppGoals += inT1 ? s2 : s1;
+        }
+      } else {
+        myGoals = inT1 ? m.score1 : m.score2;
+        oppGoals = inT1 ? m.score2 : m.score1;
+      }
       totalGoalsFor += myGoals;
       tourneyGoals += myGoals;
       tourneyOppGoals += oppGoals;

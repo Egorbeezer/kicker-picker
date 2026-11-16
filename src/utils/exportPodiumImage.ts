@@ -1,4 +1,5 @@
 import { MatchItem, MatchPlayerInfo, TournamentSnapshot } from '../types';
+import { getDypModeLabel } from '../components/InfoTooltip';
 import { canvasToPngResult, loadCanvasImage } from './canvasImage';
 import { formatDateRu } from './date';
 import { currentTheme, Theme } from './theme';
@@ -338,7 +339,7 @@ export async function renderPodiumToPng(
       (tournament.status === 'FINISHED' ? (tournament.startedAt ?? tournament.createdAt) : null) ??
       Date.now(),
   );
-  const formatLabel = tournament.dypMode === 'classic' ? 'Classic DYP' : 'Monster DYP';
+  const formatLabel = getDypModeLabel(tournament.dypMode);
   const subTitle = [dateLabel, formatLabel, `${snapshot.players.length} игр.`]
     .filter(Boolean)
     .join('  ·  ');

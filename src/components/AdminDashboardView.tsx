@@ -374,11 +374,17 @@ export const AdminDashboardView: React.FC<Props> = ({
           </div>
         )}
 
-        {activePlayersCount < 4 && tournament.status === 'REGISTRATION' && (
-          <div className="text-xs text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-            Для старта раунда нужно минимум 4 активных игрока (сейчас: {activePlayersCount}). Добавьте участников во вкладке «Участники» или отправьте ссылку-приглашение.
-          </div>
-        )}
+        {(() => {
+          const minNeeded = tournament.teamFormat === 'single' ? 2 : 4;
+          return (
+            activePlayersCount < minNeeded &&
+            tournament.status === 'REGISTRATION' && (
+              <div className="text-xs text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
+                Для старта раунда нужно минимум {minNeeded} активных игрока (сейчас: {activePlayersCount}). Добавьте участников во вкладке «Участники» или отправьте ссылку-приглашение.
+              </div>
+            )
+          );
+        })()}
 
         <div className="flex items-center justify-between pt-1">
           <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">

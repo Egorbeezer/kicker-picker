@@ -12,7 +12,8 @@ export default async function (input, ctx) {
     const name = String(input?.name || '').trim().slice(0, 60);
     if (!name) throw new EndpointError('Введите имя игрока', { code: 'INVALID_NAME' });
     const dypRole = input?.dypRole === 'A' || input?.dypRole === 'B' ? input.dypRole : null;
-    const playerTgId = input?.tgId ? Number(input.tgId) : null;
+    const rawTgId = input?.tgId !== undefined && input?.tgId !== null ? Number(input.tgId) : null;
+    const playerTgId = rawTgId !== null && Number.isInteger(rawTgId) && rawTgId > 0 ? rawTgId : null;
 
     const existing = await db
       .select()
