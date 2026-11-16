@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '**/.tgcloud/**'],
+    ignores: ['dist/**', 'node_modules/**', '**/.tgcloud/**', 'test-results/**', 'playwright-report/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -55,7 +55,7 @@ export default [
     },
   },
   {
-    files: ['tests/**/*.{js,ts,tsx}', 'vite.config.ts', 'eslint.config.js'],
+    files: ['tests/**/*.{js,ts,tsx}', 'e2e/**/*.{js,mjs,ts}', 'vite.config.ts', 'playwright.config.ts', 'eslint.config.js'],
     languageOptions: {
       globals: {
         Buffer: 'readonly',

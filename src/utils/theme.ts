@@ -22,6 +22,14 @@ export function currentTheme(): Theme {
   }
 }
 
+function hasCloudStorage(): boolean {
+  const wa = window.Telegram?.WebApp as
+    | { initData?: string; isVersionAtLeast?: (v: string) => boolean; CloudStorage?: { getItem?: unknown; setItem?: unknown } }
+    | undefined;
+  if (!wa?.initData || !wa.CloudStorage) return false;
+  return typeof wa.isVersionAtLeast === 'function' ? wa.isVersionAtLeast('6.9') : true;
+}
+
 export function applyTheme(theme: Theme, { persist = true } = {}): void {
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = theme;
@@ -45,7 +53,9 @@ export function applyTheme(theme: Theme, { persist = true } = {}): void {
   }
 
   try {
-    window.Telegram?.WebApp?.CloudStorage?.setItem(KEY, theme);
+    if (hasCloudStorage()) {
+      window.Telegram?.WebApp?.CloudStorage?.setItem(KEY, theme);
+    }
   } catch {
     // ignore unsupported CloudStorage
   }
@@ -63,6 +73,7 @@ export function hydrateSavedTheme(onResolved: (theme: Theme) => void): void {
     return;
   }
   try {
+    if (!hasCloudStorage()) return;
     const cloud = window.Telegram?.WebApp?.CloudStorage;
     if (!cloud?.getItem) return;
     cloud.getItem(KEY, (err, value) => {

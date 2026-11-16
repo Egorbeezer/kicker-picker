@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.backend.json --noEmit",
     "typecheck:backend": "tsc -p tsconfig.backend.json --noEmit",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
+    "test:e2e": "npm run build && playwright test",
     "deploy": "npm run build && tgcloud push",
     "deploy:support": "tgcloud --cwd support-bot push",
     "bot:menu": "tgcloud run endpoints/setupBotMenu '{}'",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/vite": "^4.1.17",
     "@tgcloud/cli": "^0.2.0",
     "@types/react": "^19.2.3",
