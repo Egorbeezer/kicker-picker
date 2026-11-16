@@ -2,7 +2,7 @@ import { db, EndpointError } from 'sdk';
 import { eq } from 'sdk/db';
 import { tournaments } from '../schema.js';
 import { normalizeTableConfig } from '../lib/dyp.js';
-import { VALID_DYP_MODES, getTournamentSnapshot, isTournamentAdmin } from '../lib/helpers.js';
+import { VALID_DYP_MODES, getTournamentSnapshot, isTournamentAdmin, syncTournamentAdminIndex } from '../lib/helpers.js';
 import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
 
 export default async function (input, ctx) {
@@ -45,8 +45,14 @@ export default async function (input, ctx) {
       ? Math.max(targetScore, Number(input.maxScore) || targetScore + 2)
       : Math.max(targetScore, tournament.maxScore);
 
+  const teamFormat =
+    input?.teamFormat !== undefined && ['pairs', 'single'].includes(input.teamFormat)
+      ? input.teamFormat
+      : tournament.teamFormat || 'pairs';
+
+  const playoffSizeChoices = teamFormat === 'single' ? [2, 4, 8, 16, 32] : [4, 8, 16, 32];
   const playoffSize =
-    input?.playoffSize !== undefined && [4, 8, 16, 32].includes(Number(input.playoffSize))
+    input?.playoffSize !== undefined && playoffSizeChoices.includes(Number(input.playoffSize))
       ? Number(input.playoffSize)
       : tournament.playoffSize;
 
@@ -89,11 +95,6 @@ export default async function (input, ctx) {
     input?.dypMode !== undefined && VALID_DYP_MODES.includes(input.dypMode)
       ? input.dypMode
       : tournament.dypMode || 'monster';
-
-  const teamFormat =
-    input?.teamFormat !== undefined && ['pairs', 'single'].includes(input.teamFormat)
-      ? input.teamFormat
-      : tournament.teamFormat || 'pairs';
 
   const roundRobinLoops =
     input?.roundRobinLoops !== undefined
@@ -181,6 +182,10 @@ export default async function (input, ctx) {
       tableConfig,
     })
     .where(eq(tournaments.id, tournamentId));
+
+  if (input?.coAdminTgIds !== undefined && Number(tournament.creatorTgId) === Number(tgUser.id)) {
+    await syncTournamentAdminIndex(tournamentId, tournament.creatorTgId, coAdminTgIds || []);
+  }
 
   await syncPublicLiveIfEnabled(tournamentId);
 

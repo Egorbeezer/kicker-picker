@@ -39,6 +39,7 @@ export default function App() {
   const {
     livePath,
     loading,
+    initialLoadError,
     busy,
     pendingStatus,
     theme,
@@ -119,6 +120,36 @@ export default function App() {
         <span className="loading loading-spinner text-[#2ea6ff]" />
         <Brand className="text-lg mt-1" />
         <span className="text-xs text-[var(--muted)]">Загрузка турнира...</span>
+      </div>
+    );
+  }
+
+  if (initialLoadError && !appState) {
+    return (
+      <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col items-center justify-center p-6 text-center gap-3">
+        <ToastHost />
+        <ActionStatusBanner pendingStatus={pendingStatus} />
+        <Trophy size={48} className="text-[#2ea6ff]" />
+        <Brand className="text-xl" />
+        <div className="text-sm font-bold">Не удалось загрузить данные</div>
+        <p className="text-xs text-[var(--muted)] max-w-xs">{initialLoadError}</p>
+        <button
+          type="button"
+          onClick={() => {
+            haptic('light');
+            void fetchState();
+          }}
+          className="btn btn-primary px-6 py-2.5 text-sm"
+        >
+          Повторить
+        </button>
+        <button
+          type="button"
+          onClick={() => openTelegramChat()}
+          className="w-full max-w-xs py-2.5 px-4 rounded-2xl bg-[var(--bg-3)] border border-[var(--border-strong)] text-[var(--text)] text-sm font-semibold active:scale-95 transition-transform"
+        >
+          {SUPPORT_BUTTON}
+        </button>
       </div>
     );
   }

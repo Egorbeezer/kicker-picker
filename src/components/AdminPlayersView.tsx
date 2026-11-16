@@ -303,7 +303,7 @@ export const AdminPlayersView: React.FC<Props> = ({
                   </button>
                 )}
 
-                {Boolean(p.tgId) && !isMainCreator && (isCreator || Number(tournament.creatorTgId) === snapshot.myPlayerId || isCoAdmin || true) && (
+                {Boolean(p.tgId) && !isMainCreator && isCreator && (
                   <button
                     type="button"
                     disabled={busy}

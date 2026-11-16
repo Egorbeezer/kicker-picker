@@ -18,6 +18,7 @@ import type {
 export function useAppController() {
   const livePath = getLivePathFromUrl();
   const [loading, setLoading] = useState(!livePath);
+  const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => currentTheme());
@@ -37,6 +38,9 @@ export function useAppController() {
   const singleInstanceRef = useRef<SingleInstanceController | null>(null);
   const selectedTournamentIdRef = useRef<number | null>(selectedTournamentId);
   selectedTournamentIdRef.current = selectedTournamentId;
+  const appStateRef = useRef<AppStateResponse | null>(appState);
+  appStateRef.current = appState;
+  const requestSeqRef = useRef(0);
   const snapshotVersionRef = useRef<string | null>(
     appState?.activeTournament?.snapshotVersion ?? null
   );
@@ -52,6 +56,7 @@ export function useAppController() {
 
   const fetchState = useCallback(
     async (tId?: number | null, opts?: { light?: boolean; background?: boolean }): Promise<boolean> => {
+      const reqId = ++requestSeqRef.current;
       try {
         if (livePath || !isTelegramEnv()) {
           setLoading(false);
@@ -62,10 +67,14 @@ export function useAppController() {
           startHandledRef.current = true;
           try {
             const joined = await apiClient.joinTournament(startTournamentId);
+            if (reqId !== requestSeqRef.current) return true;
+            selectedTournamentIdRef.current = joined.tournament.id;
             setSelectedTournamentId(joined.tournament.id);
             setShowHome(false);
             const res = await apiClient.getState({ tournamentId: joined.tournament.id });
+            if (reqId !== requestSeqRef.current) return true;
             setAppState(res);
+            setInitialLoadError(null);
             consecutivePollErrorsRef.current = 0;
             pollToastShownRef.current = false;
             setLoading(false);
@@ -75,7 +84,7 @@ export function useAppController() {
           }
         }
 
-        const effectiveId = tId === undefined ? selectedTournamentId : tId;
+        const effectiveId = tId === undefined ? selectedTournamentIdRef.current : tId;
         const canPollLight = Boolean(opts?.light && effectiveId);
         const pollVersion = canPollLight ? snapshotVersionRef.current : null;
         const res = await apiClient.getState(
@@ -88,39 +97,43 @@ export function useAppController() {
             : {}
         );
 
+        if (reqId !== requestSeqRef.current) return true;
+
         consecutivePollErrorsRef.current = 0;
         pollToastShownRef.current = false;
+        setInitialLoadError(null);
 
         if (res.light) {
           if (res.unchanged) {
             setLoading(false);
             return true;
           }
-          let needsFullRefresh = false;
-          setAppState((prev) => {
-            if (!prev) {
-              needsFullRefresh = true;
-              return prev;
-            }
-            const prevStatus = prev.activeTournament?.tournament.status;
-            const nextStatus = res.activeTournament?.tournament.status;
-            if (prevStatus && nextStatus && prevStatus !== nextStatus && nextStatus === 'FINISHED') {
-              needsFullRefresh = true;
-            }
-            return {
-              ...prev,
-              activeTournament: res.activeTournament ?? null,
-            };
-          });
-          if (needsFullRefresh) {
+          const prevState = appStateRef.current;
+          if (!prevState) {
             const full = await apiClient.getState(effectiveId ? { tournamentId: effectiveId } : {});
+            if (reqId !== requestSeqRef.current) return true;
             setAppState(full);
+          } else {
+            const prevStatus = prevState.activeTournament?.tournament.status;
+            const nextStatus = res.activeTournament?.tournament.status;
+            const needsFullRefresh = Boolean(
+              prevStatus && nextStatus && prevStatus !== nextStatus && nextStatus === 'FINISHED'
+            );
+            setAppState((prev) =>
+              prev ? { ...prev, activeTournament: res.activeTournament ?? null } : prev
+            );
+            if (needsFullRefresh) {
+              const full = await apiClient.getState(effectiveId ? { tournamentId: effectiveId } : {});
+              if (reqId !== requestSeqRef.current) return true;
+              setAppState(full);
+            }
           }
         } else {
           setAppState(res);
         }
 
-        if (res.activeTournament && !selectedTournamentId) {
+        if (res.activeTournament && !selectedTournamentIdRef.current) {
+          selectedTournamentIdRef.current = res.activeTournament.tournament.id;
           setSelectedTournamentId(res.activeTournament.tournament.id);
           if (res.activeTournament.isAdmin) {
             setMode('ADMIN');
@@ -128,6 +141,11 @@ export function useAppController() {
         }
         return true;
       } catch (err) {
+        if (reqId !== requestSeqRef.current) return false;
+        const msg = err instanceof Error ? err.message : 'Не удалось загрузить данные';
+        if (!opts?.background && !appStateRef.current) {
+          setInitialLoadError(msg);
+        }
         if (opts?.background) {
           consecutivePollErrorsRef.current += 1;
           if (!pollToastShownRef.current) {
@@ -139,10 +157,12 @@ export function useAppController() {
         }
         return false;
       } finally {
-        setLoading(false);
+        if (reqId === requestSeqRef.current) {
+          setLoading(false);
+        }
       }
     },
-    [selectedTournamentId, showError, livePath]
+    [showError, livePath]
   );
 
   useEffect(() => {
@@ -258,6 +278,9 @@ export function useAppController() {
   }, [fetchState, selectedTournamentId, isCreating, showHome, livePath]);
 
   const applySnapshot = useCallback((snap: TournamentSnapshot) => {
+    requestSeqRef.current += 1;
+    selectedTournamentIdRef.current = snap.tournament.id;
+    setInitialLoadError(null);
     setSelectedTournamentId(snap.tournament.id);
     setAppState((prev) => {
       if (!prev) return prev;
@@ -368,6 +391,7 @@ export function useAppController() {
           (picked.creatorTgId === uid ||
             (Array.isArray(picked.coAdminTgIds) && picked.coAdminTgIds.includes(uid)))
       );
+      selectedTournamentIdRef.current = tId;
       setSelectedTournamentId(tId);
       setShowHome(false);
       setMode(pickedIsAdmin ? 'ADMIN' : 'PLAYER');
@@ -392,6 +416,7 @@ export function useAppController() {
   return {
     livePath,
     loading,
+    initialLoadError,
     busy,
     pendingStatus,
     theme,

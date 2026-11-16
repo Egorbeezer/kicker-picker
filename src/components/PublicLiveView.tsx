@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Radio,
   RefreshCw,
@@ -102,6 +102,7 @@ function renderCell(key: TableColumnKey, row: LeaderboardRow) {
 export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleTheme, onClose }) => {
   const [data, setData] = useState<PublicLiveData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [staleError, setStaleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<'round' | 'table' | 'playoff'>('round');
@@ -109,19 +110,33 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
     typeof window !== 'undefined' ? window.innerWidth >= 960 : false
   );
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const dataRef = useRef<PublicLiveData | null>(null);
+  dataRef.current = data;
+  const reqSeqRef = useRef(0);
 
   const load = useCallback(
     async (manual = false) => {
+      const reqId = ++reqSeqRef.current;
       if (manual) setRefreshing(true);
       try {
         const res = await fetchPublicLive(publicPath);
+        if (reqId !== reqSeqRef.current) return;
         setData(res);
         setError(null);
+        setStaleError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Не удалось загрузить данные');
+        if (reqId !== reqSeqRef.current) return;
+        const msg = err instanceof Error ? err.message : 'Не удалось загрузить данные';
+        if (dataRef.current) {
+          setStaleError(msg);
+        } else {
+          setError(msg);
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (reqId === reqSeqRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [publicPath]
@@ -449,6 +464,18 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
       </header>
 
       <main className="max-w-6xl w-full mx-auto p-4 flex-1">
+        {staleError && (
+          <div className="mb-3 px-3 py-2 rounded-2xl bg-amber-500/15 border border-amber-500/35 text-xs text-amber-300 flex items-center justify-between gap-2">
+            <span>Проблема обновления данных: {staleError}</span>
+            <button
+              type="button"
+              onClick={() => load(true)}
+              className="px-2.5 py-1 rounded-xl bg-amber-500/20 font-bold text-amber-200 shrink-0 active:scale-95"
+            >
+              Обновить
+            </button>
+          </div>
+        )}
         {tvMode ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             <div className="lg:col-span-5">{roundSection}</div>

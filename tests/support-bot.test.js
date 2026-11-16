@@ -221,20 +221,44 @@ beforeEach(() => {
 });
 
 describe('Support bot (@kickerpickersupportbot) end-to-end flow', () => {
-  it('claims admin once and blocks second claim attempt from another user', async () => {
-    await handleMessage({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Егор' }, text: '/setadmin' });
+  it('restricts /setadmin to owner and allows owner chat reassignment', async () => {
+    await handleMessage({ chat: { id: 888, type: 'private' }, from: { id: 888, first_name: 'Чужой' }, text: '/setadmin' });
+    expect(sendMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ chat_id: '888', text: expect.stringContaining('только владельцу бота') })
+    );
+
+    await handleMessage({
+      chat: { id: 777, type: 'private' },
+      from: { id: 777, first_name: 'Егор', username: 'egor_beezer' },
+      text: '/setadmin',
+    });
     expect(sendMessageMock).toHaveBeenCalledWith(
       expect.objectContaining({ chat_id: '777', text: expect.stringContaining('Вы назначены администратором') })
     );
 
-    await handleMessage({ chat: { id: 888, type: 'private' }, from: { id: 888, first_name: 'Чужой' }, text: '/setadmin' });
+    // Повторный вызов от постороннего всё так же отклоняется
+    await handleMessage({
+      chat: { id: 888, type: 'private' },
+      from: { id: 888, first_name: 'Чужой', username: 'random_user' },
+      text: '/setadmin',
+    });
     expect(sendMessageMock).toHaveBeenCalledWith(
-      expect.objectContaining({ chat_id: '888', text: expect.stringContaining('уже привязан') })
+      expect.objectContaining({ chat_id: '888', text: expect.stringContaining('только владельцу бота') })
+    );
+
+    // Владелец может перепривязать админский чат на другой свой чат
+    await handleMessage({
+      chat: { id: 779, type: 'private' },
+      from: { id: 779, first_name: 'Егор', username: 'Egor_Beezer' },
+      text: '/setadmin',
+    });
+    expect(sendMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ chat_id: '779', text: expect.stringContaining('Вы назначены администратором') })
     );
   });
 
   it('forwards user text, photos, voice and video_note to admin and delivers reply back', async () => {
-    await handleMessage({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Егор' }, text: '/setadmin' });
+    await handleMessage({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Егор', username: 'egor_beezer' }, text: '/setadmin' });
     sendMessageMock.mockClear();
 
     // User sends /start
@@ -320,7 +344,7 @@ describe('Support bot (@kickerpickersupportbot) end-to-end flow', () => {
   });
 
   it('supports inline dialog picker via callback_query and reports blocked users gracefully', async () => {
-    await handleMessage({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Егор' }, text: '/setadmin' });
+    await handleMessage({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Егор', username: 'egor_beezer' }, text: '/setadmin' });
     await handleMessage({
       message_id: 21,
       chat: { id: 600, type: 'private' },

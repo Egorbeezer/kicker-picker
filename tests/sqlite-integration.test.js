@@ -474,6 +474,9 @@ const getState = (await import('../tgcloud/endpoints/getState.js')).default;
 const transferAdmin = (await import('../tgcloud/endpoints/transferAdmin.js')).default;
 const deleteTournament = (await import('../tgcloud/endpoints/deleteTournament.js')).default;
 const reportClientError = (await import('../tgcloud/endpoints/reportClientError.js')).default;
+const remindConfirm = (await import('../tgcloud/endpoints/remindConfirm.js')).default;
+const updateTournament = (await import('../tgcloud/endpoints/updateTournament.js')).default;
+const adminManageMatch = (await import('../tgcloud/endpoints/adminManageMatch.js')).default;
 const { publishPublicLivePage } = await import('../tgcloud/lib/publicLive.js');
 
 beforeEach(() => {
@@ -648,53 +651,42 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     );
   });
 
-  it('retries transient textdb.dev HTTP 500 once before falling back to telegra.ph', async () => {
+  it('publishes LIVE to telegra.ph with access_token and preserves publicPath on transient edit errors', async () => {
     const snap = await createTournament(
-      { name: 'Live Fallback Test' },
+      { name: 'Live Telegraph Primary' },
       { initData: { user: { id: 1, first_name: 'Орг' } } }
     );
 
-    // 1. Первая 500 -> повторная попытка успешна, kp_* адрес сохранён
+    // 1. Первая публикация создаёт аккаунт + страницу в telegra.ph и записывает access_token
     fetchMock
       .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        text: async () => 'transient error',
+        ok: true,
+        json: async () => ({ ok: true, result: { access_token: 'tg_tok_primary' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
-        status: 200,
-        text: async () => 'OK',
+        json: async () => ({ ok: true, result: { path: 'Live-Primary-11-16' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, result: { path: 'Live-Primary-11-16' } }),
       });
-    const kpPath = await publishPublicLivePage(snap.tournament.id, { createIfMissing: true });
-    expect(kpPath).toMatch(/^kp_/);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    // 2. Два 500 подряд от textdb.dev -> переключение на резервный telegra.ph
-    fetchMock.mockClear();
+    const firstPath = await publishPublicLivePage(snap.tournament.id, { createIfMissing: true });
+    expect(firstPath).toBe('Live-Primary-11-16');
+
+    // 2. Временный 500 от telegra.ph при редактировании НЕ перетирает publicPath новой страницей
+    fetchMock.mockReset();
     fetchMock
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        text: async () => 'server error 1',
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        text: async () => 'server error 2',
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { access_token: 'tg_tok_1' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { path: 'Live-Fallback-11-14' } }),
-      });
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      .mockResolvedValueOnce({ ok: false, status: 500 });
 
-    const path = await publishPublicLivePage(snap.tournament.id, { createIfMissing: true });
-    expect(path).toBe('Live-Fallback-11-14');
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    await expect(publishPublicLivePage(snap.tournament.id)).rejects.toThrow(/Telegraph HTTP 500/);
+    const rowAfterErr = sqlite
+      .prepare('SELECT public_path, public_token FROM tournaments WHERE id = ?')
+      .get(snap.tournament.id);
+    expect(rowAfterErr.public_path).toBe('Live-Primary-11-16');
+    expect(rowAfterErr.public_token).toBe('tg_tok_primary');
   });
 
   it('prevents duplicate playoff bracket generation on concurrent startPlayoff calls via CAS', async () => {
@@ -1284,5 +1276,85 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
       .all();
     expect(remainingOld).toHaveLength(0);
     expect(remainingFresh).toHaveLength(1);
+  });
+
+  it('enforces remindConfirm access control + rate limit and syncs tournamentAdmins on updateTournament', async () => {
+    const orgCtx = { initData: { user: { id: 9401, first_name: 'Орг' } } };
+    const p2Ctx = { initData: { user: { id: 9402, first_name: 'Игрок2' } } };
+    const strangerCtx = { initData: { user: { id: 9999, first_name: 'Чужой' } } };
+
+    const snap = await createTournament({ name: 'Auth & Sync', tables: 1, targetScore: 5 }, orgCtx);
+    const tid = snap.tournament.id;
+    await joinTournament({ tournamentId: tid }, p2Ctx);
+    await addGuestPlayer({ tournamentId: tid, names: ['Г1', 'Г2'] }, orgCtx);
+
+    // Назначение со-админа через updateTournament синхронизирует tournament_admins
+    await updateTournament({ tournamentId: tid, coAdminTgIds: [9402] }, orgCtx);
+    const p2State = await getState({}, p2Ctx);
+    expect(p2State.tournaments.some((t) => t.id === tid)).toBe(true);
+
+    const r1 = await startRound({ tournamentId: tid }, orgCtx);
+    const match = r1.currentRoundMatches[0];
+    // Переводим матч в WAITING_CONFIRM от имени орга (если оба в разных командах, уходим в подтверждение)
+    sqlite
+      .prepare("UPDATE matches SET status = 'WAITING_CONFIRM', score1 = 5, score2 = 2, submitted_by_team = 1 WHERE id = ?")
+      .run(match.id);
+
+    // Чужой пользователь не может спамить remindConfirm
+    await expect(remindConfirm({ matchId: match.id }, strangerCtx)).rejects.toThrow(/участник матча или организатор/);
+
+    // Организатор может напомнить один раз, но повтор раньше 30с ограничен
+    const okRem = await remindConfirm({ matchId: match.id }, orgCtx);
+    expect(okRem.ok).toBe(true);
+    await expect(remindConfirm({ matchId: match.id }, orgCtx)).rejects.toThrow(/подождите 30 секунд/);
+  });
+
+  it('handles forceAdmin edits safely, preserves regenerateFirst on error, and rolls back FINISHED qualification + LOS lives', async () => {
+    const orgCtx = { initData: { user: { id: 9501, first_name: 'ЛОС_Орг' } } };
+    const snap = await createTournament(
+      { name: 'LOS State Audit', tables: 1, dypMode: 'last_one_standing', losLives: 3, targetScore: 5, autoRounds: false },
+      orgCtx
+    );
+    const tid = snap.tournament.id;
+    const afterAdd = await addGuestPlayer({ tournamentId: tid, names: ['А', 'Б', 'В'] }, orgCtx);
+    const r1 = await startRound({ tournamentId: tid }, orgCtx);
+    const m1 = r1.currentRoundMatches[0];
+
+    // При попытке regenerateFirst с <2 активными игроками старый раунд НЕ должен удалиться
+    for (const p of afterAdd.players.slice(0, 3)) {
+      await togglePlayerActive({ tournamentId: tid, playerId: p.id }, orgCtx);
+    }
+    await expect(startRound({ tournamentId: tid, regenerateFirst: true }, orgCtx)).rejects.toThrow(/недостаточно активных игроков/);
+    const stillMatches = sqlite.prepare('SELECT id FROM matches WHERE tournament_id = ?').all(tid);
+    expect(stillMatches).toHaveLength(1);
+
+    // Возвращаем игроков, завершаем матч и проверяем пересчёт жизней при forceAdmin смене победителя
+    for (const p of afterAdd.players.slice(0, 3)) {
+      await togglePlayerActive({ tournamentId: tid, playerId: p.id }, orgCtx);
+    }
+    const afterFinish = await submitScore({ matchId: m1.id, score1: 5, score2: 2, forceAdmin: true }, orgCtx);
+    const t2Ids = [m1.team2Players[0].id, m1.team2Players[1].id];
+    const t1Ids = [m1.team1Players[0].id, m1.team1Players[1].id];
+    expect(afterFinish.players.find((p) => p.id === t2Ids[0])?.livesLeft).toBe(2);
+    expect(afterFinish.players.find((p) => p.id === t1Ids[0])?.livesLeft).toBe(3);
+
+    const afterFlip = await submitScore({ matchId: m1.id, score1: 2, score2: 5, forceAdmin: true }, orgCtx);
+    expect(afterFlip.players.find((p) => p.id === t2Ids[0])?.livesLeft).toBe(3);
+    expect(afterFlip.players.find((p) => p.id === t1Ids[0])?.livesLeft).toBe(2);
+
+    // Завершаем квалификацию (без плей-офф) и проверяем deleteLastRound -> откат к REGISTRATION и возврат жизней
+    await finishTournament({ tournamentId: tid }, orgCtx);
+    const afterDel = await deleteLastRound({ tournamentId: tid }, orgCtx);
+    expect(afterDel.tournament.status).toBe('REGISTRATION');
+    expect(afterDel.tournament.currentRound).toBe(0);
+    expect(afterDel.players.find((p) => p.id === t1Ids[0])?.livesLeft).toBe(3);
+
+    // Отменённый матч запрещено править через forceAdmin
+    const r1Again = await startRound({ tournamentId: tid }, orgCtx);
+    const m2 = r1Again.currentRoundMatches[0];
+    await adminManageMatch({ matchId: m2.id, action: 'toggle_cancel' }, orgCtx);
+    await expect(
+      submitScore({ matchId: m2.id, score1: 5, score2: 1, forceAdmin: true }, orgCtx)
+    ).rejects.toThrow(/Отменённый матч/);
   });
 });

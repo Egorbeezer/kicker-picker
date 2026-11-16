@@ -1,10 +1,13 @@
 import { db, EndpointError } from 'sdk';
 import { eq, and, inArray, sql } from 'sdk/db';
 import { tournaments, tournamentPlayers, matches } from '../schema.js';
+import { generateDypRound } from '../lib/dyp.js';
 import {
+  VALID_DYP_MODES,
   clearConfirmMessages,
   createNextQualificationRound,
   createPlayoffFirstRound,
+  getActiveTablesList,
   getTournamentSnapshot,
   isTournamentAdmin,
 } from '../lib/helpers.js';
@@ -51,6 +54,41 @@ export default async function (input, ctx) {
     if (r1Matches.some((m) => m.status === 'FINISHED')) {
       throw new EndpointError('Первый раунд нельзя перегенерировать — уже есть сыгранные матчи', {
         code: 'ROUND_IN_PROGRESS',
+      });
+    }
+
+    // Проверяем возможность перегенерации до удаления матчей и сброса currentRound
+    const allPlayers = (
+      await db
+        .select()
+        .from(tournamentPlayers)
+        .where(eq(tournamentPlayers.tournamentId, tournamentId))
+        .all()
+    ).sort((a, b) => (a.sortOrder ?? a.id) - (b.sortOrder ?? b.id));
+    const prevByesSet = new Set(Array.isArray(tournament.lastRoundByes) ? tournament.lastRoundByes : []);
+    const dryPlayers = allPlayers.map((p) =>
+      prevByesSet.has(p.id) ? { ...p, byesCount: Math.max(0, (p.byesCount || 0) - 1) } : p
+    );
+    try {
+      const dryGen = generateDypRound({
+        players: dryPlayers,
+        previousMatches: [],
+        tablesCount: tournament.tablesCount,
+        activeTables: getActiveTablesList(tournament),
+        dypMode: VALID_DYP_MODES.includes(tournament.dypMode) ? tournament.dypMode : 'monster',
+        teamFormat: tournament.teamFormat === 'single' ? 'single' : 'pairs',
+        roundRobinLoops: Number(tournament.roundRobinLoops) || 1,
+        roundNumber: 1,
+        losLives: Number(tournament.losLives) || 3,
+        useBuckets: Boolean(tournament.useBuckets),
+        preserveOrder,
+      });
+      if (dryGen?.done) {
+        throw new Error('Для генерации раунда недостаточно активных игроков');
+      }
+    } catch (err) {
+      throw new EndpointError(err?.message || 'Не удалось перегенерировать первый раунд', {
+        code: 'CANNOT_GENERATE_ROUND',
       });
     }
 

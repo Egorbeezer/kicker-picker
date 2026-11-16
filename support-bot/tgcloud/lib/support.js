@@ -8,6 +8,7 @@ import {
 } from '../schema.js';
 
 export const ADMIN_CONFIG_KEY = 'admin_chat_id';
+export const SUPPORT_OWNER_USERNAMES = ['egor_beezer'];
 export const TARGET_FRESH_MS = 15 * 60_000;
 export const DIALOGS_WINDOW_MS = 24 * 60 * 60_000;
 const ANSWER_PREFIX = 'answer:';
@@ -155,6 +156,11 @@ export function replyFailureKind(errorCode, description) {
   return 'temporary';
 }
 
+export function isSupportOwner(from) {
+  const uname = String(from?.username || '').trim().toLowerCase();
+  return Boolean(uname && SUPPORT_OWNER_USERNAMES.includes(uname));
+}
+
 export async function getAdminChatId() {
   const row = await db
     .select()
@@ -164,22 +170,34 @@ export async function getAdminChatId() {
   return row?.value || null;
 }
 
-export async function claimAdminChatId(chatId, nowMs = Date.now()) {
+export async function claimAdminChatId(chatId, nowMs = Date.now(), { force = false } = {}) {
   const strId = String(chatId);
   const existing = await getAdminChatId();
-  if (existing) {
+  if (existing && !force) {
     return { ok: existing === strId, alreadyClaimedByOther: existing !== strId, adminChatId: existing };
   }
-  await db
-    .insert(supportConfig)
-    .values({
-      key: ADMIN_CONFIG_KEY,
-      value: strId,
-      updatedAt: nowMs,
-    })
-    .onConflictDoNothing();
+  if (existing && force) {
+    await db
+      .update(supportConfig)
+      .set({ value: strId, updatedAt: nowMs })
+      .where(eq(supportConfig.key, ADMIN_CONFIG_KEY));
+  } else {
+    await db
+      .insert(supportConfig)
+      .values({
+        key: ADMIN_CONFIG_KEY,
+        value: strId,
+        updatedAt: nowMs,
+      })
+      .onConflictDoNothing();
+  }
   const after = await getAdminChatId();
-  return { ok: after === strId, alreadyClaimedByOther: after !== strId, adminChatId: after };
+  return {
+    ok: after === strId,
+    alreadyClaimedByOther: after !== strId,
+    reassigned: Boolean(existing && existing !== strId && after === strId),
+    adminChatId: after,
+  };
 }
 
 export async function rememberDialog(user, nowMs = Date.now()) {

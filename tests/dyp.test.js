@@ -24,6 +24,9 @@ describe('validateMatchScore', () => {
     expect(validateMatchScore(6, 4, rules).valid).toBe(true);
     expect(validateMatchScore(6, 5, rules).valid).toBe(false);
     expect(validateMatchScore(7, 6, rules).valid).toBe(true); // hard cap reached
+    expect(validateMatchScore(7, 5, rules).valid).toBe(true);
+    expect(validateMatchScore(7, 4, rules).valid).toBe(false); // impossible under winByTwo
+    expect(validateMatchScore(7, 0, rules).valid).toBe(false);
     expect(validateMatchScore(8, 6, rules).valid).toBe(false);
   });
 });

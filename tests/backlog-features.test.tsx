@@ -917,4 +917,134 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       vi.useRealTimers();
     }
   });
+
+  it('PublicLiveView keeps loaded scoreboard visible with warning banner on refresh error', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const origFetch = globalThis.fetch;
+    try {
+      const livePayload = {
+        v: 1,
+        updatedAt: Date.now(),
+        tournament: {
+          id: 55,
+          name: 'Кубок Лайв',
+          status: 'QUALIFICATION',
+          currentRound: 1,
+          tablesCount: 1,
+          dypMode: 'monster',
+          targetScore: 5,
+          playoffSize: 4,
+          playoffFormat: 'best_of_1',
+          playoffTargetScore: 5,
+          publicPath: 'Live-Test-11-16',
+        },
+        leaderboard: [
+          {
+            rank: 1,
+            playerId: 1,
+            name: 'Егор',
+            initials: 'ЕГ',
+            games: 1,
+            wins: 1,
+            losses: 0,
+            points: 2,
+            diff: 3,
+            goalsFor: 5,
+            goalsAgainst: 2,
+            ppm: 2,
+            byesCount: 0,
+            isActive: true,
+          },
+        ],
+        currentRoundMatches: [],
+        playoffMatches: [],
+      };
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            result: { content: [{ tag: 'p', children: [JSON.stringify(livePayload)] }] },
+          }),
+        })
+        .mockRejectedValueOnce(new Error('Network down'))
+        .mockRejectedValueOnce(new Error('Network down'));
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const { PublicLiveView } = await import('../src/components/PublicLiveView');
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(<PublicLiveView publicPath="Live-Test-11-16" theme="dark" onToggleTheme={() => {}} />);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await vi.waitFor(() => {
+        expect(container.textContent).toContain('Кубок Лайв');
+      });
+
+      const refreshBtn = container.querySelector('button[title="Обновить"]') as HTMLButtonElement;
+      expect(refreshBtn).not.toBeNull();
+      await act(async () => {
+        refreshBtn.click();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await vi.waitFor(() => {
+        expect(container.textContent).toContain('Проблема обновления данных');
+      });
+      // Таблица и турнир НЕ исчезли после сбоя фонового/повторного обновления
+      expect(container.textContent).toContain('Кубок Лайв');
+      expect(container.textContent).toContain('Егор');
+
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  it('App shows retry screen instead of empty HomeView when initial getState fails', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    window.Telegram = {
+      WebApp: {
+        initData: 'user=%7B%22id%22%3A1%7D',
+        initDataUnsafe: { user: { id: 1, first_name: 'Егор', allows_write_to_pm: true } },
+        Serverless: {
+          call: (name, _input, cb) => {
+            if (name === 'getState') {
+              cb({ message: 'Нет связи с сервером', type: 'ENDPOINT_ERROR' }, null);
+            } else {
+              cb(null, { ok: true });
+            }
+          },
+        },
+      },
+    };
+    const App = (await import('../src/App')).default;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain('Не удалось загрузить данные');
+      expect(container.textContent).toContain('Повторить');
+    });
+    expect(container.textContent).not.toContain('Сейчас нет активных турниров');
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
 });

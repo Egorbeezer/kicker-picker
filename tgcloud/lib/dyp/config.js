@@ -101,6 +101,12 @@ export function validateMatchScore(score1, score2, rules) {
     if (diff < 1) {
       return { valid: false, reason: 'Некорректный счет на лимите' };
     }
+    if (maxScore > target && diff > 2) {
+      return {
+        valid: false,
+        reason: `При балансе на лимите ${maxScore} разница должна быть 1 или 2 мяча`,
+      };
+    }
     return { valid: true, winner: score1 > score2 ? 1 : 2 };
   }
 

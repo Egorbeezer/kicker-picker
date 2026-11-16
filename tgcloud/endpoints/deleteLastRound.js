@@ -1,7 +1,12 @@
 import { db, EndpointError } from 'sdk';
 import { eq, and, inArray, sql } from 'sdk/db';
 import { tournaments, tournamentPlayers, matches } from '../schema.js';
-import { clearConfirmMessages, getTournamentSnapshot, isTournamentAdmin } from '../lib/helpers.js';
+import {
+  adjustLosLivesForMatch,
+  clearConfirmMessages,
+  getTournamentSnapshot,
+  isTournamentAdmin,
+} from '../lib/helpers.js';
 import { syncPublicLiveIfEnabled } from '../lib/publicLive.js';
 
 export default async function (input, ctx) {
@@ -24,8 +29,19 @@ export default async function (input, ctx) {
     throw new EndpointError('Нет активного раунда для удаления', { code: 'INVALID_STATE' });
   }
 
-  const stageToDelete =
-    tournament.status === 'QUALIFICATION' ? 'QUALIFICATION' : 'PLAYOFF';
+  let stageToDelete;
+  if (tournament.status === 'QUALIFICATION') {
+    stageToDelete = 'QUALIFICATION';
+  } else if (tournament.status === 'PLAYOFF') {
+    stageToDelete = 'PLAYOFF';
+  } else {
+    const playoffMatch = await db
+      .select({ id: matches.id })
+      .from(matches)
+      .where(and(eq(matches.tournamentId, tournamentId), eq(matches.stage, 'PLAYOFF')))
+      .get();
+    stageToDelete = playoffMatch ? 'PLAYOFF' : 'QUALIFICATION';
+  }
   const roundToDelete = tournament.currentRound;
 
   let nextStatusAfterDelete;
@@ -100,6 +116,10 @@ export default async function (input, ctx) {
     .all();
 
   for (const m of targetMatches) {
+    if (stageToDelete === 'QUALIFICATION' && m.status === 'FINISHED') {
+      const winnerTeam = m.setsWon1 > m.setsWon2 || (m.setsWon1 === m.setsWon2 && m.score1 > m.score2) ? 1 : 2;
+      await adjustLosLivesForMatch({ tournament, match: m, winnerTeam, delta: 1 });
+    }
     await clearConfirmMessages({
       match: m,
       replacementText: '🗑 Организатор отменил и удалил текущий раунд.',

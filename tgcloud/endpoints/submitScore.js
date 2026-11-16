@@ -1,9 +1,11 @@
 import { db, EndpointError } from 'sdk';
-import { eq, and, inArray } from 'sdk/db';
+import { eq, and, gt, inArray } from 'sdk/db';
 import { tournaments, tournamentPlayers, matches } from '../schema.js';
 import { validateMatchScore } from '../lib/dyp.js';
 import {
+  adjustLosLivesForMatch,
   getMatchRules,
+  getSetsNeededToWin,
   applyMatchFinish,
   clearConfirmMessages,
   notifyScoreConfirmation,
@@ -37,21 +39,92 @@ export default async function (input, ctx) {
   }
 
   if (forceAdmin) {
+    if (match.status === 'CANCELLED') {
+      throw new EndpointError('Отменённый матч нельзя изменить — сначала восстановите его', {
+        code: 'MATCH_CANCELLED',
+      });
+    }
+
+    const rules = getMatchRules(tournament, match.stage);
+    const v = validateMatchScore(score1, score2, rules);
+    if (!v.valid) throw new EndpointError(v.reason || 'Неверный счёт', { code: 'INVALID_SCORE' });
+
     await clearConfirmMessages({
       match,
       replacementText: `✏️ Организатор зафиксировал счет <b>${score1}:${score2}</b> (Стол ${match.tableNumber}).`,
     });
-    // Admin can save any valid score directly (or overwrite finished match score in qualification)
+
     if (match.status === 'FINISHED' && match.stage === 'QUALIFICATION') {
-      const rules = getMatchRules(tournament, match.stage);
-      const v = validateMatchScore(score1, score2, rules);
-      if (!v.valid) throw new EndpointError(v.reason || 'Неверный счёт', { code: 'INVALID_SCORE' });
+      const prevWinner = match.score1 > match.score2 ? 1 : 2;
+      if (prevWinner !== v.winner && tournament.dypMode === 'last_one_standing') {
+        await adjustLosLivesForMatch({ tournament, match, winnerTeam: prevWinner, delta: 1 });
+        await adjustLosLivesForMatch({ tournament, match, winnerTeam: v.winner, delta: -1 });
+      }
       await db
         .update(matches)
-        .set({ score1, score2, confirmMessages: null })
+        .set({
+          score1,
+          score2,
+          setsWon1: v.winner === 1 ? 1 : 0,
+          setsWon2: v.winner === 2 ? 1 : 0,
+          setsHistory: [{ score1, score2 }],
+          confirmMessages: null,
+        })
+        .where(eq(matches.id, match.id));
+    } else if (match.status === 'FINISHED' && match.stage === 'PLAYOFF') {
+      const laterPlayoff = await db
+        .select({ id: matches.id })
+        .from(matches)
+        .where(
+          and(
+            eq(matches.tournamentId, tournament.id),
+            eq(matches.stage, 'PLAYOFF'),
+            gt(matches.roundNumber, match.roundNumber)
+          )
+        )
+        .get();
+      if (laterPlayoff) {
+        throw new EndpointError(
+          'Следующий раунд плей-офф уже создан — сначала удалите его или сбросьте матч',
+          { code: 'PLAYOFF_NEXT_ROUND_EXISTS' }
+        );
+      }
+
+      const prevHistory = Array.isArray(match.setsHistory) ? [...match.setsHistory] : [];
+      if (prevHistory.length > 0) {
+        prevHistory[prevHistory.length - 1] = { score1, score2 };
+      } else {
+        prevHistory.push({ score1, score2 });
+      }
+      let nextSets1 = 0;
+      let nextSets2 = 0;
+      for (const s of prevHistory) {
+        if (Number(s.score1) > Number(s.score2)) nextSets1 += 1;
+        else if (Number(s.score2) > Number(s.score1)) nextSets2 += 1;
+      }
+      const neededSets = getSetsNeededToWin(rules.format);
+      const stillFinished = nextSets1 >= neededSets || nextSets2 >= neededSets;
+      await db
+        .update(matches)
+        .set({
+          status: stillFinished ? 'FINISHED' : 'PLAYING',
+          score1: stillFinished ? score1 : 0,
+          score2: stillFinished ? score2 : 0,
+          setsWon1: nextSets1,
+          setsWon2: nextSets2,
+          setsHistory: prevHistory,
+          confirmMessages: null,
+          ...(stillFinished ? {} : { finishedAt: null }),
+        })
         .where(eq(matches.id, match.id));
     } else {
-      await applyMatchFinish({ tournament, match, score1, score2 });
+      await applyMatchFinish({
+        tournament,
+        match,
+        score1,
+        score2,
+        expectedStatuses: ['PLAYING', 'WAITING_CONFIRM'],
+      });
     }
     await syncPublicLiveIfEnabled(tournament.id);
     return await getTournamentSnapshot(tournament.id, tgUser.id);

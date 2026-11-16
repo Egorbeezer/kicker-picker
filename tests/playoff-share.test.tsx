@@ -479,4 +479,58 @@ describe('Playoff share & PNG export', () => {
       env.cleanup();
     }
   });
+
+  it('renderPlayoffToPng includes R32_ (1/16 финала) round for Top-32 single brackets', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const drawnTexts: string[] = [];
+    const origCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'canvas') {
+        const fakeCtx = {
+          scale: vi.fn(),
+          fillRect: vi.fn(),
+          fillText: vi.fn((text: string) => drawnTexts.push(String(text))),
+          measureText: vi.fn((text: string) => ({ width: String(text).length * 7 })),
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          lineTo: vi.fn(),
+          quadraticCurveTo: vi.fn(),
+          closePath: vi.fn(),
+          fill: vi.fn(),
+          stroke: vi.fn(),
+          arc: vi.fn(),
+          save: vi.fn(),
+          restore: vi.fn(),
+          setLineDash: vi.fn(),
+        };
+        return {
+          width: 0,
+          height: 0,
+          getContext: () => fakeCtx,
+          toDataURL: () => `data:image/png;base64,${'A'.repeat(200)}`,
+        } as unknown as HTMLCanvasElement;
+      }
+      return origCreate(tag);
+    });
+
+    const snap = makePlayoffSnapshot();
+    snap.tournament.playoffSize = 32;
+    snap.tournament.teamFormat = 'single';
+    snap.playoffMatches = [
+      {
+        ...snap.playoffMatches[0],
+        id: 999,
+        bracketSlot: 'R32_1',
+        team1Label: 'Игрок 1',
+        team2Label: 'Игрок 32',
+      },
+      ...snap.playoffMatches,
+    ];
+
+    const { renderPlayoffToPng } = await import('../src/utils/exportPlayoffImage');
+    await renderPlayoffToPng(snap);
+    expect(drawnTexts).toContain('1/16 ФИНАЛА');
+    expect(drawnTexts.some((t) => t.startsWith('1/16 финала 1'))).toBe(true);
+  });
 });

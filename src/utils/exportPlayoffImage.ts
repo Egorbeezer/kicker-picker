@@ -11,7 +11,7 @@ export interface PlayoffImageResult {
 }
 
 interface RoundSpec {
-  prefix: 'EF' | 'QF' | 'SF' | 'FINAL';
+  prefix: 'R32_' | 'EF' | 'QF' | 'SF' | 'FINAL';
   title: string;
   matchCount: number;
 }
@@ -95,16 +95,19 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number):
 
 function getBracketRounds(matches: MatchItem[], playoffSize: number): RoundSpec[] {
   const slots = matches.map((m) => m.bracketSlot || '');
+  const hasR32 = slots.some((s) => s.startsWith('R32_'));
   const hasEF = slots.some((s) => s.startsWith('EF'));
   const hasQF = slots.some((s) => s.startsWith('QF'));
   const hasSF = slots.some((s) => s.startsWith('SF'));
 
-  let startDepth: 'EF' | 'QF' | 'SF' | 'FINAL' = 'FINAL';
-  if (hasEF || (!matches.length && playoffSize >= 32)) startDepth = 'EF';
+  let startDepth: RoundSpec['prefix'] = 'FINAL';
+  if (hasR32) startDepth = 'R32_';
+  else if (hasEF || (!matches.length && playoffSize >= 32)) startDepth = 'EF';
   else if (hasQF || (!matches.length && playoffSize >= 16)) startDepth = 'QF';
   else if (hasSF || (!matches.length && playoffSize >= 8)) startDepth = 'SF';
 
   const all: RoundSpec[] = [
+    { prefix: 'R32_', title: '1/16 финала', matchCount: 16 },
     { prefix: 'EF', title: '1/8 финала', matchCount: 8 },
     { prefix: 'QF', title: 'Четвертьфинал', matchCount: 4 },
     { prefix: 'SF', title: 'Полуфинал', matchCount: 2 },
@@ -144,7 +147,8 @@ function getSlotTitle(prefix: RoundSpec['prefix'], idx: number): string {
   if (prefix === 'FINAL') return 'Финал';
   if (prefix === 'SF') return `Полуфинал ${idx + 1}`;
   if (prefix === 'QF') return `Четвертьфинал ${idx + 1}`;
-  return `1/8 финала ${idx + 1}`;
+  if (prefix === 'EF') return `1/8 финала ${idx + 1}`;
+  return `1/16 финала ${idx + 1}`;
 }
 
 function drawMatchCard(

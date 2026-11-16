@@ -12,6 +12,35 @@ import { VALID_DYP_MODES, getActiveTablesList, getMatchRules, getSetsNeededToWin
 import { notifyRoundStart } from './notifications.js';
 
 /**
+ * Списывает (-1) или возвращает (+1) жизнь игрокам проигравшей команды в режиме Last One Standing.
+ * @param {{ tournament: any; match: any; winnerTeam?: number; delta: -1 | 1 }} params
+ */
+export async function adjustLosLivesForMatch({ tournament, match, winnerTeam, delta }) {
+  if (!tournament || tournament.dypMode !== 'last_one_standing' || match?.stage === 'PLAYOFF' || !winnerTeam) {
+    return;
+  }
+  const loserIds =
+    winnerTeam === 1
+      ? [match.team2Player1Id, match.team2Player2Id].filter(Boolean)
+      : [match.team1Player1Id, match.team1Player2Id].filter(Boolean);
+  const defaultLives = Math.max(1, Number(tournament.losLives) || 3);
+  for (const lid of loserIds) {
+    const p = await db
+      .select()
+      .from(tournamentPlayers)
+      .where(eq(tournamentPlayers.id, lid))
+      .get();
+    if (!p) continue;
+    const curLives = p.livesLeft !== null && p.livesLeft !== undefined ? p.livesLeft : defaultLives;
+    const nextLives = Math.max(0, Math.min(defaultLives, curLives + delta));
+    await db
+      .update(tournamentPlayers)
+      .set({ livesLeft: nextLives })
+      .where(eq(tournamentPlayers.id, lid));
+  }
+}
+
+/**
  * @param {{ tournament: any; match: any; score1: number; score2: number; expectedStatuses?: string[] | null }} params
  */
 export async function applyMatchFinish({
@@ -84,27 +113,12 @@ export async function applyMatchFinish({
   }
 
   if (match.stage !== 'PLAYOFF') {
-    if (tournament.dypMode === 'last_one_standing') {
-      const loserIds =
-        validation.winner === 1
-          ? [match.team2Player1Id, match.team2Player2Id].filter(Boolean)
-          : [match.team1Player1Id, match.team1Player2Id].filter(Boolean);
-      const defaultLives = Math.max(1, Number(tournament.losLives) || 3);
-      for (const lid of loserIds) {
-        const p = await db
-          .select()
-          .from(tournamentPlayers)
-          .where(eq(tournamentPlayers.id, lid))
-          .get();
-        if (p) {
-          const curLives = p.livesLeft !== null && p.livesLeft !== undefined ? p.livesLeft : defaultLives;
-          await db
-            .update(tournamentPlayers)
-            .set({ livesLeft: Math.max(0, curLives - 1) })
-            .where(eq(tournamentPlayers.id, lid));
-        }
-      }
-    }
+    await adjustLosLivesForMatch({
+      tournament,
+      match,
+      winnerTeam: validation.winner,
+      delta: -1,
+    });
     if (tournament.pendingPlayoff || tournament.autoRounds) {
       const qualRoundMatches = await db
         .select()
@@ -355,16 +369,6 @@ export async function createPlayoffFirstRound(
     overrides?.thirdPlaceMatch !== undefined
       ? Boolean(overrides.thirdPlaceMatch)
       : tournament.thirdPlaceMatch;
-
-  if (overrides && (overrides.playoffSize !== undefined || overrides.thirdPlaceMatch !== undefined)) {
-    await db
-      .update(tournaments)
-      .set({
-        playoffSize: effectivePlayoffSize,
-        thirdPlaceMatch: effectiveThirdPlace,
-      })
-      .where(eq(tournaments.id, tournament.id));
-  }
 
   const allMatches = await db
     .select()

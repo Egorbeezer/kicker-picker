@@ -1,7 +1,8 @@
 import { db, EndpointError } from 'sdk';
-import { eq, and, inArray } from 'sdk/db';
+import { eq, and, gt, inArray } from 'sdk/db';
 import { tournaments, matches } from '../schema.js';
 import {
+  adjustLosLivesForMatch,
   clearConfirmMessages,
   createNextQualificationRound,
   createPlayoffFirstRound,
@@ -40,6 +41,33 @@ export default async function (input, ctx) {
       .set({ tableNumber })
       .where(eq(matches.id, match.id));
   } else if (action === 'reset') {
+    if (match.stage === 'PLAYOFF') {
+      const laterPlayoff = await db
+        .select({ id: matches.id })
+        .from(matches)
+        .where(
+          and(
+            eq(matches.tournamentId, tournament.id),
+            eq(matches.stage, 'PLAYOFF'),
+            gt(matches.roundNumber, match.roundNumber)
+          )
+        )
+        .get();
+      if (laterPlayoff) {
+        throw new EndpointError('Следующий раунд плей-офф уже создан — сначала удалите его', {
+          code: 'PLAYOFF_NEXT_ROUND_EXISTS',
+        });
+      }
+    }
+
+    if (match.status === 'FINISHED' && match.stage === 'QUALIFICATION') {
+      const winnerTeam =
+        match.setsWon1 > match.setsWon2 || (match.setsWon1 === match.setsWon2 && match.score1 > match.score2)
+          ? 1
+          : 2;
+      await adjustLosLivesForMatch({ tournament, match, winnerTeam, delta: 1 });
+    }
+
     await clearConfirmMessages({
       match,
       replacementText: `🔄 Организатор сбросил счёт матча (Стол ${match.tableNumber}).`,
@@ -56,6 +84,8 @@ export default async function (input, ctx) {
         submittedByTeam: null,
         submittedByTgId: null,
         confirmMessages: null,
+        lastReminderAt: null,
+        reminderStage: 0,
         finishedAt: null,
       })
       .where(eq(matches.id, match.id));
@@ -89,6 +119,8 @@ export default async function (input, ctx) {
           submittedByTeam: null,
           submittedByTgId: null,
           confirmMessages: null,
+          lastReminderAt: null,
+          reminderStage: 0,
           finishedAt: null,
         })
         .where(and(eq(matches.id, match.id), eq(matches.status, 'CANCELLED')))

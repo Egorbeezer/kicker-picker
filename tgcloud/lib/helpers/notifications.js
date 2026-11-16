@@ -19,6 +19,7 @@ export function formatBracketSlotRu(slot) {
   if (!slot) return '';
   if (slot === 'FINAL') return 'Финал';
   if (slot === 'THIRD_PLACE') return 'За 3-е место';
+  if (slot.startsWith('R32_')) return `1/16 финала ${slot.slice(4)}`;
   if (slot.startsWith('EF')) return `1/8 финала ${slot.slice(2)}`;
   if (slot.startsWith('QF')) return `Четвертьфинал ${slot.slice(2)}`;
   if (slot.startsWith('SF')) return `Полуфинал ${slot.slice(2)}`;

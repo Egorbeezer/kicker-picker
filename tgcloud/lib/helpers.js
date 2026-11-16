@@ -33,6 +33,7 @@ export {
   autoFinishExpiredTournaments,
 } from './helpers/notifications.js';
 export {
+  adjustLosLivesForMatch,
   applyMatchFinish,
   createNextQualificationRound,
   createPlayoffFirstRound,

@@ -19,6 +19,7 @@ import {
   failedToUser,
   fallbackText,
   getAdminChatId,
+  isSupportOwner,
   markAnswered,
   markDelivered,
   rememberAdminMessage,
@@ -152,11 +153,15 @@ export default async function (message) {
   const text = String(message.text || '');
 
   if (text.trim() === '/setadmin') {
-    const claim = await claimAdminChatId(chatId);
+    if (!isSupportOwner(message.from)) {
+      await sendSupportMessage(chatId, '⛔ Команда /setadmin доступна только владельцу бота.');
+      return;
+    }
+    const claim = await claimAdminChatId(chatId, Date.now(), { force: true });
     if (claim.ok) {
       await sendSupportMessage(chatId, `✅ Вы назначены администратором поддержки.\n\n${ADMIN_HELLO}`);
     } else {
-      await sendSupportMessage(chatId, '⛔ Администратор поддержки уже привязан.');
+      await sendSupportMessage(chatId, '⛔ Не удалось привязать администратора поддержки.');
     }
     return;
   }

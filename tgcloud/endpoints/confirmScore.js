@@ -32,6 +32,10 @@ export default async function (input, ctx) {
     .from(tournaments)
     .where(eq(tournaments.id, match.tournamentId))
     .get();
+  if (!tournament) throw new EndpointError('Турнир не найден', { code: 'NOT_FOUND' });
+  if (tournament.status === 'FINISHED') {
+    throw new EndpointError('Турнир уже завершён', { code: 'INVALID_STATE' });
+  }
 
   const players = await db
     .select()

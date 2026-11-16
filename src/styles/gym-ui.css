@@ -3,6 +3,7 @@
   --bg: #17212b;
   --bg-2: #232e3c;
   --bg-3: #2b3a4a;
+  --card: var(--bg-2);
   --text: #ffffff;
   --muted: #8b9bab;
   --accent: #2ea6ff;

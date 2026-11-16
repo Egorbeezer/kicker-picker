@@ -93,6 +93,23 @@ export default async function (callbackQuery) {
     .from(tournaments)
     .where(eq(tournaments.id, match.tournamentId))
     .get();
+  if (!tournament) {
+    await api.answerCallbackQuery({
+      callback_query_id: callbackQuery.id,
+      text: 'Турнир не найден',
+      show_alert: true,
+    });
+    return;
+  }
+  if (tournament.status === 'FINISHED') {
+    await editSingleMessage(chatId, messageId, `ℹ️ Турнир «${escapeHtml(tournament.name)}» уже завершён.`);
+    await api.answerCallbackQuery({
+      callback_query_id: callbackQuery.id,
+      text: 'Турнир уже завершён',
+      show_alert: true,
+    });
+    return;
+  }
   const players = await db
     .select()
     .from(tournamentPlayers)
