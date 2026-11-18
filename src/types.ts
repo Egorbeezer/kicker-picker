@@ -300,4 +300,5 @@ export interface CreateTournamentForm {
   playoffTargetScore: number;
   playoffWinByTwo: boolean;
   playoffMaxScore: number;
+  liveEnabled: boolean;
 }

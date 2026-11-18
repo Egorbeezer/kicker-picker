@@ -26,7 +26,11 @@ export function useAppController() {
   const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
   const [showHome, setShowHome] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [createdInvite, setCreatedInvite] = useState<{ id: number; name: string } | null>(null);
+  const [createdInvite, setCreatedInvite] = useState<{
+    id: number;
+    name: string;
+    publicPath?: string | null;
+  } | null>(null);
 
   const [mode, setMode] = useState<'PLAYER' | 'ADMIN'>('PLAYER');
   const [playerTab, setPlayerTab] = useState<'match' | 'table' | 'profile'>('match');
@@ -344,8 +348,16 @@ export function useAppController() {
         setShowHome(false);
         setMode('ADMIN');
         setAdminTab('players');
-        setCreatedInvite({ id: snap.tournament.id, name: snap.tournament.name });
-        notify('Турнир создан');
+        setCreatedInvite({
+          id: snap.tournament.id,
+          name: snap.tournament.name,
+          publicPath: snap.tournament.publicPath,
+        });
+        if (form.liveEnabled && !snap.tournament.publicPath) {
+          notify('Турнир создан, но Live-трансляцию не удалось включить — попробуйте в настройках');
+        } else {
+          notify('Турнир создан');
+        }
       }),
     [applySnapshot, runLocked]
   );

@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Radio } from 'lucide-react';
 import type { CreateTournamentForm } from '../types';
 import { haptic } from '../utils/telegram';
 import { TOURNAMENT_MODE_CATALOG } from './InfoTooltip';
 import {
+  BooleanToggleRow,
   TournamentSettingsFields,
   type TournamentSettingsState,
 } from './TournamentSettingsFields';
@@ -44,6 +45,7 @@ export const CreateTournamentView: React.FC<Props> = ({
     longMatchAlertMin: 15,
     scoreReminderMin: 3,
   });
+  const [liveEnabled, setLiveEnabled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const submitLockRef = useRef(false);
 
@@ -89,6 +91,7 @@ export const CreateTournamentView: React.FC<Props> = ({
         playoffMaxScore: settings.playoffWinByTwo
           ? Math.max(settings.playoffTargetScore, settings.playoffMaxScore)
           : settings.playoffTargetScore,
+        liveEnabled,
       });
     } finally {
       submitLockRef.current = false;
@@ -104,6 +107,25 @@ export const CreateTournamentView: React.FC<Props> = ({
         namePlaceholder={defaultName}
         disabled={isLocked}
       />
+
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4">
+        <BooleanToggleRow
+          label={
+            <span className="inline-flex items-center gap-1.5">
+              <Radio
+                size={15}
+                className={liveEnabled ? 'text-emerald-500' : 'text-[var(--muted)]'}
+              />
+              <span>Live-трансляция</span>
+            </span>
+          }
+          description="Публичная ссылка с табло, таблицей и сеткой для любого браузера и ТВ"
+          value={liveEnabled}
+          disabled={isLocked}
+          ariaLabel="Включить Live-трансляцию"
+          onChange={setLiveEnabled}
+        />
+      </div>
 
       <div className="flex gap-2.5 pt-2">
         {onCancel && (

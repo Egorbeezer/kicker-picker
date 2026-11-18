@@ -9,7 +9,9 @@ import {
   getTournamentSnapshot,
   parseBoundedInt,
   syncTournamentAdminIndex,
+  notifyBotOwnerAlert,
 } from '../lib/helpers.js';
+import { publishPublicLivePage } from '../lib/publicLive.js';
 
 const WEEKDAYS_RU = [
   'Воскресенье',
@@ -129,6 +131,21 @@ export default async function (input, ctx) {
       sortOrder: 1,
       livesLeft: dypMode === 'last_one_standing' ? losLives : null,
     });
+  }
+
+  if (input?.liveEnabled) {
+    try {
+      await publishPublicLivePage(created.id, { createIfMissing: true });
+    } catch (err) {
+      console.warn('createTournament live publish failed:', err?.message || err);
+      await notifyBotOwnerAlert({
+        source: 'createTournament:live',
+        message: err?.message || String(err),
+        stack: err?.stack || null,
+        tgUser,
+        context: `tournamentId=${created.id}`,
+      });
+    }
   }
 
   return await getTournamentSnapshot(created.id, tgUser.id);

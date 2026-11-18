@@ -245,10 +245,16 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     const twoLoopsBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('2 круга')
     ) as HTMLButtonElement;
+    const liveSwitch = container.querySelector('[role="switch"][aria-label="Включить Live-трансляцию"]') as HTMLButtonElement;
+    expect(liveSwitch).not.toBeNull();
+    expect(liveSwitch.getAttribute('aria-checked')).toBe('false');
+
     await act(async () => {
       singleBtn.click();
       twoLoopsBtn.click();
+      liveSwitch.click();
     });
+    expect(liveSwitch.getAttribute('aria-checked')).toBe('true');
 
     const submitBtn = Array.from(container.querySelectorAll('button[type="submit"]'))[0] as HTMLButtonElement;
     await act(async () => {
@@ -260,6 +266,7 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(payload.dypMode).toBe('round_robin');
     expect(payload.teamFormat).toBe('single');
     expect(payload.roundRobinLoops).toBe(2);
+    expect(payload.liveEnabled).toBe(true);
 
     await act(async () => {
       root.unmount();

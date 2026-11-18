@@ -1451,4 +1451,39 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     const matchAfterAuto = sqlite.prepare('SELECT status FROM matches WHERE id = ?').get(m1.id);
     expect(matchAfterAuto.status).toBe('CANCELLED');
   });
+
+  it('createTournament enables live broadcast immediately when liveEnabled is true and tolerates Telegraph failure', async () => {
+    const orgCtx = { initData: { user: { id: 9701, first_name: 'ЛайвОрг' } } };
+
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, result: { access_token: 'tok_create_live' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, result: { path: 'Create-Live-11-18' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, result: { path: 'Create-Live-11-18' } }),
+      });
+
+    const snapWithLive = await createTournament(
+      { name: 'Создан с Live', tables: 2, liveEnabled: true },
+      orgCtx
+    );
+    expect(snapWithLive.tournament.publicPath).toBe('Create-Live-11-18');
+
+    // При сбое Telegraph турнир всё равно создаётся, без publicPath
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({ ok: false, status: 502 });
+
+    const snapLiveFailed = await createTournament(
+      { name: 'Создан без Live при сбое', tables: 2, liveEnabled: true },
+      orgCtx
+    );
+    expect(snapLiveFailed.tournament.id).toBeGreaterThan(snapWithLive.tournament.id);
+    expect(snapLiveFailed.tournament.publicPath).toBeNull();
+  });
 });

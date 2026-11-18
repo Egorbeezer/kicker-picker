@@ -12,9 +12,14 @@ import {
   Sun,
   Moon,
   ArrowLeft,
+  Radio,
 } from 'lucide-react';
 import { apiClient, isTelegramEnv } from './api/client';
-import { getTournamentInviteLink, shareTournamentInTelegram } from './utils/share';
+import {
+  getTournamentInviteLink,
+  shareLiveUrlInTelegram,
+  shareTournamentInTelegram,
+} from './utils/share';
 import { openTelegramChat, SUPPORT_BUTTON } from './support';
 import { haptic, notify } from './utils/telegram';
 import { formatDateRu } from './utils/date';
@@ -700,13 +705,29 @@ export default function App() {
           onClose={() => setCreatedInvite(null)}
           closeLabel="Перейти к участникам"
           footer={
-            <button
-              type="button"
-              onClick={() => shareTournamentInTelegram(createdInvite)}
-              className="btn btn-primary w-full py-3.5 text-sm shadow-[0_4px_20px_rgba(46,166,255,0.35)]"
-            >
-              <Share2 size={17} /> Пригласить
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => shareTournamentInTelegram(createdInvite)}
+                className="btn btn-primary w-full py-3.5 text-sm shadow-[0_4px_20px_rgba(46,166,255,0.35)]"
+              >
+                <Share2 size={17} /> Пригласить
+              </button>
+              {createdInvite.publicPath && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    shareLiveUrlInTelegram({
+                      name: createdInvite.name,
+                      publicPath: createdInvite.publicPath!,
+                    })
+                  }
+                  className="w-full py-3 px-4 rounded-full bg-emerald-500/15 border border-emerald-500/35 text-emerald-500 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <Radio size={17} /> Поделиться Live-трансляцией
+                </button>
+              )}
+            </>
           }
         >
           <p className="text-xs text-[var(--muted)]">
@@ -715,6 +736,12 @@ export default function App() {
           <div className="bg-[var(--bg)] border border-[var(--border-strong)] rounded-xl px-3 py-2.5 text-xs font-mono text-[#2ea6ff] break-all select-all">
             {getTournamentInviteLink(createdInvite.id)}
           </div>
+          {createdInvite.publicPath && (
+            <p className="text-xs text-emerald-500 font-medium flex items-center gap-1.5">
+              <Radio size={14} className="shrink-0" />
+              Live-трансляция включена — поделиться ссылкой можно кнопкой ниже.
+            </p>
+          )}
         </Modal>
       )}
     </div>
