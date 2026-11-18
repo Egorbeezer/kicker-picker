@@ -655,42 +655,36 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     );
   });
 
-  it('publishes LIVE to telegra.ph with access_token and preserves publicPath on transient edit errors', async () => {
+  it('publishes LIVE to textdb.dev with unguessable kp_ path, keeps path on updates and preserves it on transient errors', async () => {
     const snap = await createTournament(
-      { name: 'Live Telegraph Primary' },
+      { name: 'Live Textdb Primary' },
       { initData: { user: { id: 1, first_name: 'Орг' } } }
     );
 
-    // 1. Первая публикация создаёт аккаунт + страницу в telegra.ph и записывает access_token
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { access_token: 'tg_tok_primary' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { path: 'Live-Primary-11-16' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { path: 'Live-Primary-11-16' } }),
-      });
-
+    // 1. Первая публикация создаёт непредсказуемый kp_* путь и пишет данные в textdb.dev
+    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '' });
     const firstPath = await publishPublicLivePage(snap.tournament.id, { createIfMissing: true });
-    expect(firstPath).toBe('Live-Primary-11-16');
+    expect(firstPath).toMatch(new RegExp(`^kp_${snap.tournament.id}_[0-9a-f]{32}$`));
+    expect(fetchMock).toHaveBeenCalledWith(
+      `https://textdb.dev/api/data/${firstPath}`,
+      expect.objectContaining({ method: 'POST' })
+    );
+    const writtenBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(writtenBody.tournament.publicPath).toBe(firstPath);
 
-    // 2. Временный 500 от telegra.ph при редактировании НЕ перетирает publicPath новой страницей
+    // 2. Повторная публикация сохраняет тот же путь
+    const secondPath = await publishPublicLivePage(snap.tournament.id);
+    expect(secondPath).toBe(firstPath);
+
+    // 3. Временный 500 от textdb.dev НЕ меняет сохранённый publicPath
     fetchMock.mockReset();
-    fetchMock
-      .mockResolvedValueOnce({ ok: false, status: 500 })
-      .mockResolvedValueOnce({ ok: false, status: 500 });
-
-    await expect(publishPublicLivePage(snap.tournament.id)).rejects.toThrow(/Telegraph HTTP 500/);
+    fetchMock.mockResolvedValue({ ok: false, status: 500, text: async () => '' });
+    await expect(publishPublicLivePage(snap.tournament.id)).rejects.toThrow(/Live store error HTTP 500/);
     const rowAfterErr = sqlite
       .prepare('SELECT public_path, public_token FROM tournaments WHERE id = ?')
       .get(snap.tournament.id);
-    expect(rowAfterErr.public_path).toBe('Live-Primary-11-16');
-    expect(rowAfterErr.public_token).toBe('tg_tok_primary');
+    expect(rowAfterErr.public_path).toBe(firstPath);
+    expect(rowAfterErr.public_token).toBe('textdb');
   });
 
   it('prevents duplicate playoff bracket generation on concurrent startPlayoff calls via CAS', async () => {
@@ -1391,23 +1385,10 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
       orgCtx
     );
     const tid = snap.tournament.id;
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { access_token: 'tok_p2' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { path: 'P2-Live-11-16' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { path: 'P2-Live-11-16' } }),
-      });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '' });
     const liveOn = await publishLive({ tournamentId: tid, enabled: true }, orgCtx);
-    expect(liveOn.tournament.publicPath).toBe('P2-Live-11-16');
+    expect(liveOn.tournament.publicPath).toMatch(/^kp_\d+_[0-9a-f]{32}$/);
 
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
     const liveOff = await publishLive({ tournamentId: tid, enabled: false }, orgCtx);
     expect(liveOff.tournament.publicPath).toBeNull();
 
@@ -1452,32 +1433,20 @@ describe('SQLite integration: CAS concurrency, indexing, telemetry, and live fal
     expect(matchAfterAuto.status).toBe('CANCELLED');
   });
 
-  it('createTournament enables live broadcast immediately when liveEnabled is true and tolerates Telegraph failure', async () => {
+  it('createTournament enables live broadcast immediately when liveEnabled is true and tolerates live store failure', async () => {
     const orgCtx = { initData: { user: { id: 9701, first_name: 'ЛайвОрг' } } };
 
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { access_token: 'tok_create_live' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { path: 'Create-Live-11-18' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true, result: { path: 'Create-Live-11-18' } }),
-      });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '' });
 
     const snapWithLive = await createTournament(
       { name: 'Создан с Live', tables: 2, liveEnabled: true },
       orgCtx
     );
-    expect(snapWithLive.tournament.publicPath).toBe('Create-Live-11-18');
+    expect(snapWithLive.tournament.publicPath).toMatch(/^kp_\d+_[0-9a-f]{32}$/);
 
-    // При сбое Telegraph турнир всё равно создаётся, без publicPath
+    // При сбое хранилища Live турнир всё равно создаётся, без publicPath
     fetchMock.mockReset();
-    fetchMock.mockResolvedValue({ ok: false, status: 502 });
+    fetchMock.mockResolvedValue({ ok: false, status: 502, text: async () => '' });
 
     const snapLiveFailed = await createTournament(
       { name: 'Создан без Live при сбое', tables: 2, liveEnabled: true },

@@ -130,43 +130,30 @@ export function buildPublicLivePayload(snapshot) {
   };
 }
 
-async function callTelegraph(method, payload, attempts = 2) {
-  let lastErr;
-  for (let i = 0; i < attempts; i += 1) {
-    try {
-      const res = await fetchWithTimeout(`https://api.telegra.ph/${method}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        lastErr = new Error(`Telegraph HTTP ${res.status}`);
-        if (res.status >= 400 && res.status < 500) throw lastErr;
-        continue;
-      }
-      const json = await res.json();
-      if (!json?.ok || !json?.result) {
-        const apiErr = new Error(`Telegraph ${method} failed: ${json?.error || 'unknown'}`);
-        /** @type {any} */ (apiErr).telegraphError = String(json?.error || '');
-        throw apiErr;
-      }
-      return json.result;
-    } catch (err) {
-      lastErr = err;
-      if (/** @type {any} */ (err)?.telegraphError) throw err;
-    }
+function generateLivePath(tournamentId) {
+  let rand;
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const buf = new Uint8Array(16);
+    crypto.getRandomValues(buf);
+    rand = Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
+  } else {
+    rand =
+      Math.random().toString(36).slice(2, 10) +
+      Date.now().toString(36) +
+      Math.random().toString(36).slice(2, 10);
   }
-  throw lastErr || new Error(`Telegraph ${method} failed`);
+  return `kp_${tournamentId}_${rand}`;
 }
 
-async function clearLegacyTextdbPage(path) {
+/** Записывает (или очищает пустой строкой) Live-страницу в textdb.dev с одним повтором при сбое. */
+async function writeTextdbPage(path, bodyStr) {
   let lastErr;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await fetchWithTimeout(`${LIVE_STORE_BASE}/${encodeURIComponent(path)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: '',
+        body: bodyStr,
       });
       await res.text();
       if (res.ok) return;
@@ -179,69 +166,15 @@ async function clearLegacyTextdbPage(path) {
   throw lastErr || new Error('Live store error');
 }
 
-async function writeTelegraphLivePage(row, bodyStr, { createIfMissing = false } = {}) {
-  let token = row.publicToken && row.publicToken !== 'textdb' ? row.publicToken : null;
-  if (!token) {
-    if (!createIfMissing && row.publicPath && !String(row.publicPath).startsWith('kp_')) {
-      throw new Error('Telegraph access token missing for existing live page');
-    }
-    const acc = await callTelegraph('createAccount', {
-      short_name: 'KickerPicker',
-      author_name: 'Kicker Picker Bot',
-    });
-    if (!acc?.access_token) {
-      throw new Error('Telegraph: failed to create account');
-    }
-    token = acc.access_token;
-  }
-
-  const content = [{ tag: 'p', children: [bodyStr] }];
-  const existingTelegraphPath =
-    row.publicPath && !String(row.publicPath).startsWith('kp_') ? String(row.publicPath) : null;
-
-  if (existingTelegraphPath) {
-    try {
-      const edited = await callTelegraph('editPage', {
-        access_token: token,
-        path: existingTelegraphPath,
-        title: `Live: ${row.name}`,
-        content,
-      });
-      if (edited?.path) {
-        return { token, path: edited.path };
-      }
-    } catch (err) {
-      const tgErr = String(/** @type {any} */ (err)?.telegraphError || '');
-      const unrecoverable =
-        tgErr.includes('PAGE_NOT_FOUND') ||
-        tgErr.includes('PAGE_ACCESS_DENIED') ||
-        tgErr.includes('ACCESS_TOKEN_INVALID');
-      // При временном сбое сети/5xx НЕ меняем publicPath, чтобы не сломать ссылку у зрителей
-      if (!unrecoverable || !createIfMissing) {
-        throw err;
-      }
-    }
-  }
-
-  const created = await callTelegraph('createPage', {
-    access_token: token,
-    title: `Live: ${row.name}`,
-    content,
-  });
-  if (!created?.path) {
-    throw new Error('Telegraph: failed to publish page');
-  }
-  return { token, path: created.path };
-}
-
 export async function deletePublicLivePage(publicPath, publicToken = null) {
   if (!publicPath) return;
   try {
     const pathStr = String(publicPath);
     if (pathStr.startsWith('kp_')) {
-      await clearLegacyTextdbPage(pathStr);
+      await writeTextdbPage(pathStr, '');
       return;
     }
+    // Старые страницы Telegraph: платформа до них больше не достаёт, чистим по возможности
     if (publicToken && publicToken !== 'textdb') {
       await fetchWithTimeout('https://api.telegra.ph/editPage', {
         method: 'POST',
@@ -274,39 +207,28 @@ export async function publishPublicLivePage(tournamentId, { createIfMissing = fa
   const snapshot = await getTournamentSnapshot(tournamentId, 0);
   if (!snapshot) return null;
 
-  const isLegacyTextdb = Boolean(row.publicPath && String(row.publicPath).startsWith('kp_'));
-  const tgResult = await writeTelegraphLivePage(
-    row,
+  // Существующий kp_* путь сохраняем; страницы Telegraph и новые трансляции получают новый непредсказуемый путь
+  const existingPath = row.publicPath ? String(row.publicPath) : null;
+  const path = existingPath && existingPath.startsWith('kp_') ? existingPath : generateLivePath(tournamentId);
+
+  await writeTextdbPage(
+    path,
     JSON.stringify(
       buildPublicLivePayload({
         ...snapshot,
-        tournament: { ...snapshot.tournament, publicPath: isLegacyTextdb ? null : row.publicPath || null },
+        tournament: { ...snapshot.tournament, publicPath: path },
       })
-    ),
-    { createIfMissing: createIfMissing || isLegacyTextdb }
+    )
   );
 
-  // Если перевели старый kp_* турнир на защищённый Telegraph или создали новую страницу, обновляем publicPath с финальным путём
-  if (row.publicToken !== tgResult.token || tgResult.path !== row.publicPath) {
+  if (row.publicPath !== path || row.publicToken !== 'textdb') {
     await db
       .update(tournaments)
-      .set({ publicToken: tgResult.token, publicPath: tgResult.path })
+      .set({ publicToken: 'textdb', publicPath: path })
       .where(eq(tournaments.id, tournamentId));
-
-    // Записываем актуальный publicPath внутрь самой Telegraph-страницы
-    const refreshedPayload = buildPublicLivePayload({
-      ...snapshot,
-      tournament: { ...snapshot.tournament, publicPath: tgResult.path },
-    });
-    await callTelegraph('editPage', {
-      access_token: tgResult.token,
-      path: tgResult.path,
-      title: `Live: ${row.name}`,
-      content: [{ tag: 'p', children: [JSON.stringify(refreshedPayload)] }],
-    }).catch(() => {});
   }
 
-  return tgResult.path;
+  return path;
 }
 
 export async function syncPublicLiveIfEnabled(tournamentId) {
