@@ -1,0 +1,63 @@
+name: Deploy to tgcloud
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tgcloud/**'
+      - 'support-bot/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tgcloud.jsonc'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Deploy main bot & Mini App
+        env:
+          TGCLOUD_B64: ${{ secrets.TGCLOUD_B64 }}
+        run: |
+          if [ -z "$TGCLOUD_B64" ]; then
+            echo "TGCLOUD_B64 secret is not set" >&2
+            exit 1
+          fi
+          echo "$TGCLOUD_B64" | base64 -d | tar -xzf -
+          chmod 600 .tgcloud/credentials
+          npx tgcloud fetch || true
+          npx tgcloud push
+          npx tgcloud migrate --dry-run || true
+
+      - name: Deploy support-bot
+        env:
+          SUPPORT_TGCLOUD_B64: ${{ secrets.SUPPORT_TGCLOUD_B64 }}
+        run: |
+          if [ -z "$SUPPORT_TGCLOUD_B64" ]; then
+            echo "SUPPORT_TGCLOUD_B64 secret is not set, skipping support-bot deploy"
+            exit 0
+          fi
+          echo "$SUPPORT_TGCLOUD_B64" | base64 -d | tar -xzf -
+          chmod 600 support-bot/.tgcloud/credentials
+          npx tgcloud --cwd support-bot fetch || true
+          npm run deploy:support

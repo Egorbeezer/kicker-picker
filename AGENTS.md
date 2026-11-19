@@ -167,6 +167,7 @@ After every task/change in this repository (`kicker-picker`), the assistant MUST
 3. Stage, commit, and push to GitHub (`origin/main`):
    - **Commit messages MUST be strictly in Russian** (Conventional Commits prefix like `feat:`, `fix:`, `chore:`, `docs:` is allowed, description and body in Russian: what changed, why, and verification results).
    - Never force-push or amend published commits; always create a new commit and run `git push origin main`.
-4. Deploy to `tgcloud` when runtime files (`src/` or `tgcloud/`) changed:
-   - Run `npx tgcloud push` (and verify with `npx tgcloud fetch && npx tgcloud status` if Bot API reports a transient error).
-   - If `tgcloud/schema.js` changed, apply migrations (`npx tgcloud migrate --yes`) and verify `--dry-run` is clean.
+4. Deploy to `tgcloud` when runtime files (`src/`, `tgcloud/`, `support-bot/`) changed:
+   - Pushing to `origin/main` automatically triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) (using `TGCLOUD_B64` and `SUPPORT_TGCLOUD_B64` GitHub Secrets) to build and deploy both the main bot/Mini App and `support-bot`.
+   - After `git push origin main`, check the GitHub Actions deploy run status with `gh run list --workflow=deploy.yml --limit 3` and `gh run watch` (or `gh run view --log-failed` if it fails) to confirm prod deployment succeeded.
+   - If running locally with `.tgcloud/` credentials instead of CI, run `npx tgcloud push` (and `npx tgcloud migrate --yes` if `tgcloud/schema.js` changed).
