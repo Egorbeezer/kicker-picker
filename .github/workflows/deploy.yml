@@ -57,7 +57,20 @@ jobs:
             echo "SUPPORT_TGCLOUD_B64 secret is not set, skipping support-bot deploy"
             exit 0
           fi
-          echo "$SUPPORT_TGCLOUD_B64" | base64 -d | tar -xzf -
+          mkdir -p /tmp/support-tgcloud
+          echo "$SUPPORT_TGCLOUD_B64" | base64 -d | tar -xzf - -C /tmp/support-tgcloud
+          if [ -d /tmp/support-tgcloud/support-bot/.tgcloud ]; then
+            rm -rf support-bot/.tgcloud
+            mv /tmp/support-tgcloud/support-bot/.tgcloud support-bot/.tgcloud
+          elif [ -d /tmp/support-tgcloud/.tgcloud ]; then
+            rm -rf support-bot/.tgcloud
+            mv /tmp/support-tgcloud/.tgcloud support-bot/.tgcloud
+          fi
+          rm -rf /tmp/support-tgcloud
+          if [ ! -f support-bot/.tgcloud/credentials ]; then
+            echo "support-bot/.tgcloud/credentials not found in SUPPORT_TGCLOUD_B64" >&2
+            exit 1
+          fi
           chmod 600 support-bot/.tgcloud/credentials
           npx tgcloud --cwd support-bot fetch || true
           npm run deploy:support
