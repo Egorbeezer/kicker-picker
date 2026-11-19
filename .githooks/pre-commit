@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Pre-commit check: unslop-ui full-list (--surface) in warning-only mode.
+# Never blocks commits (always exits 0).
+
+SCRIPT_PATH=".agents/skills/unslop-ui/scripts/count_tells.py"
+
+if [ ! -f "$SCRIPT_PATH" ] || ! command -v python3 >/dev/null 2>&1; then
+  exit 0
+fi
+
+UI_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  [ -f "$file" ] || continue
+  case "$file" in
+    src/*|index.html|*.tsx|*.jsx|*.css|*.html)
+      UI_FILES+=("$file")
+      ;;
+  esac
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ ${#UI_FILES[@]} -eq 0 ]; then
+  exit 0
+fi
+
+RAW_JSON=$(python3 "$SCRIPT_PATH" --surface "${UI_FILES[@]}" 2>/dev/null || true)
+if [ -z "$RAW_JSON" ]; then
+  exit 0
+fi
+
+python3 - "$RAW_JSON" <<'PY' || true
+import json
+import sys
+
+try:
+    data = json.loads(sys.argv[1])
+except Exception:
+    sys.exit(0)
+
+total = data.get("total", 0)
+if total == 0:
+    print("[unslop-ui] Проверка по полному списку (--surface): замечаний не найдено.")
+    sys.exit(0)
+
+print(f"\n[unslop-ui] ⚠️ Предупреждение (режим не блокирует коммит): найдено {total} паттерн(ов) по полному списку (U1–U20 + unslop):")
+for rule, info in data.items():
+    if rule == "total" or not isinstance(info, dict):
+        continue
+    count = info.get("count", 0)
+    if count > 0:
+        examples = ", ".join(info.get("examples", []))
+        print(f"  - {rule}: {count} ({examples})")
+print("[unslop-ui] Для детального разбора и ручных правил (U3, U4, U5, U7, U8, U14) см. .agents/skills/unslop-ui/SKILL.md\n")
+PY
+
+exit 0

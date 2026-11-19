@@ -161,9 +161,12 @@ After every task/change in this repository (`kicker-picker`), the assistant MUST
    ```
    npm run lint && npm run typecheck && npm test && npm run build
    ```
-2. Stage, commit, and push to GitHub (`origin/main`):
+2. Run `unslop-ui` check on changed UI files (`src/`, `index.html`) in **full-list (`--surface`, U1–U20 + unslop), warning-only mode**:
+   - Follow [.agents/skills/unslop-ui/SKILL.md](.agents/skills/unslop-ui/SKILL.md) and run `python3 .agents/skills/unslop-ui/scripts/count_tells.py --surface <changed_ui_files>` (the Git `pre-commit` hook in `.githooks/pre-commit` also runs this automatically on every commit).
+   - Never block a commit on `unslop-ui` warnings; report any found tells (including reading-only rules U3, U4, U5, U7, U8, U14) to the user as warnings.
+3. Stage, commit, and push to GitHub (`origin/main`):
    - **Commit messages MUST be strictly in Russian** (Conventional Commits prefix like `feat:`, `fix:`, `chore:`, `docs:` is allowed, description and body in Russian: what changed, why, and verification results).
    - Never force-push or amend published commits; always create a new commit and run `git push origin main`.
-3. Deploy to `tgcloud` when runtime files (`src/` or `tgcloud/`) changed:
+4. Deploy to `tgcloud` when runtime files (`src/` or `tgcloud/`) changed:
    - Run `npx tgcloud push` (and verify with `npx tgcloud fetch && npx tgcloud status` if Bot API reports a transient error).
    - If `tgcloud/schema.js` changed, apply migrations (`npx tgcloud migrate --yes`) and verify `--dry-run` is clean.

@@ -15,7 +15,9 @@
     "deploy:support": "tgcloud --cwd support-bot push",
     "bot:menu": "tgcloud run endpoints/setupBotMenu '{}'",
     "status": "tgcloud status",
-    "run": "tgcloud run"
+    "run": "tgcloud run",
+    "unslop:check": "python3 .agents/skills/unslop-ui/scripts/count_tells.py --surface src index.html",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "lucide-react": "^1.16.0",
