@@ -222,7 +222,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
   const roundSection = (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">
+        <h3 className="text-xs font-semibold text-gray-400">
           {tournament.status === 'PLAYOFF' || tournament.status === 'FINISHED'
             ? `Плей-офф • Раунд ${tournament.currentRound}`
             : tournament.currentRound > 0
@@ -259,7 +259,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
   const tableSection = (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">
+        <h3 className="text-xs font-semibold text-gray-400">
           Турнирная таблица ({leaderboard.length})
         </h3>
         <span className="text-[11px] font-bold text-[#2ea6ff] bg-[#2ea6ff]/10 px-2 py-0.5 rounded">
@@ -316,7 +316,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
                   )}
                   {tournament.useBuckets && row.dypRole && (
                     <span
-                      className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+                      className={`text-[9px] font-semibold px-1 py-0.5 rounded shrink-0 ${
                         row.dypRole === 'A'
                           ? 'bg-[#2ea6ff]/20 text-[#2ea6ff]'
                           : 'bg-[#96f84d]/20 text-[#96f84d]'
@@ -341,7 +341,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
 
   const playoffSection = hasPlayoff ? (
     <div className="space-y-2">
-      <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider px-1">
+      <h3 className="text-xs font-semibold text-gray-400 px-1">
         Сетка плей-офф
       </h3>
       <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl overflow-hidden">
@@ -379,7 +379,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
                 {formatTimeHms(data.updatedAt)}
               </span>
             </div>
-            <h1 className="text-lg font-black truncate mt-0.5">{tournament.name}</h1>
+            <h1 className="text-lg font-semibold truncate mt-0.5">{tournament.name}</h1>
             <div className="text-xs text-gray-400">
               {tournament.status === 'REGISTRATION' && 'Регистрация'}
               {tournament.status === 'QUALIFICATION' && `Квалификация • Раунд ${tournament.currentRound}`}

@@ -95,7 +95,7 @@ export const AdminDashboardHeader: React.FC<Props> = ({
     {totalCount > 0 && (
       <div className="w-full bg-[#1c1c1d] h-2 rounded-full mt-3 overflow-hidden border border-[#3a3a3c]">
         <div
-          className="bg-[#2ea6ff] h-full transition-all duration-500"
+          className="bg-[#2ea6ff] h-full transition-[width] duration-500 ease-out"
           style={{ width: `${(finishedCount / totalCount) * 100}%` }}
         />
       </div>

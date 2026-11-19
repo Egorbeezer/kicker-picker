@@ -354,7 +354,7 @@ export function useAppController() {
           publicPath: snap.tournament.publicPath,
         });
         if (form.liveEnabled && !snap.tournament.publicPath) {
-          notify('Турнир создан, но Live-трансляцию не удалось включить — попробуйте в настройках');
+          notify('Турнир создан, но Live-трансляцию не удалось включить. Попробуйте в настройках');
         } else {
           notify('Турнир создан');
         }

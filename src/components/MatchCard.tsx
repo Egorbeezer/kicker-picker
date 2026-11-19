@@ -127,8 +127,8 @@ export const MatchCard: React.FC<Props> = ({
         {match.status === 'PLAYING' && (
           <div className="flex items-center gap-1.5 shrink-0">
             {isLongMatch && (
-              <span className="text-amber-500 bg-amber-500/15 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                ⏰ {elapsedMin}м
+              <span className="text-amber-500 bg-amber-500/15 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                <Clock size={10} /> {elapsedMin}м
               </span>
             )}
             <span className="text-yellow-500 bg-yellow-500/10 px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 shrink-0">
@@ -189,11 +189,11 @@ export const MatchCard: React.FC<Props> = ({
           {match.status === 'CANCELLED' ? (
             <div className="font-bold text-xs text-gray-500 uppercase">Отменён</div>
           ) : match.status !== 'PLAYING' ? (
-            <div className="font-black text-xl text-white tracking-tight">
+            <div className="font-semibold text-xl text-white tracking-tight">
               {match.score1} : {match.score2}
             </div>
           ) : (
-            <div className="font-black text-base text-gray-400">VS</div>
+            <div className="font-semibold text-base text-gray-400">VS</div>
           )}
           {hasSets && (
             <div className="text-[10px] font-bold text-yellow-500 mt-0.5">

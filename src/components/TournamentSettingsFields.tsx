@@ -93,7 +93,7 @@ export const BooleanToggleRow: React.FC<BooleanToggleProps> = ({
           haptic('light');
           onChange(!value);
         }}
-        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-[3px] transition-colors duration-200 active:scale-95 disabled:opacity-50 ${
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors duration-200 active:scale-95 disabled:opacity-50 ${
           value
             ? 'bg-emerald-500'
             : 'bg-[var(--bg-3)] ring-1 ring-inset ring-[var(--border-strong)]'
@@ -101,8 +101,8 @@ export const BooleanToggleRow: React.FC<BooleanToggleProps> = ({
       >
         <span
           aria-hidden="true"
-          className={`inline-block h-[22px] w-[22px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            value ? 'translate-x-[20px]' : 'translate-x-0'
+          className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            value ? 'translate-x-5' : 'translate-x-0'
           }`}
         />
       </button>
@@ -220,11 +220,11 @@ export const TournamentSettingsFields: React.FC<Props> = ({
                       handleSelectMode(m.key);
                     }
                   }}
-                  className={`relative rounded-2xl border p-3 text-left transition-all select-none flex flex-col justify-between gap-1.5 ${
+                  className={`relative rounded-2xl border p-3 text-left transition-colors duration-150 ease-out select-none flex flex-col justify-between gap-1.5 ${
                     canEditFormat && !disabled ? 'cursor-pointer' : 'opacity-75 cursor-not-allowed'
                   } ${
                     active
-                      ? 'bg-[#2ea6ff]/12 border-[#2ea6ff] shadow-[0_0_0_1px_rgba(46,166,255,0.3)]'
+                      ? 'bg-[#2ea6ff]/12 border-[#2ea6ff] ring-1 ring-[#2ea6ff]/30'
                       : 'bg-[var(--bg)] border-[var(--border)] hover:border-[var(--border-strong)]'
                   }`}
                 >
@@ -260,8 +260,8 @@ export const TournamentSettingsFields: React.FC<Props> = ({
             <div role="radiogroup" aria-label="Формат участников" className="grid grid-cols-2 gap-2">
               {(
                 [
-                  ['pairs', '👥 Пары (2×2)'],
-                  ['single', '👤 Одиночный (1×1)'],
+                  ['pairs', 'Пары (2×2)'],
+                  ['single', 'Одиночный (1×1)'],
                 ] as Array<[TeamFormat, string]>
               ).map(([val, label]) => {
                 const selected = value.teamFormat === val;
@@ -276,7 +276,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
                       haptic('light');
                       onChange({ teamFormat: val });
                     }}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all inline-flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-colors duration-150 ease-out inline-flex items-center justify-center gap-1.5 disabled:opacity-50 ${
                       selected
                         ? 'bg-[#2ea6ff]/12 text-[#2ea6ff] border-[#2ea6ff]'
                         : 'bg-[var(--card)] text-[var(--muted)] border-[var(--border)]'
@@ -382,7 +382,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
                     haptic('light');
                     handleTablesCountChange(n);
                   }}
-                  className={`py-2 rounded-2xl text-xs font-semibold border transition-all disabled:opacity-50 ${
+                  className={`py-2 rounded-2xl text-xs font-semibold border transition-colors duration-150 ease-out disabled:opacity-50 ${
                     selected
                       ? 'bg-[#2ea6ff] text-white border-[#2ea6ff]'
                       : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
@@ -455,7 +455,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
       {/* Квалификация */}
       {!isElimination && (
         <div className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 space-y-3">
-          <div className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+          <div className="text-xs font-semibold text-[var(--muted)]">
             Правила матчей (квалификация)
           </div>
 
@@ -528,7 +528,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
       {/* Настройки плей-офф */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+          <div className="text-xs font-semibold text-[var(--muted)]">
             Плей-офф
           </div>
           {!canEditPlayoff && (
@@ -679,7 +679,7 @@ export const TournamentSettingsFields: React.FC<Props> = ({
           onClick={() => setShowAdvancedRules((v) => !v)}
           className="w-full flex items-center justify-between text-left"
         >
-          <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-[var(--muted)] flex items-center gap-1.5">
             <BellRing size={13} className="text-amber-500" />
             Таймер долгого матча
           </span>

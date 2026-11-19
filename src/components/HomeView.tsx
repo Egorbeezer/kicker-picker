@@ -181,10 +181,10 @@ export const HomeView: React.FC<Props> = ({
                 className="border-[#2ea6ff] bg-[#2ea6ff]/15 text-[#2ea6ff]"
               />
               <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[#2ea6ff]">
+                <div className="text-xs font-medium text-[#2ea6ff]">
                   Мой профиль
                 </div>
-                <div className="text-base font-extrabold text-[var(--text)] truncate">
+                <div className="text-base font-semibold text-[var(--text)] truncate">
                   {userName || 'Игрок кикера'}
                 </div>
               </div>
@@ -207,25 +207,25 @@ export const HomeView: React.FC<Props> = ({
 
           <div className="grid grid-cols-4 gap-2 text-center mt-3">
             <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-extrabold text-[var(--text)] leading-tight">
+              <div className="text-sm font-semibold text-[var(--text)] leading-tight">
                 {playerProfile.tournamentsPlayed}
               </div>
               <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Турниров</div>
             </div>
             <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-extrabold text-emerald-500 leading-tight">
+              <div className="text-sm font-semibold text-emerald-500 leading-tight">
                 {playerProfile.totalWins}/{playerProfile.totalMatches}
               </div>
               <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Побед</div>
             </div>
             <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-extrabold text-[#2ea6ff] leading-tight">
+              <div className="text-sm font-semibold text-[#2ea6ff] leading-tight">
                 {playerProfile.winRate}%
               </div>
               <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Винрейт</div>
             </div>
             <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-extrabold text-[var(--text)] leading-tight">
+              <div className="text-sm font-semibold text-[var(--text)] leading-tight">
                 {playerProfile.avgGoalsPerMatch}
               </div>
               <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Гол/матч</div>
@@ -299,7 +299,7 @@ export const HomeView: React.FC<Props> = ({
               {/* Клубные бейджи */}
               {playerProfile.badges.length > 0 && (
                 <div className="space-y-1.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                  <div className="text-xs font-semibold text-[var(--muted)]">
                     Достижения клуба
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -327,7 +327,7 @@ export const HomeView: React.FC<Props> = ({
 
       {/* Текущие турниры */}
       <section className="space-y-2.5">
-        <div className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] px-1">
+        <div className="text-xs font-semibold text-[var(--muted)] px-1">
           Текущие турниры ({activeTournaments.length})
         </div>
         {activeTournaments.length === 0 ? (
@@ -352,7 +352,7 @@ export const HomeView: React.FC<Props> = ({
           >
             <div className="flex items-center gap-2">
               <Trophy size={15} className="text-emerald-500" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">
+              <span className="text-xs font-semibold text-[var(--text)]">
                 Прошедшие турниры ({finishedTournaments.length})
               </span>
             </div>

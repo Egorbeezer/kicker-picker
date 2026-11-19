@@ -296,7 +296,7 @@ export const AdminPlayersView: React.FC<Props> = ({
                     type="button"
                     disabled={busy}
                     onClick={() => cycleRole(p)}
-                    className={`w-7 h-7 rounded-xl text-xs font-extrabold border transition-transform active:scale-90 ${roleBadge}`}
+                    className={`w-7 h-7 rounded-xl text-xs font-semibold border transition-transform active:scale-90 ${roleBadge}`}
                     title="Корзина игрока (A / B / Без корзины)"
                   >
                     {p.dypRole || '—'}

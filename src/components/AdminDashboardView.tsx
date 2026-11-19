@@ -95,17 +95,17 @@ export const AdminDashboardView: React.FC<Props> = ({
       const outcome = await shareImageFile({
         blob: podiumPreview.blob,
         filename: `podium-${tournament.id}.png`,
-        title: `${tournament.name} — победители`,
+        title: `${tournament.name}: победители`,
       });
       if (outcome === 'shared') {
         haptic('success');
         notify('Карточка призёров готова к отправке');
       } else if (outcome === 'copied') {
         haptic('success');
-        notify('Скриншот скопирован — вставьте его в любой чат');
+        notify('Скриншот скопирован, вставьте его в любой чат');
       } else if (outcome === 'downloaded') {
         haptic('success');
-        notify('Скриншот сохранён — отправьте его в нужный чат');
+        notify('Скриншот сохранён, отправьте его в нужный чат');
       } else if (outcome === 'unsupported') {
         notify('На этом устройстве недоступен быстрый экспорт файла');
       }
@@ -166,7 +166,7 @@ export const AdminDashboardView: React.FC<Props> = ({
         {/* Quick table toggles */}
         {tournament.tablesCount > 1 && tournament.status !== 'FINISHED' && (
           <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-2.5 flex items-center justify-between gap-2 overflow-x-auto">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider shrink-0">
+            <span className="text-xs font-semibold text-gray-400 shrink-0">
               Столы:
             </span>
             <div className="flex items-center gap-1.5">
@@ -198,7 +198,7 @@ export const AdminDashboardView: React.FC<Props> = ({
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 flex items-center justify-between gap-3">
                 <div className="text-xs text-yellow-300 leading-snug">
                   <span className="font-bold text-yellow-400">Плей-офф запланирован.</span>{' '}
-                  Автораунды остановлены — после окончания текущих матчей сразу стартует плей-офф.
+                  Автораунды остановлены, после окончания текущих матчей сразу стартует плей-офф.
                 </div>
                 <button
                   type="button"
@@ -387,7 +387,7 @@ export const AdminDashboardView: React.FC<Props> = ({
         })()}
 
         <div className="flex items-center justify-between pt-1">
-          <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">
+          <h3 className="text-xs font-semibold text-gray-400">
             {tournament.status === 'PLAYOFF' || tournament.status === 'FINISHED'
               ? 'Матчи плей-офф'
               : 'Матчи раунда'}
@@ -467,7 +467,7 @@ export const AdminDashboardView: React.FC<Props> = ({
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-[11px] font-bold">
                             <span className="text-[var(--text)] truncate pr-2">{match.team1Label}</span>
-                            <span className="text-[#2ea6ff] text-sm font-black">{inlineScore1}</span>
+                            <span className="text-[#2ea6ff] text-sm font-semibold">{inlineScore1}</span>
                           </div>
                           <ScorePickerRow
                             score={inlineScore1}
@@ -476,7 +476,7 @@ export const AdminDashboardView: React.FC<Props> = ({
                           />
                           <div className="flex items-center justify-between text-[11px] font-bold pt-1">
                             <span className="text-[var(--text)] truncate pr-2">{match.team2Label}</span>
-                            <span className="text-[#2ea6ff] text-sm font-black">{inlineScore2}</span>
+                            <span className="text-[#2ea6ff] text-sm font-semibold">{inlineScore2}</span>
                           </div>
                           <ScorePickerRow
                             score={inlineScore2}

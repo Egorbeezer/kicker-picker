@@ -174,7 +174,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     haptic('light');
     try {
       const filename = `${isPlayoffView ? 'playoff' : 'table'}-${tournament.id}.png`;
-      const title = isPlayoffView ? `${tournament.name} — плей-офф` : `${tournament.name} — таблица`;
+      const title = isPlayoffView ? `${tournament.name}: плей-офф` : `${tournament.name}: таблица`;
       const outcome = await shareImageFile({
         blob: previewImage.blob,
         filename,
@@ -185,10 +185,10 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
         notify(isPlayoffView ? 'Сетка плей-офф готова к отправке' : 'Таблица готова к отправке');
       } else if (outcome === 'copied') {
         haptic('success');
-        notify('Скриншот скопирован — вставьте его в любой чат');
+        notify('Скриншот скопирован, вставьте его в любой чат');
       } else if (outcome === 'downloaded') {
         haptic('success');
-        notify('Скриншот сохранён — отправьте его в нужный чат');
+        notify('Скриншот сохранён, отправьте его в нужный чат');
       } else if (outcome === 'unsupported') {
         notify('На этом устройстве недоступен быстрый экспорт файла');
       }
@@ -361,7 +361,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
                         <span className="truncate">{row.name} {isMe ? '(Вы)' : ''}</span>
                         {tournament.useBuckets && row.dypRole && (
                           <span
-                            className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+                            className={`text-[9px] font-semibold px-1 py-0.5 rounded shrink-0 ${
                               row.dypRole === 'A'
                                 ? 'bg-[#2ea6ff]/20 text-[#2ea6ff]'
                                 : 'bg-[#96f84d]/20 text-[#96f84d]'
@@ -398,7 +398,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
           {leaderboard.some((r) => r.isBelowGameThreshold) &&
             visibleStatCols.some((c) => c.key === 'fairPpm') && (
               <div className="text-[11px] text-gray-400 px-2 pt-1">
-                * Сыграно меньше 75% матчей — среднее очко уменьшено пропорционально порогу.
+                * Сыграно меньше 75% матчей: среднее очко уменьшено пропорционально порогу.
               </div>
             )}
 
@@ -412,7 +412,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
               </div>
               <div className="w-full bg-[#1c1c1d] h-1.5 rounded-full overflow-hidden border border-[#3a3a3c]">
                 <div
-                  className="bg-[#2ea6ff] h-full transition-all duration-500"
+                  className="bg-[#2ea6ff] h-full transition-[width] duration-500 ease-out"
                   style={{ width: `${snapshot.timings.progressPercent}%` }}
                 />
               </div>

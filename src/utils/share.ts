@@ -20,14 +20,14 @@ function openTelegramShareUrl(url: string, text: string): void {
 
 export function shareTournamentInTelegram(params: { id: number; name: string }): void {
   const inviteLink = getTournamentInviteLink(params.id);
-  const text = `⚽ Присоединяйся к турниру по кикеру «${params.name}»!`;
+  const text = `Присоединяйся к турниру по кикеру «${params.name}»!`;
   openTelegramShareUrl(inviteLink, text);
 }
 
 /** Открывает системное окно отправки Live-ссылки в Telegram без показа сырой ссылки в UI. */
 export function shareLiveUrlInTelegram(params: { name: string; publicPath: string }): void {
   const liveUrl = buildPublicLiveUrl(params.publicPath);
-  const text = `📡 Live-трансляция турнира «${params.name}»`;
+  const text = `Live-трансляция турнира «${params.name}»`;
   openTelegramShareUrl(liveUrl, text);
 }
 

@@ -149,7 +149,7 @@ const BracketNodeCard: React.FC<{
             </span>
           </div>
           <span
-            className={`text-xs font-black shrink-0 min-w-[16px] text-right ${
+            className={`text-xs font-semibold shrink-0 min-w-[16px] text-right ${
               t1Win ? 'text-green-400' : 'text-gray-300'
             }`}
           >
@@ -191,7 +191,7 @@ const BracketNodeCard: React.FC<{
             </span>
           </div>
           <span
-            className={`text-xs font-black shrink-0 min-w-[16px] text-right ${
+            className={`text-xs font-semibold shrink-0 min-w-[16px] text-right ${
               t2Win ? 'text-green-400' : 'text-gray-300'
             }`}
           >
@@ -259,10 +259,10 @@ export const PlayoffBracketView: React.FC<Props> = ({
         <div className="bg-amber-500/12 border border-amber-500/35 rounded-2xl p-3.5 flex items-center gap-3">
           <Trophy size={24} className="text-amber-500 shrink-0" />
           <div className="min-w-0">
-            <div className="text-[11px] font-bold uppercase text-amber-500 tracking-wider">
+            <div className="text-xs font-semibold text-amber-500">
               Победители турнира
             </div>
-            <div className="text-sm font-black text-[var(--text)] truncate">{championLabel}</div>
+            <div className="text-sm font-semibold text-[var(--text)] truncate">{championLabel}</div>
           </div>
         </div>
       )}
@@ -276,7 +276,7 @@ export const PlayoffBracketView: React.FC<Props> = ({
               haptic('light');
               setViewMode('tree');
             }}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-colors duration-150 ease-out ${
               viewMode === 'tree' ? 'bg-[#2ea6ff] text-white' : 'text-[var(--muted)]'
             }`}
           >
@@ -289,7 +289,7 @@ export const PlayoffBracketView: React.FC<Props> = ({
               haptic('light');
               setViewMode('list');
             }}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-colors duration-150 ease-out ${
               viewMode === 'list' ? 'bg-[#2ea6ff] text-white' : 'text-[var(--muted)]'
             }`}
           >
@@ -320,7 +320,7 @@ export const PlayoffBracketView: React.FC<Props> = ({
         <div className="space-y-4">
           {rounds.map((round) => (
             <div key={round.prefix} className="space-y-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] px-1 flex items-center gap-1.5">
+              <div className="text-xs font-semibold text-[var(--muted)] px-1 flex items-center gap-1.5">
                 {round.prefix === 'FINAL' && <Trophy size={12} className="text-amber-500" />}
                 <span>{round.title}</span>
               </div>
@@ -360,7 +360,7 @@ export const PlayoffBracketView: React.FC<Props> = ({
               <div
                 key={r.prefix}
                 style={{ width: COL_W }}
-                className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1 flex items-center justify-between"
+                className="shrink-0 text-xs font-semibold text-gray-400 px-1 flex items-center justify-between"
               >
                 <span className="truncate">{r.title}</span>
                 {r.prefix === 'FINAL' && <Trophy size={12} className="text-yellow-500 shrink-0" />}
@@ -463,7 +463,7 @@ export const PlayoffBracketView: React.FC<Props> = ({
       {/* 3rd place match card */}
       {(thirdPlaceMatch || thirdMatch) && rounds.length >= 2 && (
         <div className="pt-1">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">
+          <div className="text-xs font-semibold text-gray-400 mb-2 px-1">
             Матч за 3-е место
           </div>
           <div className="w-[236px] h-[110px]">

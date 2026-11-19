@@ -56,9 +56,9 @@ export const TournamentHistoryCard: React.FC<Props> = ({
         haptic('light');
         onClick();
       }}
-      className={`w-full text-left bg-[var(--card)] border rounded-3xl p-4 transition-all active:scale-[0.985] space-y-2.5 disabled:opacity-75 ${
+      className={`w-full text-left bg-[var(--card)] border rounded-3xl p-4 transition-colors duration-150 ease-out active:scale-[0.985] space-y-2.5 disabled:opacity-75 ${
         isCurrent
-          ? 'border-[#2ea6ff]/60 shadow-[0_0_0_1px_rgba(46,166,255,0.2)]'
+          ? 'border-[#2ea6ff]/60 ring-1 ring-[#2ea6ff]/20'
           : 'border-[var(--border)] hover:border-[var(--border-strong)]'
       }`}
     >

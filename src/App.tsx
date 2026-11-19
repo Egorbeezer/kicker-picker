@@ -472,7 +472,7 @@ export default function App() {
                   runAction(
                     () => apiClient.confirmScore({ matchId, action }),
                     action === 'confirm' ? 'Подтверждаем счёт...' : 'Оспариваем счёт...',
-                    action === 'confirm' ? 'Счёт подтверждён' : 'Спор отправлен — матч возвращён в игру'
+                    action === 'confirm' ? 'Счёт подтверждён' : 'Спор отправлен, матч возвращён в игру'
                   )
                 }
                 onRemindConfirm={(matchId) =>
@@ -739,7 +739,7 @@ export default function App() {
           {createdInvite.publicPath && (
             <p className="text-xs text-emerald-500 font-medium flex items-center gap-1.5">
               <Radio size={14} className="shrink-0" />
-              Live-трансляция включена — поделиться ссылкой можно кнопкой ниже.
+              Live-трансляция включена. Поделиться ссылкой можно кнопкой ниже.
             </p>
           )}
         </Modal>

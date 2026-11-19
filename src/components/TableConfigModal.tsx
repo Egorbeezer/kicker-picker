@@ -113,7 +113,7 @@ export const TableConfigModal: React.FC<Props> = ({
                 setDragIndex(null);
                 setDragOverIndex(null);
               }}
-              className={`flex items-center justify-between bg-[var(--bg)] border rounded-2xl px-2.5 py-2 transition-all ${
+              className={`flex items-center justify-between bg-[var(--bg)] border rounded-2xl px-2.5 py-2 transition-colors duration-150 ease-out ${
                 isDragging
                   ? 'opacity-50 border-[#2ea6ff]'
                   : isDropTarget

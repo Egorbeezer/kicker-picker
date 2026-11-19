@@ -176,7 +176,7 @@ export async function callEndpoint<T>(
         ? setTimeout(() => {
             if (settled) return;
             settled = true;
-            reject(new Error('Превышено время ожидания ответа сервера — проверьте интернет'));
+            reject(new Error('Превышено время ожидания ответа сервера. Проверьте интернет'));
           }, timeoutMs)
         : null;
 

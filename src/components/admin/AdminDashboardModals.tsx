@@ -103,7 +103,7 @@ export const AdminDashboardModals: React.FC<Props> = ({
               <span className="font-semibold text-sm text-white truncate">
                 {editingMatch.team1Label}
               </span>
-              <span className="text-xl font-black text-[#2ea6ff] shrink-0">
+              <span className="text-xl font-semibold text-[#2ea6ff] shrink-0">
                 {editingMatch.score1}
               </span>
             </div>
@@ -116,14 +116,14 @@ export const AdminDashboardModals: React.FC<Props> = ({
             />
           </div>
 
-          <div className="text-center font-black text-xs text-gray-500">VS</div>
+          <div className="text-center font-semibold text-xs text-gray-500">VS</div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-sm text-white truncate">
                 {editingMatch.team2Label}
               </span>
-              <span className="text-xl font-black text-[#2ea6ff] shrink-0">
+              <span className="text-xl font-semibold text-[#2ea6ff] shrink-0">
                 {editingMatch.score2}
               </span>
             </div>
@@ -138,7 +138,7 @@ export const AdminDashboardModals: React.FC<Props> = ({
 
           {tournament.tablesCount > 1 && (
             <div className="pt-2 border-t border-[var(--border)]">
-              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              <div className="text-xs font-semibold text-gray-400 mb-1.5">
                 Переназначить стол
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -402,7 +402,7 @@ export const AdminDashboardModals: React.FC<Props> = ({
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+            <div className="text-xs font-semibold text-[var(--muted)]">
               Размер сетки плей-офф
             </div>
             <div className="flex flex-wrap gap-1.5">

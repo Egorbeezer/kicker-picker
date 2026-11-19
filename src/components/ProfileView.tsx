@@ -140,7 +140,7 @@ export const ProfileView: React.FC<Props> = ({
           {/* Tournament header card */}
           <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <h2 className="text-lg font-black leading-snug">{t.name}</h2>
+              <h2 className="text-lg font-semibold leading-snug">{t.name}</h2>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${tBadge.cls}`}>
                 {tBadge.label}
               </span>
@@ -178,27 +178,27 @@ export const ProfileView: React.FC<Props> = ({
           {/* My personal stats summary */}
           {tMyStats ? (
             <div className="bg-[#2c2c2e] border border-[#2ea6ff]/30 rounded-2xl p-4">
-              <div className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3">
+              <div className="text-xs font-semibold text-gray-400 mb-3">
                 Ваши показатели
               </div>
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div className="bg-[#1c1c1d] rounded-xl p-2 border border-[#3a3a3c]">
-                  <div className="text-base font-black text-yellow-500">#{tMyStats.rank}</div>
+                  <div className="text-base font-semibold text-yellow-500">#{tMyStats.rank}</div>
                   <div className="text-[10px] text-gray-400">Место</div>
                 </div>
                 <div className="bg-[#1c1c1d] rounded-xl p-2 border border-[#3a3a3c]">
-                  <div className="text-base font-black text-white">{tMyStats.points}</div>
+                  <div className="text-base font-semibold text-white">{tMyStats.points}</div>
                   <div className="text-[10px] text-gray-400">Очки</div>
                 </div>
                 <div className="bg-[#1c1c1d] rounded-xl p-2 border border-[#3a3a3c]">
-                  <div className="text-base font-black text-[#2ea6ff]">
+                  <div className="text-base font-semibold text-[#2ea6ff]">
                     {tMyStats.wins}/{tMyStats.games}
                   </div>
                   <div className="text-[10px] text-gray-400">Поб/Игр</div>
                 </div>
                 <div className="bg-[#1c1c1d] rounded-xl p-2 border border-[#3a3a3c]">
                   <div
-                    className={`text-base font-black ${
+                    className={`text-base font-semibold ${
                       tMyStats.diff > 0
                         ? 'text-green-400'
                         : tMyStats.diff < 0
@@ -288,7 +288,7 @@ export const ProfileView: React.FC<Props> = ({
                       </div>
                     </div>
                     <div
-                      className={`px-3 py-1.5 rounded-lg font-black text-sm shrink-0 ${
+                      className={`px-3 py-1.5 rounded-lg font-semibold text-sm shrink-0 ${
                         iWon ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
                       }`}
                     >
@@ -410,21 +410,21 @@ export const ProfileView: React.FC<Props> = ({
         {myStats && (
           <div className="flex gap-6 mt-4 text-center">
             <div>
-              <div className="text-lg font-black text-yellow-500">#{myStats.rank}</div>
+              <div className="text-lg font-semibold text-yellow-500">#{myStats.rank}</div>
               <div className="text-[11px] text-gray-400">Место</div>
             </div>
             <div>
-              <div className="text-lg font-black text-white">{myStats.points}</div>
+              <div className="text-lg font-semibold text-white">{myStats.points}</div>
               <div className="text-[11px] text-gray-400">Очки</div>
             </div>
             <div>
-              <div className="text-lg font-black text-[#2ea6ff]">
+              <div className="text-lg font-semibold text-[#2ea6ff]">
                 {myStats.wins}/{myStats.games}
               </div>
               <div className="text-[11px] text-gray-400">Побед</div>
             </div>
             <div>
-              <div className="text-lg font-black text-gray-300">
+              <div className="text-lg font-semibold text-gray-300">
                 {myStats.diff > 0 ? `+${myStats.diff}` : myStats.diff}
               </div>
               <div className="text-[11px] text-gray-400">+/-</div>
@@ -433,7 +433,7 @@ export const ProfileView: React.FC<Props> = ({
         )}
       </div>
 
-      <h3 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 px-1">
+      <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1">
         Настройки профиля
       </h3>
       <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-4 mb-5 flex items-center justify-between gap-3">
@@ -444,7 +444,7 @@ export const ProfileView: React.FC<Props> = ({
           <div className="min-w-0">
             <div className="text-sm font-semibold text-white">Светлая тема</div>
             <div className="text-[11px] text-gray-400">
-              {isLight ? 'Включена (сохраняется)' : 'Выключена — используется тёмная'}
+              {isLight ? 'Включена (сохраняется)' : 'Выключена, используется тёмная'}
             </div>
           </div>
         </div>
@@ -456,7 +456,7 @@ export const ProfileView: React.FC<Props> = ({
       </div>
 
       {/* Tournament participation history */}
-      <h3 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 px-1 flex items-center gap-1.5">
+      <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1 flex items-center gap-1.5">
         <History size={13} /> История турниров ({tournamentHistory.length})
       </h3>
 
@@ -484,7 +484,7 @@ export const ProfileView: React.FC<Props> = ({
         )}
       </div>
 
-      <h3 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 px-1 flex items-center gap-1.5">
+      <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1 flex items-center gap-1.5">
         <Trophy size={13} /> История встреч ({myHistory.length})
       </h3>
 
@@ -510,7 +510,7 @@ export const ProfileView: React.FC<Props> = ({
                 </div>
               </div>
               <div
-                className={`px-3 py-1.5 rounded-lg font-black text-sm shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg font-semibold text-sm shrink-0 ${
                   iWon ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
                 }`}
               >
@@ -532,7 +532,7 @@ export const ProfileView: React.FC<Props> = ({
           type="button"
           disabled={busy}
           onClick={() => setConfirmLeaveOpen(true)}
-          className="mt-auto flex items-center justify-center gap-2 text-red-500 bg-red-500/10 px-6 py-3.5 rounded-xl font-semibold border border-red-500/20 active:scale-95 transition-all"
+          className="mt-auto flex items-center justify-center gap-2 text-red-500 bg-red-500/10 px-6 py-3.5 rounded-xl font-semibold border border-red-500/20 active:scale-95 transition-transform duration-150 ease-out"
         >
           <LogOut size={18} /> Выписаться из турнира
         </button>

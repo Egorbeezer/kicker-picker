@@ -26,7 +26,7 @@ const CurrentMatchesFeed: React.FC<{
   return (
     <div className="space-y-2.5 pt-2">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">{title}</h3>
+        <h3 className="text-xs font-semibold text-gray-400">{title}</h3>
         <span className="text-[11px] font-medium text-gray-500">
           {matches.filter((m) => m.status === 'FINISHED').length}/{matches.length} завершено
         </span>
@@ -102,7 +102,7 @@ export const PlayerMatchView: React.FC<Props> = ({
             <div className="w-14 h-14 rounded-full bg-yellow-500/15 text-yellow-500 flex items-center justify-center mx-auto">
               <Medal size={30} />
             </div>
-            <h2 className="text-xl font-black text-white">Турнир завершён!</h2>
+            <h2 className="text-xl font-semibold text-white">Турнир завершён!</h2>
             <div className="text-sm font-semibold text-gray-300 truncate">{tournament.name}</div>
             <div className="text-xs text-[var(--muted)]">
               {formatDateRu(tournament.finishedAt ?? tournament.startedAt ?? tournament.createdAt)}
@@ -111,7 +111,7 @@ export const PlayerMatchView: React.FC<Props> = ({
 
           {(podium.first || podium.second || podium.third) ? (
             <div className="bg-[var(--bg-2)] border border-[var(--border-strong)] rounded-3xl p-4 space-y-2">
-              <div className="text-xs font-bold uppercase text-gray-400 tracking-wider px-1">
+              <div className="text-xs font-semibold text-gray-400 px-1">
                 Призёры турнира
               </div>
               {podium.first && (
@@ -149,7 +149,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-black text-[#2ea6ff]">{myRow.points} очк.</div>
+                <div className="text-sm font-semibold text-[#2ea6ff]">{myRow.points} очк.</div>
                 <div className="text-[11px] text-gray-400">
                   {myRow.wins} поб. / {myRow.games} игр
                 </div>
@@ -185,7 +185,7 @@ export const PlayerMatchView: React.FC<Props> = ({
   if (tournament.status === 'REGISTRATION') {
     return (
       <div className="flex flex-col h-full items-center justify-center p-6 text-center content-dock-pad">
-        <Clock size={48} className="text-[#2ea6ff] mb-4 animate-pulse" />
+        <Clock size={48} className="text-[#2ea6ff] mb-4" />
         <h2 className="text-xl font-bold mb-2">{tournament.name}</h2>
         <p className="text-gray-400 text-sm max-w-xs">
           Идет регистрация участников ({players.filter((p) => p.isActive).length}).
@@ -255,7 +255,7 @@ export const PlayerMatchView: React.FC<Props> = ({
       <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
         <div className="p-4 space-y-5">
           <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-5 flex flex-col items-center text-center">
-            <Clock size={40} className="text-yellow-500 mb-3 animate-pulse" />
+            <Clock size={40} className="text-yellow-500 mb-3" />
             <h2 className="text-xl font-bold mb-1.5">Ожидаем подтверждения</h2>
             <p className="text-gray-400 text-xs max-w-xs mb-4">
               Отправлено соперникам для подтверждения результата:
@@ -295,7 +295,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-2xl font-black text-white shrink-0 min-w-[28px] text-right">
+                <div className="text-2xl font-semibold text-white shrink-0 min-w-[28px] text-right">
                   {myCurrentMatch.score1}
                 </div>
               </div>
@@ -333,7 +333,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-2xl font-black text-white shrink-0 min-w-[28px] text-right">
+                <div className="text-2xl font-semibold text-white shrink-0 min-w-[28px] text-right">
                   {myCurrentMatch.score2}
                 </div>
               </div>
@@ -408,7 +408,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-3xl font-black text-white shrink-0 min-w-[32px] text-right">
+                <div className="text-3xl font-semibold text-white shrink-0 min-w-[32px] text-right">
                   {myCurrentMatch.score1}
                 </div>
               </div>
@@ -446,7 +446,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-3xl font-black text-white shrink-0 min-w-[32px] text-right">
+                <div className="text-3xl font-semibold text-white shrink-0 min-w-[32px] text-right">
                   {myCurrentMatch.score2}
                 </div>
               </div>
@@ -550,7 +550,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                 </div>
               </div>
               <div
-                className={`text-4xl font-black tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
+                className={`text-4xl font-semibold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
                   score1 > 0 ? 'text-[#2ea6ff]' : 'text-[var(--text)]'
                 }`}
               >
@@ -562,7 +562,7 @@ export const PlayerMatchView: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="text-center text-gray-500 font-black text-xs italic tracking-widest">
+          <div className="text-center text-gray-500 font-semibold text-xs italic tracking-widest">
             VS
           </div>
 
@@ -605,7 +605,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                 </div>
               </div>
               <div
-                className={`text-4xl font-black tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
+                className={`text-4xl font-semibold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
                   score2 > 0 ? 'text-[#2ea6ff]' : 'text-[var(--text)]'
                 }`}
               >
@@ -639,7 +639,7 @@ export const PlayerMatchView: React.FC<Props> = ({
               <RubleCoin key={flipId} animate result={coinFlipResult} size={112} />
               <div className="h-8 flex items-center justify-center">
                 {coinShowLabel && (
-                  <div className="text-xl font-black text-yellow-400 tracking-wide animate-fade-slide-up">
+                  <div className="text-xl font-semibold text-yellow-400 tracking-wide animate-fade-slide-up">
                     {coinFlipResult}!
                   </div>
                 )}
@@ -649,9 +649,9 @@ export const PlayerMatchView: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleCoinFlip}
-              className="group bg-[#2c2c2e] hover:bg-[#333335] border border-[#3a3a3c] rounded-2xl px-6 py-3 flex items-center justify-center gap-3 text-white active:scale-95 transition-all shadow-sm"
+              className="bg-[#2c2c2e] hover:bg-[#333335] border border-[#3a3a3c] rounded-2xl px-6 py-3 flex items-center justify-center gap-3 text-white active:scale-95 transition-colors duration-150 ease-out shadow-sm"
             >
-              <div className="group-hover:scale-105 transition-transform">
+              <div>
                 <RubleCoin animate={false} result="Решка" size={38} />
               </div>
               <span className="font-bold text-sm tracking-wide">Бросить монетку</span>

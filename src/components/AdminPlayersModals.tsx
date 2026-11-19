@@ -101,7 +101,7 @@ export const AddPlayersModal: React.FC<AddPlayersModalProps> = ({
       <form id="bulk-add-form" onSubmit={handleBulkAdd} className="space-y-3">
         {clubPlayers.length > 0 && (
           <div className="space-y-1.5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] flex items-center gap-1.5">
+            <div className="text-xs font-semibold text-[var(--muted)] flex items-center gap-1.5">
               <BookmarkCheck size={12} className="text-[#2ea6ff]" />
               Постоянные игроки клуба (выбор в 1 тап)
             </div>
