@@ -299,6 +299,6 @@ describe('formatMatchTeamsColumns and notifyRoundStart', () => {
     expect(sendMessageSpy).toHaveBeenCalledTimes(4);
     const msgText = sendMessageSpy.mock.calls[0][0].text;
     expect(msgText).toContain('Стол 2');
-    expect(msgText).toContain('<pre>Егор &lt;Pro&gt;   vs   Толя\nКоля              Оля</pre>');
+    expect(msgText).toContain('<blockquote><code>Егор &lt;Pro&gt;   vs   Толя\nКоля              Оля</code></blockquote>');
   });
 });

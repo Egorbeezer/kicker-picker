@@ -133,7 +133,7 @@ export async function notifyRoundStart({ tournament, createdMatches, playersById
         text:
           `⚽ <b>${escapeHtml(tournament.name)}</b> — ${escapeHtml(stageLabel)}\n` +
           `🪑 <b>Стол ${m.tableNumber}</b>\n\n` +
-          `<pre>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</pre>`,
+          `<blockquote><code>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</code></blockquote>`,
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
@@ -249,7 +249,7 @@ export async function checkAndSendLongMatchReminders({
     }
 
     const elapsedMin = Math.round((nowMs - startMs) / 60000);
-    const columnsHtml = `<pre>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</pre>`;
+    const columnsHtml = `<blockquote><code>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</code></blockquote>`;
     const text =
       nextStage === 1
         ? `⏰ <b>Долгий матч (${elapsedMin} мин)</b>\n` +
