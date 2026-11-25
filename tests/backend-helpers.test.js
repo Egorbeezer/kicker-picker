@@ -51,6 +51,8 @@ const {
   sanitizeTournament,
   buildGlobalPlayerProfile,
   checkAndSendLongMatchReminders,
+  formatMatchTeamsColumns,
+  notifyRoundStart,
 } = await import('../tgcloud/lib/helpers.js');
 
 describe('isTournamentAdmin and sanitizeTournament', () => {
@@ -240,5 +242,63 @@ describe('checkAndSendLongMatchReminders', () => {
     });
     expect(count2).toBe(1);
     expect(sendMessageSpy.mock.calls[0][0].text).toContain('Напоминание: внесите счёт');
+  });
+});
+
+describe('formatMatchTeamsColumns and notifyRoundStart', () => {
+  beforeEach(() => {
+    sendMessageSpy.mockClear();
+  });
+
+  it('formats 2x2 teams in aligned vertical columns and handles 1x1 singles', () => {
+    expect(
+      formatMatchTeamsColumns(
+        [{ name: 'Егор' }, { name: 'Коля' }],
+        [{ name: 'Толя' }, { name: 'Оля' }]
+      )
+    ).toBe('Егор   vs   Толя\nКоля        Оля');
+
+    expect(
+      formatMatchTeamsColumns(
+        [{ name: 'Максим' }, { name: 'Ян' }],
+        [{ name: 'Толя' }, { name: 'Оля' }]
+      )
+    ).toBe('Максим   vs   Толя\nЯн            Оля');
+
+    expect(formatMatchTeamsColumns([{ name: 'Егор' }], [{ name: 'Толя' }])).toBe(
+      'Егор   vs   Толя'
+    );
+  });
+
+  it('notifyRoundStart sends <pre> aligned columns and escapes HTML safely', async () => {
+    const players = [
+      { id: 1, tgId: 101, name: 'Егор <Pro>' },
+      { id: 2, tgId: 102, name: 'Коля' },
+      { id: 3, tgId: 103, name: 'Толя' },
+      { id: 4, tgId: 104, name: 'Оля' },
+    ];
+    const playersById = new Map(players.map((p) => [p.id, p]));
+
+    await notifyRoundStart({
+      tournament: { id: 15, name: 'Вечерний DYP' },
+      createdMatches: [
+        {
+          id: 1,
+          stage: 'QUALIFICATION',
+          tableNumber: 2,
+          team1Player1Id: 1,
+          team1Player2Id: 2,
+          team2Player1Id: 3,
+          team2Player2Id: 4,
+        },
+      ],
+      playersById,
+      roundNumber: 3,
+    });
+
+    expect(sendMessageSpy).toHaveBeenCalledTimes(4);
+    const msgText = sendMessageSpy.mock.calls[0][0].text;
+    expect(msgText).toContain('Стол 2');
+    expect(msgText).toContain('<pre>Егор &lt;Pro&gt;   vs   Толя\nКоля              Оля</pre>');
   });
 });

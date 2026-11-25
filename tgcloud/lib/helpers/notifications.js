@@ -4,6 +4,29 @@ import { matches, tournaments } from '../../schema.js';
 import { toEpochMs } from '../dyp.js';
 import { buildMainAppLink, escapeHtml, safeSendMessage } from './telegram.js';
 
+function truncateName(name, max = 16) {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+export function formatMatchTeamsColumns(t1, t2) {
+  const leftNames = t1.length > 0 ? t1.map((p) => truncateName(p.name, 16) || 'Игрок') : ['Команда 1'];
+  const rightNames = t2.length > 0 ? t2.map((p) => truncateName(p.name, 16) || 'Игрок') : ['Команда 2'];
+  const leftWidth = Math.max(...leftNames.map((n) => n.length));
+  const rowCount = Math.max(leftNames.length, rightNames.length);
+  const rows = [];
+
+  for (let i = 0; i < rowCount; i += 1) {
+    const left = leftNames[i] || '';
+    const right = rightNames[i] || '';
+    const sep = i === 0 ? '   vs   ' : '        ';
+    rows.push(`${left.padEnd(leftWidth, ' ')}${sep}${right}`.trimEnd());
+  }
+
+  return rows.join('\n');
+}
+
 export function formatMatchTeamsSummary(match, playersById) {
   const t1 = [playersById.get(match.team1Player1Id), playersById.get(match.team1Player2Id)].filter(Boolean);
   const t2 = [playersById.get(match.team2Player1Id), playersById.get(match.team2Player2Id)].filter(Boolean);
@@ -99,7 +122,7 @@ export async function notifySubmittingTeam({ match, playersById, text, excludeTg
 
 export async function notifyRoundStart({ tournament, createdMatches, playersById, roundNumber }) {
   for (const m of createdMatches) {
-    const { t1, t2, t1Names, t2Names } = formatMatchTeamsSummary(m, playersById);
+    const { t1, t2 } = formatMatchTeamsSummary(m, playersById);
     const stageLabel =
       m.stage === 'PLAYOFF' ? formatBracketSlotRu(m.bracketSlot) || 'Плей-офф' : `Раунд ${roundNumber}`;
 
@@ -110,7 +133,7 @@ export async function notifyRoundStart({ tournament, createdMatches, playersById
         text:
           `⚽ <b>${escapeHtml(tournament.name)}</b> — ${escapeHtml(stageLabel)}\n` +
           `🪑 <b>Стол ${m.tableNumber}</b>\n\n` +
-          `${escapeHtml(t1Names)} <b>VS</b> ${escapeHtml(t2Names)}`,
+          `<pre>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</pre>`,
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
@@ -219,22 +242,23 @@ export async function checkAndSendLongMatchReminders({
 
     if (nextStage === null) continue;
 
-    const { t1, t2, t1Names, t2Names } = formatMatchTeamsSummary(m, playersById);
+    const { t1, t2 } = formatMatchTeamsSummary(m, playersById);
     const recipients = new Set(adminChatIds);
     for (const p of [...t1, ...t2]) {
       if (p.tgId) recipients.add(p.tgId);
     }
 
     const elapsedMin = Math.round((nowMs - startMs) / 60000);
+    const columnsHtml = `<pre>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</pre>`;
     const text =
       nextStage === 1
         ? `⏰ <b>Долгий матч (${elapsedMin} мин)</b>\n` +
-          `🏆 ${escapeHtml(tournament.name)} • Стол ${m.tableNumber}\n` +
-          `${escapeHtml(t1Names)} <b>VS</b> ${escapeHtml(t2Names)}\n\n` +
+          `🏆 ${escapeHtml(tournament.name)} • Стол ${m.tableNumber}\n\n` +
+          `${columnsHtml}\n\n` +
           `<i>Если игра закончилась — внесите, пожалуйста, счёт.</i>`
         : `📊 <b>Напоминание: внесите счёт</b>\n` +
-          `🏆 ${escapeHtml(tournament.name)} • Стол ${m.tableNumber} (идёт ${elapsedMin} мин)\n` +
-          `${escapeHtml(t1Names)} <b>VS</b> ${escapeHtml(t2Names)}`;
+          `🏆 ${escapeHtml(tournament.name)} • Стол ${m.tableNumber} (идёт ${elapsedMin} мин)\n\n` +
+          columnsHtml;
 
     const claimedRem = await db
       .update(matches)

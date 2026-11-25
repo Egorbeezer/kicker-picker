@@ -23,6 +23,7 @@ export {
   parseBoundedInt,
 } from './helpers/access.js';
 export {
+  formatMatchTeamsColumns,
   formatMatchTeamsSummary,
   formatBracketSlotRu,
   formatMatchStageLabel,
