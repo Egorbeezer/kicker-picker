@@ -488,13 +488,17 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(adminSwitches.some((sw) => sw.getAttribute('aria-checked') === 'true' && sw.className.includes('bg-emerald-500'))).toBe(true);
     expect(cAdmin.textContent).toContain('Удалить турнир');
     expect(cAdmin.textContent).not.toContain('Удалить дип');
+    expect(cAdmin.textContent).toContain('Best of 3');
+    expect(cAdmin.textContent).toContain('Best of 5');
+    expect(cAdmin.textContent).not.toContain('До 2 побед');
+    expect(cAdmin.textContent).not.toContain('До 3 побед');
     expect(cAdmin.innerHTML).not.toContain('#2c2c2e');
     const settingsScrollRoot = cAdmin.firstElementChild as HTMLElement;
     expect(settingsScrollRoot.className).toContain('h-full');
     expect(settingsScrollRoot.className).toContain('overflow-y-auto');
     expect(settingsScrollRoot.className).toContain('content-dock-pad');
 
-    // 2. CreateTournamentView replaces checkboxes with radio buttons and blocks double submit
+    // 2. CreateTournamentView walks 4 wizard steps (3 for elimination) and blocks double submit
     let resolveSubmit: () => void = () => {};
     const onSubmit = vi.fn(
       () =>
@@ -509,7 +513,38 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       rCreate.render(<CreateTournamentView defaultName="Тест" busy={false} onSubmit={onSubmit} />);
     });
     expect(cCreate.querySelectorAll('input[type="checkbox"]').length).toBe(0);
-    expect(cCreate.querySelectorAll('[role="radio"]').length).toBeGreaterThanOrEqual(8);
+    expect(cCreate.textContent).toContain('Шаг 1 из 4');
+
+    // Selecting "Сразу Плей-офф" collapses wizard to 3 steps
+    const elimCard = Array.from(cCreate.querySelectorAll('[role="button"]')).find((el) =>
+      el.textContent?.includes('Сразу Плей-офф')
+    ) as HTMLElement;
+    await act(async () => {
+      elimCard.click();
+    });
+    expect(cCreate.textContent).toContain('Шаг 1 из 3');
+
+    const monsterCard = Array.from(cCreate.querySelectorAll('[role="button"]')).find((el) =>
+      el.textContent?.includes('Monster DYP')
+    ) as HTMLElement;
+    await act(async () => {
+      monsterCard.click();
+    });
+    expect(cCreate.textContent).toContain('Шаг 1 из 4');
+
+    const clickNext = async () => {
+      const nextBtn = Array.from(cCreate.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Далее')
+      ) as HTMLButtonElement;
+      expect(nextBtn).toBeTruthy();
+      await act(async () => {
+        nextBtn.click();
+      });
+    };
+
+    // Step 2: Столы и отбор
+    await clickNext();
+    expect(cCreate.textContent).toContain('Шаг 2 из 4');
     const qualScoreGroup = cCreate.querySelector('[role="radiogroup"][aria-label="Голов до победы"]');
     const checkedScoreRadio = qualScoreGroup?.querySelector('[role="radio"][aria-checked="true"]');
     expect(checkedScoreRadio?.textContent?.trim()).toBe('7');
@@ -517,9 +552,9 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(cCreate.querySelector('[aria-label="Уменьшить столы"]')).toBeNull();
     const tablesGroup = cCreate.querySelector('[role="radiogroup"][aria-label="Количество столов"]');
     expect(tablesGroup?.querySelectorAll('[role="radio"]').length).toBe(6);
-    const createSwitches = Array.from(cCreate.querySelectorAll('[role="switch"]')) as HTMLButtonElement[];
-    expect(createSwitches.length).toBeGreaterThanOrEqual(4);
-    const autoRoundsSwitch = createSwitches.find((sw) => sw.getAttribute('aria-label') === 'Автоматические раунды');
+    const autoRoundsSwitch = cCreate.querySelector(
+      '[role="switch"][aria-label="Автоматические раунды"]'
+    ) as HTMLButtonElement;
     expect(autoRoundsSwitch?.getAttribute('aria-checked')).toBe('true');
     expect(autoRoundsSwitch?.className).toContain('bg-emerald-500');
     await act(async () => {
@@ -527,6 +562,35 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
     expect(autoRoundsSwitch?.getAttribute('aria-checked')).toBe('false');
     expect(autoRoundsSwitch?.className).not.toContain('bg-emerald-500');
+
+    // Step 3: Плей-офф (Best of 3 / Best of 5 labels)
+    await clickNext();
+    expect(cCreate.textContent).toContain('Шаг 3 из 4');
+    expect(cCreate.textContent).toContain('Best of 3');
+    expect(cCreate.textContent).toContain('Best of 5');
+
+    // Step 4: Запуск (summary card + "Изм." jump + double submit lock)
+    await clickNext();
+    expect(cCreate.textContent).toContain('Шаг 4 из 4');
+    expect(cCreate.textContent).toContain('Итоговые параметры');
+
+    const editBtns = Array.from(cCreate.querySelectorAll('button')).filter(
+      (b) => b.textContent?.trim() === 'Изм.'
+    ) as HTMLButtonElement[];
+    expect(editBtns.length).toBe(4);
+    await act(async () => {
+      editBtns[0].click();
+    });
+    expect(cCreate.textContent).toContain('Шаг 1 из 4');
+
+    // Jump back to Step 4 via progress bar
+    const step4ProgressBtn = Array.from(cCreate.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('4. Запуск')
+    ) as HTMLButtonElement;
+    await act(async () => {
+      step4ProgressBtn.click();
+    });
+    expect(cCreate.textContent).toContain('Шаг 4 из 4');
 
     const form = cCreate.querySelector('form')!;
     await act(async () => {

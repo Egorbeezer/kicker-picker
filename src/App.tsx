@@ -182,7 +182,7 @@ export default function App() {
           <span className="text-sm font-bold text-[var(--text)]">Новый турнир</span>
           <SupportHeaderButton />
         </div>
-        <div className="flex-1 overflow-y-auto px-3 pt-4 pb-8">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <CreateTournamentView
             defaultName={defaultTournamentName}
             busy={busy}

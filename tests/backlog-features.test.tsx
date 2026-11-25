@@ -230,7 +230,7 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       });
     }
 
-    // Select Круговой (Round Robin), toggle 1×1 & 2 круга, then submit
+    // Select Круговой (Round Robin), toggle 1×1 & 2 круга, walk wizard to launch step, enable Live, and submit
     const rrCard = Array.from(container.querySelectorAll('[role="button"]')).find((el) =>
       el.textContent?.includes('Круговой')
     ) as HTMLElement;
@@ -245,13 +245,27 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     const twoLoopsBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('2 круга')
     ) as HTMLButtonElement;
+    await act(async () => {
+      singleBtn.click();
+      twoLoopsBtn.click();
+    });
+
+    // Advance wizard: Step 1 -> 2 -> 3 -> 4
+    for (let step = 0; step < 3; step += 1) {
+      const nextBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Далее')
+      ) as HTMLButtonElement;
+      expect(nextBtn).toBeTruthy();
+      await act(async () => {
+        nextBtn.click();
+      });
+    }
+
     const liveSwitch = container.querySelector('[role="switch"][aria-label="Включить Live-трансляцию"]') as HTMLButtonElement;
     expect(liveSwitch).not.toBeNull();
     expect(liveSwitch.getAttribute('aria-checked')).toBe('false');
 
     await act(async () => {
-      singleBtn.click();
-      twoLoopsBtn.click();
       liveSwitch.click();
     });
     expect(liveSwitch.getAttribute('aria-checked')).toBe('true');
