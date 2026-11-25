@@ -157,9 +157,15 @@ The platform manages the bot's webhook for you, derived from your deployed
 
 After every task/change in this repository (`kicker-picker`), the assistant MUST automatically, without waiting for an extra prompt:
 
+- **Zero-bugs-to-prod gate (STRICT)**: NEVER commit, push, or deploy if ANY check (`lint`, `typecheck`, `test`, `build`, or `test:e2e`) fails. Fix all failures and re-run verification until 100% green before committing or pushing.
+
 1. Run full local verification:
    ```
    npm run lint && npm run typecheck && npm test && npm run build
+   ```
+   Whenever UI or runtime files (`src/`, `tgcloud/`, `e2e/`, `index.html`) changed, you MUST ALSO run Playwright E2E tests and confirm they pass 100%:
+   ```
+   npm run test:e2e
    ```
 2. Run `unslop-ui` check on changed UI files (`src/`, `index.html`) in **full-list (`--surface`, U1–U20 + unslop), warning-only mode**:
    - Follow [.agents/skills/unslop-ui/SKILL.md](.agents/skills/unslop-ui/SKILL.md) and run `python3 .agents/skills/unslop-ui/scripts/count_tells.py --surface <changed_ui_files>` (the Git `pre-commit` hook in `.githooks/pre-commit` also runs this automatically on every commit).
