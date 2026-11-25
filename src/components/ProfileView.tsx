@@ -16,13 +16,15 @@ import { getDypModeLabel } from './InfoTooltip';
 import type { Theme } from '../utils/theme';
 import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
-import { Toggle } from './Toggle';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { formatBracketSlotLabel } from './MatchCard';
 import { TournamentHistoryCard } from './TournamentHistoryCard';
+import { haptic } from '../utils/telegram';
 
 interface Props {
-  snapshot: TournamentSnapshot;
+  snapshot?: TournamentSnapshot | null;
+  userName?: string;
+  userAvatarUrl?: string | null;
   tournamentHistory: TournamentHistoryItem[];
   theme: Theme;
   onChangeTheme: (theme: Theme) => void;
@@ -45,7 +47,9 @@ function getStatusBadge(status: TournamentHistoryItem['status']) {
 }
 
 export const ProfileView: React.FC<Props> = ({
-  snapshot,
+  snapshot = null,
+  userName,
+  userAvatarUrl,
   tournamentHistory,
   theme,
   onChangeTheme,
@@ -53,8 +57,10 @@ export const ProfileView: React.FC<Props> = ({
   onLeave,
   busy,
 }) => {
-  const { myPlayerId, leaderboard, myHistory } = snapshot;
-  const myStats = leaderboard.find((r) => r.playerId === myPlayerId);
+  const myPlayerId = snapshot?.myPlayerId ?? null;
+  const leaderboard = snapshot?.leaderboard ?? [];
+  const myHistory = snapshot?.myHistory ?? [];
+  const myStats = myPlayerId ? leaderboard.find((r) => r.playerId === myPlayerId) : undefined;
   const isLight = theme === 'light';
 
   const [inspectedSnapshot, setInspectedSnapshot] = useState<TournamentSnapshot | null>(null);
@@ -64,7 +70,7 @@ export const ProfileView: React.FC<Props> = ({
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
   const handleOpenTournamentDetails = async (item: TournamentHistoryItem) => {
-    if (item.id === snapshot.tournament.id) {
+    if (snapshot && item.id === snapshot.tournament.id) {
       setInspectedSnapshot(snapshot);
       setInspectTab('stats');
       setInspectError(null);
@@ -100,7 +106,7 @@ export const ProfileView: React.FC<Props> = ({
       t.status === 'PLAYOFF' ||
       t.status === 'FINISHED' ||
       inspectedSnapshot.playoffMatches.length > 0;
-    const isCurrentActive = t.id === snapshot.tournament.id;
+    const isCurrentActive = Boolean(snapshot && t.id === snapshot.tournament.id);
 
     return (
       <div className="flex flex-col h-full min-h-0">
@@ -391,12 +397,26 @@ export const ProfileView: React.FC<Props> = ({
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
       <div className="flex flex-col min-h-full">
-      <div className="flex flex-col items-center text-center py-6 bg-[#2c2c2e] rounded-2xl border border-[#3a3a3c] mb-4">
-        {myStats?.avatarUrl ? (
+      <div className="relative flex flex-col items-center text-center py-6 px-4 bg-[#2c2c2e] rounded-2xl border border-[#3a3a3c] mb-5">
+        <button
+          type="button"
+          onClick={() => {
+            haptic('light');
+            onChangeTheme(isLight ? 'dark' : 'light');
+          }}
+          className="absolute top-3 right-3 w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 transition-transform"
+          aria-label={isLight ? 'Тёмная тема' : 'Светлая тема'}
+          title={isLight ? 'Тёмная тема' : 'Светлая тема'}
+          data-testid="profile-theme-btn"
+        >
+          {isLight ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
+
+        {myStats?.avatarUrl || userAvatarUrl ? (
           <PlayerAvatar
-            avatarUrl={myStats.avatarUrl}
-            initials={myStats.initials}
-            name={myStats.name}
+            avatarUrl={myStats?.avatarUrl || userAvatarUrl || undefined}
+            initials={myStats?.initials || (userName ? userName.slice(0, 2).toUpperCase() : 'ИГ')}
+            name={myStats?.name || userName || 'Игрок'}
             isMe
             size="lg"
             className="mb-3"
@@ -406,7 +426,7 @@ export const ProfileView: React.FC<Props> = ({
             <User size={32} />
           </div>
         )}
-        <h2 className="text-xl font-bold">{myStats?.name || 'Гость турнира'}</h2>
+        <h2 className="text-xl font-bold">{myStats?.name || userName || 'Гость турнира'}</h2>
         {myStats && (
           <div className="flex gap-6 mt-4 text-center">
             <div>
@@ -433,28 +453,6 @@ export const ProfileView: React.FC<Props> = ({
         )}
       </div>
 
-      <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1">
-        Настройки профиля
-      </h3>
-      <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-4 mb-5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-[#2ea6ff]/15 text-[#2ea6ff] flex items-center justify-center shrink-0">
-            {isLight ? <Sun size={18} /> : <Moon size={18} />}
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-white">Светлая тема</div>
-            <div className="text-[11px] text-gray-400">
-              {isLight ? 'Включена (сохраняется)' : 'Выключена, используется тёмная'}
-            </div>
-          </div>
-        </div>
-        <Toggle
-          checked={isLight}
-          onChange={(checked) => onChangeTheme(checked ? 'light' : 'dark')}
-          ariaLabel="Переключить тему интерфейса"
-        />
-      </div>
-
       {/* Tournament participation history */}
       <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1 flex items-center gap-1.5">
         <History size={13} /> История турниров ({tournamentHistory.length})
@@ -471,7 +469,7 @@ export const ProfileView: React.FC<Props> = ({
           <TournamentHistoryCard
             key={item.id}
             item={item}
-            isCurrent={item.id === snapshot.tournament.id}
+            isCurrent={Boolean(snapshot && item.id === snapshot.tournament.id)}
             loading={inspectLoadingId === item.id}
             onClick={() => handleOpenTournamentDetails(item)}
           />

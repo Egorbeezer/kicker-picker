@@ -9,8 +9,6 @@ import {
   Share2,
   CheckCircle2,
   LayoutGrid,
-  Sun,
-  Moon,
   ArrowLeft,
   Radio,
 } from 'lucide-react';
@@ -171,13 +169,12 @@ export default function App() {
             onClick={() => {
               haptic('light');
               setIsCreating(false);
-              setShowHome(true);
             }}
-            className="min-w-[62px] h-10 px-2.5 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] inline-flex items-center justify-center text-[var(--text)] active:scale-95 transition-transform shrink-0"
-            aria-label="Главный экран"
-            title="Главный экран"
+            className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] inline-flex items-center justify-center text-[var(--text)] active:scale-95 transition-transform shrink-0"
+            aria-label="Назад"
+            title="Назад"
           >
-            <Home size={20} />
+            <ArrowLeft size={18} />
           </button>
           <span className="text-sm font-bold text-[var(--text)]">Новый турнир</span>
           <SupportHeaderButton />
@@ -194,94 +191,72 @@ export default function App() {
     );
   }
 
-  if (!snapshot || showHome) {
-    const homeTournaments =
-      appState?.tournamentHistory && appState.tournamentHistory.length > 0
-        ? appState.tournamentHistory
-        : (appState?.tournaments || []).map((t) => ({
-            ...t,
-            participantsCount: 0,
-            myStats: null,
-          }));
-    const fullUserName = appState?.user
-      ? [appState.user.first_name, appState.user.last_name].filter(Boolean).join(' ') ||
-        appState.user.username ||
-        'Игрок'
-      : 'Игрок';
-    const myLeaderboardAvatar = snapshot
-      ? snapshot.leaderboard.find((r) => r.playerId === snapshot.myPlayerId)?.avatarUrl
-      : null;
-    const userAvatarUrl = appState?.user.avatarUrl || myLeaderboardAvatar || null;
+  const homeTournaments =
+    appState?.tournamentHistory && appState.tournamentHistory.length > 0
+      ? appState.tournamentHistory
+      : (appState?.tournaments || []).map((t) => ({
+          ...t,
+          participantsCount: 0,
+          myStats: null,
+        }));
+  const fullUserName = appState?.user
+    ? [appState.user.first_name, appState.user.last_name].filter(Boolean).join(' ') ||
+      appState.user.username ||
+      'Игрок'
+    : 'Игрок';
+  const myLeaderboardAvatar = snapshot
+    ? snapshot.leaderboard.find((r) => r.playerId === snapshot.myPlayerId)?.avatarUrl
+    : null;
+  const userAvatarUrl = appState?.user.avatarUrl || myLeaderboardAvatar || null;
 
-    return (
-      <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
-        <ToastHost />
-        <ActionStatusBanner pendingStatus={pendingStatus} />
-        <div
-          data-testid="home-header"
-          className="bg-[var(--bg)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            {snapshot && (
-              <button
-                type="button"
-                onClick={() => {
-                  haptic('light');
-                  setShowHome(false);
-                }}
-                className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
-                aria-label="Вернуться в турнир"
-                title="Вернуться в турнир"
-              >
-                <ArrowLeft size={18} />
-              </button>
-            )}
-            <Brand className="text-base truncate" />
-          </div>
+  const isHomeVisible = !snapshot || showHome;
 
-          <div className="flex items-center gap-2 shrink-0" data-testid="header-right-group">
-            <button
-              type="button"
-              onClick={() => {
-                haptic('light');
-                toggleTheme();
-              }}
-              className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
-              aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-              title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            <SupportHeaderButton />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-3 pt-4 pb-6">
-          <HomeView
-            tournaments={homeTournaments}
-            currentTournamentId={snapshot?.tournament.id ?? null}
-            playerProfile={appState?.playerProfile ?? null}
-            userName={fullUserName}
-            userAvatarUrl={userAvatarUrl}
-            onSelectTournament={handleSelectTournament}
-            onCreateTournament={() => setIsCreating(true)}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  const navItems: BottomNavItem[] =
-    mode === 'PLAYER'
+  const navItems: BottomNavItem[] = !snapshot
+    ? [
+        {
+          id: 'home',
+          label: 'Домой',
+          icon: <Home size={20} />,
+          active: playerTab !== 'profile',
+          onClick: () => {
+            haptic('light');
+            setPlayerTab('match');
+            setShowHome(true);
+          },
+        },
+        {
+          id: 'profile',
+          label: 'Профиль',
+          icon: <User size={20} />,
+          active: playerTab === 'profile',
+          onClick: () => {
+            haptic('light');
+            setPlayerTab('profile');
+            setShowHome(false);
+          },
+        },
+      ]
+    : mode === 'PLAYER'
       ? [
           {
+            id: 'home',
+            label: 'Домой',
+            icon: <Home size={20} />,
+            active: showHome,
+            onClick: () => {
+              haptic('light');
+              setShowHome(true);
+            },
+          },
+          {
             id: 'match',
-            label: 'Матч',
+            label: snapshot.tournament.status === 'FINISHED' ? 'Итоги' : 'Матч',
             icon: <Gamepad2 size={20} />,
-            active: playerTab === 'match',
+            active: !showHome && playerTab === 'match',
             dot: snapshot.myCurrentMatch?.status === 'WAITING_CONFIRM',
             onClick: () => {
               haptic('light');
+              setShowHome(false);
               setPlayerTab('match');
             },
           },
@@ -289,9 +264,10 @@ export default function App() {
             id: 'table',
             label: 'Таблица',
             icon: <Trophy size={20} />,
-            active: playerTab === 'table',
+            active: !showHome && playerTab === 'table',
             onClick: () => {
               haptic('light');
+              setShowHome(false);
               setPlayerTab('table');
             },
           },
@@ -299,21 +275,33 @@ export default function App() {
             id: 'profile',
             label: 'Профиль',
             icon: <User size={20} />,
-            active: playerTab === 'profile',
+            active: !showHome && playerTab === 'profile',
             onClick: () => {
               haptic('light');
+              setShowHome(false);
               setPlayerTab('profile');
             },
           },
         ]
       : [
           {
+            id: 'home',
+            label: 'Домой',
+            icon: <Home size={20} />,
+            active: showHome,
+            onClick: () => {
+              haptic('light');
+              setShowHome(true);
+            },
+          },
+          {
             id: 'dashboard',
             label: 'Дашборд',
             icon: <LayoutGrid size={20} />,
-            active: adminTab === 'dashboard',
+            active: !showHome && adminTab === 'dashboard',
             onClick: () => {
               haptic('light');
+              setShowHome(false);
               setAdminTab('dashboard');
             },
           },
@@ -321,9 +309,10 @@ export default function App() {
             id: 'players',
             label: 'Участники',
             icon: <Users size={20} />,
-            active: adminTab === 'players',
+            active: !showHome && adminTab === 'players',
             onClick: () => {
               haptic('light');
+              setShowHome(false);
               setAdminTab('players');
             },
           },
@@ -331,9 +320,10 @@ export default function App() {
             id: 'table',
             label: 'Таблица',
             icon: <Trophy size={20} />,
-            active: adminTab === 'table',
+            active: !showHome && adminTab === 'table',
             onClick: () => {
               haptic('light');
+              setShowHome(false);
               setAdminTab('table');
             },
           },
@@ -341,44 +331,39 @@ export default function App() {
             id: 'settings',
             label: 'Настройки',
             icon: <Settings size={20} />,
-            active: adminTab === 'settings',
+            active: !showHome && adminTab === 'settings',
             onClick: () => {
               haptic('light');
+              setShowHome(false);
               setAdminTab('settings');
             },
           },
         ];
 
   return (
-    <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-white flex flex-col relative overflow-hidden">
+    <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
       <ToastHost />
       <ActionStatusBanner pendingStatus={pendingStatus} />
 
       <div
-        data-testid="app-header"
+        data-testid={isHomeVisible ? 'home-header' : 'app-header'}
         className="bg-[var(--bg)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
       >
-        <button
-          type="button"
-          onClick={() => {
-            haptic('light');
-            setShowHome(true);
-          }}
-          className="min-w-[62px] h-10 px-2.5 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] inline-flex items-center justify-center text-[var(--text)] active:scale-95 transition-transform shrink-0"
-          aria-label="Главный экран"
-          title="Главный экран"
-        >
-          <Home size={20} />
-        </button>
+        <div className="flex items-center gap-2 min-w-0 pl-1">
+          <Brand className="text-base truncate" />
+        </div>
 
         <div className="flex items-center gap-2 shrink-0" data-testid="header-right-group">
           <SupportHeaderButton />
 
-          {snapshot.isAdmin ? (
+          {snapshot?.isAdmin && (
             <div className="flex bg-[var(--bg-2)] rounded-full p-1 border border-[var(--border)] text-sm font-bold shrink-0">
               <button
                 type="button"
-                onClick={() => setMode('PLAYER')}
+                onClick={() => {
+                  setMode('PLAYER');
+                  setShowHome(false);
+                }}
                 className={`px-3 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
                   mode === 'PLAYER' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
                 }`}
@@ -387,7 +372,10 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => setMode('ADMIN')}
+                onClick={() => {
+                  setMode('ADMIN');
+                  setShowHome(false);
+                }}
                 className={`px-3 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
                   mode === 'ADMIN' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
                 }`}
@@ -395,41 +383,53 @@ export default function App() {
                 Админ
               </button>
             </div>
-          ) : (
-            hideBottomNav && (
-              <div className="flex bg-[var(--bg-2)] rounded-full p-1 border border-[var(--border)] text-xs font-bold shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    haptic('light');
-                    setPlayerTab('match');
-                  }}
-                  className={`px-3 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
-                    playerTab === 'match' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
-                  }`}
-                >
-                  Итоги
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    haptic('light');
-                    setPlayerTab('table');
-                  }}
-                  className={`px-3 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
-                    playerTab === 'table' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
-                  }`}
-                >
-                  Таблица
-                </button>
-              </div>
-            )
           )}
         </div>
       </div>
 
       <div className={`flex-1 min-h-0 overflow-hidden relative ${hideBottomNav ? 'no-dock' : ''}`}>
-        {mode === 'PLAYER' ? (
+        {!snapshot ? (
+          playerTab === 'profile' ? (
+            <ProfileView
+              snapshot={null}
+              userName={fullUserName}
+              userAvatarUrl={userAvatarUrl}
+              tournamentHistory={homeTournaments}
+              busy={busy}
+              theme={theme}
+              onChangeTheme={(nextTheme) => {
+                haptic('light');
+                changeTheme(nextTheme);
+              }}
+              onSelectTournament={handleSelectTournament}
+              onLeave={async () => {}}
+            />
+          ) : (
+            <div className="h-full overflow-y-auto px-3 pt-4 content-dock-pad">
+              <HomeView
+                tournaments={homeTournaments}
+                currentTournamentId={null}
+                playerProfile={appState?.playerProfile ?? null}
+                userName={fullUserName}
+                userAvatarUrl={userAvatarUrl}
+                onSelectTournament={handleSelectTournament}
+                onCreateTournament={() => setIsCreating(true)}
+              />
+            </div>
+          )
+        ) : showHome ? (
+          <div className="h-full overflow-y-auto px-3 pt-4 content-dock-pad">
+            <HomeView
+              tournaments={homeTournaments}
+              currentTournamentId={snapshot.tournament.id}
+              playerProfile={appState?.playerProfile ?? null}
+              userName={fullUserName}
+              userAvatarUrl={userAvatarUrl}
+              onSelectTournament={handleSelectTournament}
+              onCreateTournament={() => setIsCreating(true)}
+            />
+          </div>
+        ) : mode === 'PLAYER' ? (
           <>
             {playerTab === 'match' && (
               <PlayerMatchView

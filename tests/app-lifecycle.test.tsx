@@ -257,14 +257,16 @@ describe('App lifecycle & React Hook order regression', () => {
       });
     });
 
-    // Must render finished player view with topbar tabs and WITHOUT bottom nav dock
+    // Must render finished player view WITH persistent bottom nav dock and Home on the left
     expect(containerB.textContent).toContain('Итоги');
     expect(containerB.textContent).toContain('Таблица');
-    expect(containerB.querySelector('.no-dock')).not.toBeNull();
-    expect(containerB.querySelector('[aria-label="Главный экран"]')).not.toBeNull();
+    expect(containerB.querySelector('.no-dock')).toBeNull();
+    const dockButtons = Array.from(containerB.querySelectorAll('nav.dock button'));
+    expect(dockButtons.length).toBeGreaterThanOrEqual(4);
+    expect(dockButtons[0]?.textContent).toContain('Домой');
 
-    // Clicking Home opens HomeView with collapsed past tournaments section
-    const homeBtn = containerB.querySelector('[aria-label="Главный экран"]') as HTMLButtonElement;
+    // Clicking Home in bottom dock opens HomeView with collapsed past tournaments section
+    const homeBtn = dockButtons[0] as HTMLButtonElement;
     await act(async () => {
       homeBtn.click();
     });

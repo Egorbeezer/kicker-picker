@@ -415,15 +415,7 @@ export function useAppController() {
   );
 
   const snapshot = appState?.activeTournament ?? null;
-  const hideBottomNav = Boolean(
-    snapshot && mode === 'PLAYER' && snapshot.tournament.status === 'FINISHED'
-  );
-
-  useEffect(() => {
-    if (hideBottomNav && playerTab === 'profile') {
-      setPlayerTab('match');
-    }
-  }, [hideBottomNav, playerTab]);
+  const hideBottomNav = false;
 
   return {
     livePath,

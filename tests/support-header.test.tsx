@@ -166,13 +166,15 @@ describe('Support header button (@kickerpickersupportbot)', () => {
     });
 
     // Active tournament header with admin tabs:
-    // Home is 62x40 same as Support; Support sits inside header-right-group immediately before Игрок/Админ tabs
+    // Home is the first button on the left in bottom dock, NOT in the header
     const appHeader = container.querySelector('[data-testid="app-header"]');
     expect(appHeader).not.toBeNull();
-    const homeBtn = appHeader!.querySelector('button[aria-label="Главный экран"]') as HTMLButtonElement | null;
-    expect(homeBtn).not.toBeNull();
-    expect(homeBtn!.className).toContain('min-w-[62px]');
-    expect(homeBtn!.className).toContain('h-10');
+    expect(appHeader!.querySelector('button[aria-label="Главный экран"]')).toBeNull();
+
+    const dockButtons = Array.from(container.querySelectorAll('nav.dock button'));
+    expect(dockButtons.length).toBeGreaterThanOrEqual(4);
+    expect(dockButtons[0]?.textContent).toContain('Домой');
+    const homeBtn = dockButtons[0] as HTMLButtonElement;
 
     const rightGroup = appHeader!.querySelector('[data-testid="header-right-group"]');
     expect(rightGroup).not.toBeNull();
@@ -181,18 +183,19 @@ describe('Support header button (@kickerpickersupportbot)', () => {
     expect(rightGroup!.textContent).toContain('Игрок');
     expect(rightGroup!.textContent).toContain('Админ');
 
-    // Click Home button -> on Home screen Support sits in header-right-group (at the right edge)
+    // Click Home button in dock -> on Home screen Support sits in header-right-group (at the right edge)
     await act(async () => {
-      homeBtn!.click();
+      homeBtn.click();
     });
     const homeHeader = container.querySelector('[data-testid="home-header"]');
     expect(homeHeader).not.toBeNull();
-    // Home screen should NOT have a Home button in the header
+    // Home screen should NOT have a Home button or theme button in the header
     expect(homeHeader!.querySelector('button[aria-label="Главный экран"]')).toBeNull();
+    expect(homeHeader!.querySelector('button[aria-label*="тема" i]')).toBeNull();
     const homeRightGroup = homeHeader!.querySelector('[data-testid="header-right-group"]');
     expect(homeRightGroup?.querySelector('[data-testid="header-support-btn"]')).not.toBeNull();
 
-    // Open Create Tournament -> still has header-support-btn AND Home button
+    // Open Create Tournament -> has header-support-btn AND Back button
     const createBtn = Array.from(container.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Создать новый турнир')
     );
@@ -205,13 +208,12 @@ describe('Support header button (@kickerpickersupportbot)', () => {
     headerBtnOnCreate!.click();
     expect(openTelegramLink).toHaveBeenCalledWith('https://t.me/kickerpickersupportbot');
 
-    const homeBtnOnCreate = container.querySelector('button[aria-label="Главный экран"]') as HTMLButtonElement | null;
-    expect(homeBtnOnCreate).not.toBeNull();
+    const backBtnOnCreate = container.querySelector('button[aria-label="Назад"]') as HTMLButtonElement | null;
+    expect(backBtnOnCreate).not.toBeNull();
     await act(async () => {
-      homeBtnOnCreate!.click();
+      backBtnOnCreate!.click();
     });
     expect(container.querySelector('[data-testid="home-header"]')).not.toBeNull();
-    expect(container.querySelector('button[aria-label="Главный экран"]')).toBeNull();
 
     await act(async () => {
       root.unmount();

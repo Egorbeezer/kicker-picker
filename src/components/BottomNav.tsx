@@ -15,9 +15,10 @@ export interface BottomNavItem {
  * портировано из библиотеки компонентов gym-gym-app.
  */
 export const BottomNav: React.FC<{ items: BottomNavItem[] }> = ({ items }) => {
+  const isCompact = items.length >= 5;
   return (
     <>
-      <nav className="dock" aria-label="Навигация">
+      <nav className={`dock${isCompact ? ' dock-compact' : ''}`} aria-label="Навигация">
         {items.map((item) => (
           <button
             key={item.id}

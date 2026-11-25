@@ -60,8 +60,12 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     const bridge = await attachTelegramBridge(page, backend, { user: adminUser });
     await page.goto('/');
 
-    // Переходим на главный экран через кнопку Домой в хедере (т.к. авто-открыт последний турнир)
-    await page.getByRole('button', { name: 'Главный экран' }).click();
+    // Переходим на главный экран через кнопку Домой слева в нижнем меню
+    const nav = page.getByRole('navigation', { name: 'Навигация' });
+    await expect(nav.locator('button').first()).toHaveText(/Домой/);
+    await nav.getByRole('button', { name: 'Домой' }).click();
+    await expect(page.getByTestId('home-header')).not.toContainText('Главный экран');
+    await expect(page.getByTestId('home-header').getByRole('button', { name: /тема/i })).toHaveCount(0);
 
     const profileCard = page.getByTestId('home-profile-card');
     await expect(profileCard).toBeVisible();
@@ -100,9 +104,13 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
       .poll(async () => (await details.boundingBox())?.height ?? 999)
       .toBeLessThanOrEqual(1);
 
-    // Переключение светлой и тёмной тем меняет реальные CSS-переменные и фон страницы
+    // Переключаемся в Профиль игрока и проверяем кнопку переключения темы
+    await page.getByRole('button', { name: 'Игрок', exact: true }).click();
+    await expect(nav.locator('button').first()).toHaveText(/Домой/);
+    await nav.getByRole('button', { name: 'Профиль' }).click();
+
     const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    await page.getByRole('button', { name: 'Светлая тема' }).click();
+    await page.getByTestId('profile-theme-btn').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(lightBg).not.toBe(darkBg);
