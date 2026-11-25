@@ -652,8 +652,20 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     });
     const delBtn = container.querySelector('[aria-label="Удалить Костя"]') as HTMLButtonElement;
     expect(delBtn).not.toBeNull();
+    onManagePlayer.mockClear();
     await act(async () => {
       delBtn.click();
+    });
+    expect(onManagePlayer).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Удалить участника?');
+    expect(document.body.textContent).toContain('Костя');
+
+    const confirmDelBtn = document.body.querySelector(
+      '[data-testid="confirm-delete-player-btn"]'
+    ) as HTMLButtonElement;
+    expect(confirmDelBtn).not.toBeNull();
+    await act(async () => {
+      confirmDelBtn.click();
     });
     expect(onManagePlayer).toHaveBeenCalledWith({ playerId: 3, action: 'delete_player' });
 

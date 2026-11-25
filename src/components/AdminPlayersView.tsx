@@ -20,6 +20,7 @@ import { haptic } from '../utils/telegram';
 import { shareTournamentInTelegram } from '../utils/share';
 import { PlayerAvatar } from './PlayerAvatar';
 import { BucketsTooltip } from './InfoTooltip';
+import { Modal } from './Modal';
 import {
   AddPlayersModal,
   RenamePlayerModal,
@@ -92,6 +93,7 @@ export const AdminPlayersView: React.FC<Props> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [renamingPlayer, setRenamingPlayer] = useState<TournamentPlayer | null>(null);
   const [substitutingPlayer, setSubstitutingPlayer] = useState<TournamentPlayer | null>(null);
+  const [deletingPlayer, setDeletingPlayer] = useState<TournamentPlayer | null>(null);
 
   const openAddModal = () => setShowAddModal(true);
   const openRename = (player: TournamentPlayer) => setRenamingPlayer(player);
@@ -348,7 +350,10 @@ export const AdminPlayersView: React.FC<Props> = ({
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => onManagePlayer({ playerId: p.id, action: 'delete_player' })}
+                    onClick={() => {
+                      haptic('light');
+                      setDeletingPlayer(p);
+                    }}
                     aria-label={`Удалить ${p.name}`}
                     className="p-1.5 rounded-xl border border-red-500/25 bg-red-500/10 text-red-500 active:scale-95"
                     title="Удалить участника"
@@ -424,6 +429,37 @@ export const AdminPlayersView: React.FC<Props> = ({
         }}
         onClose={() => setSubstitutingPlayer(null)}
       />
+
+      {deletingPlayer && (
+        <Modal
+          title="Удалить участника?"
+          onClose={() => {
+            if (!busy) setDeletingPlayer(null);
+          }}
+          closeLabel="Отмена"
+          footer={
+            <button
+              type="button"
+              data-testid="confirm-delete-player-btn"
+              disabled={busy}
+              onClick={async () => {
+                haptic('light');
+                const targetId = deletingPlayer.id;
+                await onManagePlayer({ playerId: targetId, action: 'delete_player' });
+                setDeletingPlayer(null);
+              }}
+              className="w-full py-3 rounded-full bg-red-600 text-white font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+            >
+              {busy ? 'Удаление...' : 'Удалить'}
+            </button>
+          }
+        >
+          <p className="text-sm text-[var(--muted)] leading-relaxed">
+            Игрок <strong className="text-[var(--text)]">{deletingPlayer.name}</strong> будет
+            удалён из списка участников турнира.
+          </p>
+        </Modal>
+      )}
     </div>
   );
 };
