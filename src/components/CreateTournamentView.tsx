@@ -194,7 +194,7 @@ export const CreateTournamentView: React.FC<Props> = ({
   return (
     <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
       {/* Полоса прогресса по шагам */}
-      <div className="shrink-0 bg-[var(--bg-2)] border-b border-[var(--border)] px-3.5 py-2.5">
+      <div className="shrink-0 bg-[var(--bg)] border-b border-[var(--border)] px-3.5 py-2.5">
         <div className="flex items-center justify-between gap-2 mb-2">
           <span className="text-xs font-bold text-[var(--text)]">{currentStep.title}</span>
           <span className="text-[11px] font-semibold text-[var(--muted)]">
@@ -220,15 +220,15 @@ export const CreateTournamentView: React.FC<Props> = ({
                 <div
                   className={`h-1.5 rounded-full transition-colors duration-150 ease-out ${
                     isCurrent
-                      ? 'bg-[#2ea6ff]'
+                      ? 'bg-[var(--accent-text)]'
                       : isDone
-                        ? 'bg-[#2ea6ff]/65'
+                        ? 'bg-[var(--accent)]'
                         : 'bg-[var(--bg-3)]'
                   }`}
                 />
                 <div
                   className={`text-[10px] font-semibold mt-1 truncate ${
-                    isCurrent ? 'text-[#2ea6ff]' : 'text-[var(--muted)]'
+                    isCurrent ? 'text-[var(--accent-text)]' : 'text-[var(--muted)]'
                   }`}
                 >
                   {idx + 1}. {st.short}
@@ -331,7 +331,7 @@ export const CreateTournamentView: React.FC<Props> = ({
       </div>
 
       {/* Нижняя панель навигации по шагам */}
-      <div className="shrink-0 bg-[var(--bg-2)] border-t border-[var(--border)] px-3.5 py-3 pb-[calc(12px+var(--tg-inset-bottom,0px))] flex items-center gap-2.5">
+      <div className="shrink-0 bg-[var(--bg)] border-t border-[var(--border)] px-3.5 py-3 pb-[calc(12px+var(--tg-inset-bottom,0px))] flex items-center gap-2.5">
         {(!isFirstStep || onCancel) && (
           <button
             type="button"
@@ -344,7 +344,7 @@ export const CreateTournamentView: React.FC<Props> = ({
                 goToStep(safeStepIndex - 1);
               }
             }}
-            className="flex-1 py-3 rounded-3xl border border-[var(--border-strong)] bg-[var(--bg)] text-sm font-semibold text-[var(--muted)] inline-flex items-center justify-center gap-1 active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="flex-1 py-3 rounded-full bg-[var(--bg-3)] text-sm font-semibold text-[var(--text)] inline-flex items-center justify-center gap-1 active:scale-[0.98] transition-transform disabled:opacity-50"
           >
             {!isFirstStep && <ChevronLeft size={16} />}
             <span>{isFirstStep ? 'Отмена' : 'Назад'}</span>
@@ -356,7 +356,7 @@ export const CreateTournamentView: React.FC<Props> = ({
             type="button"
             disabled={isLocked}
             onClick={() => goToStep(safeStepIndex + 1)}
-            className="flex-[2] py-3 rounded-3xl bg-[#2ea6ff] text-white font-bold text-sm inline-flex items-center justify-center gap-1 active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="flex-[2] py-3 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-sm inline-flex items-center justify-center gap-1 active:scale-[0.98] transition-transform disabled:opacity-50"
           >
             <span>Далее</span>
             <ChevronRight size={16} />
@@ -365,7 +365,7 @@ export const CreateTournamentView: React.FC<Props> = ({
           <button
             type="submit"
             disabled={isLocked}
-            className="flex-[2] py-3 rounded-3xl bg-[#2ea6ff] text-white font-bold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="flex-[2] py-3 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
           >
             {isLocked && <Loader2 size={16} className="animate-spin" />}
             {isLocked ? 'Создаём турнир...' : 'Создать турнир'}

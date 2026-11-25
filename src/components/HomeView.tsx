@@ -79,17 +79,17 @@ const AvgPointsSparkline: React.FC<{
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-20 overflow-visible">
         <defs>
           <linearGradient id="kpSparkArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2ea6ff" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="#2ea6ff" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#9FE870" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#9FE870" stopOpacity="0.02" />
           </linearGradient>
         </defs>
         {areaPath && <path d={areaPath} fill="url(#kpSparkArea)" />}
         {points.length > 1 && (
-          <path d={linePath} fill="none" stroke="#2ea6ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={linePath} fill="none" stroke="var(--accent-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         )}
         {points.map((pt) => (
           <g key={pt.tournamentId}>
-            <circle cx={pt.x} cy={pt.y} r="4" fill="#2ea6ff" stroke="var(--card)" strokeWidth="2" />
+            <circle cx={pt.x} cy={pt.y} r="4" fill="#9FE870" stroke="var(--accent-text)" strokeWidth="2" />
             <text
               x={pt.x}
               y={Math.max(10, pt.y - 7)}
@@ -145,7 +145,7 @@ export const HomeView: React.FC<Props> = ({
           haptic('light');
           onCreateTournament();
         }}
-        className="w-full py-3.5 px-4 rounded-3xl bg-[#2ea6ff] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#2ea6ff]/20 active:scale-[0.98] transition-transform"
+        className="w-full py-3.5 px-4 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
       >
         <Plus size={18} />
         Создать новый турнир

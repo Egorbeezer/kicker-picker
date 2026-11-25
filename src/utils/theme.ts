@@ -16,9 +16,9 @@ export function currentTheme(): Theme {
   const local = readLocalTheme();
   if (local) return local;
   try {
-    return window.Telegram?.WebApp?.colorScheme === 'light' ? 'light' : 'dark';
+    return window.Telegram?.WebApp?.colorScheme === 'dark' ? 'dark' : 'light';
   } catch {
-    return 'dark';
+    return 'light';
   }
 }
 
@@ -36,8 +36,8 @@ export function applyTheme(theme: Theme, { persist = true } = {}): void {
   }
   try {
     const tg = window.Telegram?.WebApp;
-    const bg = theme === 'light' ? '#eef1f5' : '#17212b';
-    const header = theme === 'light' ? '#ffffff' : '#232e3c';
+    const bg = theme === 'light' ? '#FFFFFF' : '#121511';
+    const header = theme === 'light' ? '#FFFFFF' : '#121511';
     tg?.setBackgroundColor?.(bg);
     tg?.setHeaderColor?.(header);
   } catch {

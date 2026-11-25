@@ -782,4 +782,15 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       root.unmount();
     });
   });
+
+  it('defaults to Wise light theme when no saved preference exists', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    window.localStorage.removeItem('kp-theme');
+    const { currentTheme } = await import('../src/utils/theme');
+    expect(currentTheme()).toBe('light');
+
+    window.localStorage.setItem('kp-theme', 'dark');
+    expect(currentTheme()).toBe('dark');
+  });
 });

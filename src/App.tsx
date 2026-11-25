@@ -165,7 +165,7 @@ export default function App() {
       <div className="w-full max-w-md mx-auto h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col relative overflow-hidden">
         <ToastHost />
         <ActionStatusBanner pendingStatus={pendingStatus} />
-        <div className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
+        <div className="bg-[var(--bg)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -219,7 +219,7 @@ export default function App() {
         <ActionStatusBanner pendingStatus={pendingStatus} />
         <div
           data-testid="home-header"
-          className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
+          className="bg-[var(--bg)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
         >
           <div className="flex items-center gap-2 min-w-0">
             {snapshot && (
@@ -356,7 +356,7 @@ export default function App() {
 
       <div
         data-testid="app-header"
-        className="bg-[var(--bg-2)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
+        className="bg-[var(--bg)] border-b border-[var(--border)] px-3 pb-2.5 pt-[calc(8px+var(--tg-inset-top,0px))] flex items-center justify-between gap-2 z-20 shrink-0"
       >
         <button
           type="button"
@@ -375,12 +375,12 @@ export default function App() {
           <SupportHeaderButton />
 
           {snapshot.isAdmin ? (
-            <div className="flex bg-[#2c2c2e] rounded-full p-1 border border-[#3a3a3c] text-sm font-bold shrink-0">
+            <div className="flex bg-[var(--bg-2)] rounded-full p-1 border border-[var(--border)] text-sm font-bold shrink-0">
               <button
                 type="button"
                 onClick={() => setMode('PLAYER')}
                 className={`px-3 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
-                  mode === 'PLAYER' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                  mode === 'PLAYER' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
                 }`}
               >
                 Игрок
@@ -389,7 +389,7 @@ export default function App() {
                 type="button"
                 onClick={() => setMode('ADMIN')}
                 className={`px-3 py-2 min-h-[38px] rounded-full transition-colors flex items-center justify-center ${
-                  mode === 'ADMIN' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                  mode === 'ADMIN' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
                 }`}
               >
                 Админ
@@ -397,7 +397,7 @@ export default function App() {
             </div>
           ) : (
             hideBottomNav && (
-              <div className="flex bg-[#2c2c2e] rounded-full p-1 border border-[#3a3a3c] text-xs font-bold shrink-0">
+              <div className="flex bg-[var(--bg-2)] rounded-full p-1 border border-[var(--border)] text-xs font-bold shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -405,7 +405,7 @@ export default function App() {
                     setPlayerTab('match');
                   }}
                   className={`px-3 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
-                    playerTab === 'match' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                    playerTab === 'match' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
                   }`}
                 >
                   Итоги
@@ -417,7 +417,7 @@ export default function App() {
                     setPlayerTab('table');
                   }}
                   className={`px-3 py-2 min-h-[34px] rounded-full transition-colors flex items-center justify-center ${
-                    playerTab === 'table' ? 'bg-[#2ea6ff] text-white shadow-sm' : 'text-gray-400'
+                    playerTab === 'table' ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--muted)]'
                   }`}
                 >
                   Таблица

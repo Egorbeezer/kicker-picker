@@ -1,77 +1,132 @@
-/* Дизайн-система и библиотека компонентов из gym-gym-app */
+/* Дизайн-система Wise iOS (светлая по умолчанию + тёмная) */
 :root {
-  --bg: #17212b;
-  --bg-2: #232e3c;
-  --bg-3: #2b3a4a;
+  --bg: #121511;
+  --bg-2: #1C201A;
+  --bg-3: #272C24;
   --card: var(--bg-2);
-  --text: #ffffff;
-  --muted: #8b9bab;
-  --accent: #2ea6ff;
-  --accent-lime: #96f84d;
-  --ok: #34c759;
-  --warn: #ff9f0a;
-  --info: #4fb0ff;
-  --danger: #ff453a;
-  --on-accent: #ffffff;
+  --text: #F7F8F6;
+  --muted: #9FA39D;
+  --accent: #9FE870;
+  --accent-lime: #9FE870;
+  --ok: #9FE870;
+  --warn: #EDC843;
+  --info: #9FE870;
+  --danger: #F87171;
+  --on-accent: #163300;
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
-  --accent-soft: rgba(46, 166, 255, 0.16);
-  --accent-text: #bae6fd;
-  --ok-soft: rgba(52, 199, 89, 0.2);
-  --ok-border: rgba(52, 199, 89, 0.4);
-  --warn-soft: rgba(255, 159, 10, 0.18);
-  --warn-border: rgba(255, 159, 10, 0.4);
-  --info-soft: rgba(79, 176, 255, 0.16);
-  --danger-soft: rgba(255, 69, 58, 0.18);
-  --danger-text: #ffb4ad;
-  --overlay: rgba(0, 0, 0, 0.62);
+  --accent-soft: rgba(159, 232, 112, 0.16);
+  --accent-text: #9FE870;
+  --ok-soft: rgba(159, 232, 112, 0.16);
+  --ok-border: rgba(159, 232, 112, 0.35);
+  --warn-soft: rgba(237, 200, 67, 0.18);
+  --warn-border: rgba(237, 200, 67, 0.38);
+  --info-soft: rgba(159, 232, 112, 0.16);
+  --danger-soft: rgba(248, 113, 113, 0.16);
+  --danger-text: #FCA5A5;
+  --overlay: rgba(0, 0, 0, 0.65);
   --shadow: rgba(0, 0, 0, 0.45);
   --press: inset 0 2px 6px rgba(0, 0, 0, 0.35);
   --radius-btn: 999px;
-  --radius-field: 22px;
-  --radius-card: 28px;
+  --radius-field: 20px;
+  --radius-card: 24px;
   --env-safe-top: env(safe-area-inset-top, 0px);
   --env-safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
-  --bg: #eef1f5;
-  --bg-2: #ffffff;
-  --bg-3: #e4e9f0;
-  --text: #12212e;
-  --muted: #63788c;
-  --accent: #0b74d1;
-  --accent-lime: #4e9e14;
-  --ok: #1e9e4a;
-  --warn: #b87600;
-  --info: #0b74d1;
-  --danger: #d9372b;
-  --on-accent: #ffffff;
-  --border: rgba(18, 33, 46, 0.1);
-  --border-strong: rgba(18, 33, 46, 0.18);
-  --accent-soft: rgba(11, 116, 209, 0.13);
-  --accent-text: #0b74d1;
-  --ok-soft: rgba(30, 158, 74, 0.14);
-  --ok-border: rgba(30, 158, 74, 0.35);
-  --warn-soft: rgba(184, 118, 0, 0.14);
-  --warn-border: rgba(184, 118, 0, 0.35);
-  --info-soft: rgba(11, 116, 209, 0.13);
-  --danger-soft: rgba(217, 55, 43, 0.13);
-  --danger-text: #a5261c;
-  --overlay: rgba(18, 33, 46, 0.35);
-  --shadow: rgba(18, 33, 46, 0.16);
-  --press: inset 0 2px 5px rgba(18, 33, 46, 0.16);
+  --bg: #FFFFFF;
+  --bg-2: #F2F5F7;
+  --bg-3: #E6EAEE;
+  --text: #0E0F0C;
+  --muted: #5D605D;
+  --accent: #9FE870;
+  --accent-lime: #163300;
+  --ok: #2F5711;
+  --warn: #9A6B00;
+  --info: #163300;
+  --danger: #A8200D;
+  --on-accent: #163300;
+  --border: rgba(14, 15, 12, 0.08);
+  --border-strong: rgba(14, 15, 12, 0.14);
+  --accent-soft: rgba(159, 232, 112, 0.28);
+  --accent-text: #163300;
+  --ok-soft: rgba(159, 232, 112, 0.25);
+  --ok-border: rgba(22, 51, 0, 0.22);
+  --warn-soft: rgba(237, 200, 67, 0.24);
+  --warn-border: rgba(154, 107, 0, 0.32);
+  --info-soft: rgba(159, 232, 112, 0.24);
+  --danger-soft: rgba(168, 32, 13, 0.10);
+  --danger-text: #A8200D;
+  --overlay: rgba(14, 15, 12, 0.40);
+  --shadow: rgba(14, 15, 12, 0.10);
+  --press: inset 0 2px 5px rgba(14, 15, 12, 0.12);
   color-scheme: light;
 }
 
-/* Адаптация экранов под светлую тему (с сохранением белого текста на акцентных кнопках) */
-:root[data-theme="light"] .brand-kicker {
-  color: #0b74d1;
+/* Глобальное переназначение акцента в палитре Wise (Bright Green / Forest Green) */
+.bg-\[\#2ea6ff\] {
+  background-color: var(--accent) !important;
+  color: var(--on-accent) !important;
+  border-color: var(--accent) !important;
 }
 
-:root[data-theme="light"] .brand-picker {
-  color: #4e9e14;
+.bg-\[\#2ea6ff\] .text-white,
+.btn-primary .text-white {
+  color: var(--on-accent) !important;
+}
+
+.bg-\[\#2ea6ff\]\/10,
+.bg-\[\#2ea6ff\]\/12,
+.bg-\[\#2ea6ff\]\/15,
+.bg-\[\#2ea6ff\]\/20,
+.bg-\[\#2ea6ff\]\/25 {
+  background-color: var(--accent-soft) !important;
+}
+
+.text-\[\#2ea6ff\] {
+  color: var(--accent-text) !important;
+}
+
+.border-\[\#2ea6ff\],
+.border-\[\#2ea6ff\]\/25,
+.border-\[\#2ea6ff\]\/30,
+.border-\[\#2ea6ff\]\/35,
+.focus\:border-\[\#2ea6ff\]:focus {
+  border-color: var(--accent-text) !important;
+}
+
+.ring-\[\#2ea6ff\]\/30 {
+  --tw-ring-color: var(--accent-soft) !important;
+}
+
+.shadow-\[\#2ea6ff\]\/20,
+.shadow-\[\#2ea6ff\]\/25 {
+  box-shadow: none !important;
+}
+
+button[role="switch"].bg-emerald-500 {
+  background-color: var(--accent-text) !important;
+}
+
+:root[data-theme="light"] button[role="switch"].bg-emerald-500 > span {
+  background-color: var(--accent) !important;
+}
+
+:root:not([data-theme="light"]) button[role="switch"].bg-emerald-500 > span {
+  background-color: var(--on-accent) !important;
+}
+
+/* Адаптация экранов под светлую тему (с сохранением контрастного текста на акцентных кнопках) */
+:root[data-theme="light"] .brand-kicker,
+.brand-kicker {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .brand-picker,
+.brand-picker {
+  color: var(--accent-text);
 }
 
 :root[data-theme="light"] .bg-\[\#1c1c1d\],
@@ -217,10 +272,10 @@ body {
   z-index: 30;
   gap: 4px;
   padding: 6px;
-  background: var(--bg-2);
+  background: var(--bg);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  box-shadow: 0 10px 28px var(--shadow);
+  box-shadow: 0 8px 24px var(--shadow);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-sizing: border-box;
@@ -281,18 +336,18 @@ body.field-focus .footer-sign {
 
 .dock-active,
 .dock > *.dock-active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-soft);
 }
 
 .dock > *.dock-active .dock-icon {
   transform: scale(1.12);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .dock > *.dock-active .dock-label {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .dock-label {
@@ -561,7 +616,7 @@ body.modal-open .app-toast {
 .modal {
   width: 100%;
   max-width: 430px;
-  background: var(--bg-2);
+  background: var(--bg);
   border: 1px solid var(--border-strong);
   border-radius: 30px;
   padding: 16px 16px 18px;

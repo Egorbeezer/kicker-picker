@@ -35,10 +35,10 @@ export const ScorePickerRow: React.FC<Props> = ({ score, maxScore, onChange }) =
               haptic('light');
               onChange(selected ? 0 : digit);
             }}
-            className={`h-11 rounded-[14px] font-semibold text-base transition-[colors,transform] duration-150 ease-out active:scale-95 active:translate-y-[1px] active:shadow-none border ${
+            className={`h-11 rounded-[14px] text-base transition-[colors,transform] duration-150 ease-out active:scale-95 border ${
               selected
-                ? 'bg-[#2ea6ff] text-white border-[#2ea6ff] shadow-[0_4px_14px_rgba(46,166,255,0.45)]'
-                : 'bg-[var(--bg-3)] text-[var(--text)] border-[var(--border-strong)] shadow-[0_3px_8px_var(--shadow),inset_0_1px_0_rgba(255,255,255,0.12)] hover:border-[#2ea6ff]/50'
+                ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] font-bold shadow-[0_1px_2px_rgba(14,15,12,0.08)]'
+                : 'bg-[var(--bg)] text-[var(--text)] border-[var(--border-strong)] font-semibold shadow-[0_1px_2px_rgba(14,15,12,0.06)] hover:border-[var(--accent-text)]'
             }`}
           >
             {digit}
