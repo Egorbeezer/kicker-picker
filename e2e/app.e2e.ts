@@ -118,14 +118,25 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     const bridge = await attachTelegramBridge(page, backend);
     await page.goto('/');
 
-    // 1. Создание турнира
+    // 1. Создание турнира (4-шаговый мастер)
     await page.getByRole('button', { name: /Создать новый турнир/i }).click();
+    await expect(page.getByText('Шаг 1 из 4')).toBeVisible();
+    await page.getByRole('button', { name: 'Далее', exact: true }).click();
+
+    await expect(page.getByText('Шаг 2 из 4')).toBeVisible();
     await expect(page.getByText('Голов до победы', { exact: false })).toBeVisible();
     // По умолчанию выбрано 7 голов в квалификации
     const radio7 = page
       .getByRole('radiogroup', { name: 'Голов до победы' })
       .getByRole('radio', { name: '7', exact: true });
     await expect(radio7).toHaveAttribute('aria-checked', 'true');
+    await page.getByRole('button', { name: 'Далее', exact: true }).click();
+
+    await expect(page.getByText('Шаг 3 из 4')).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Best of 3' })).toBeVisible();
+    await page.getByRole('button', { name: 'Далее', exact: true }).click();
+
+    await expect(page.getByText('Шаг 4 из 4')).toBeVisible();
     await page.getByRole('button', { name: 'Создать турнир', exact: true }).click();
 
     // Модалка «Турнир создан!» с кнопкой «Пригласить»
@@ -170,7 +181,8 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     expect(canvasOk).toBe(true);
     await page.getByRole('dialog').getByRole('button', { name: 'Закрыть' }).last().click();
 
-    // 5. Проверка скролла в Профиле -> «Статистика турнира» на узком 375x667 экране
+    // 5. Проверка скролла в Профиле -> «Статистика турнира» на узком 375x480 экране
+    await page.setViewportSize({ width: 375, height: 480 });
     await page.getByRole('button', { name: 'Игрок', exact: true }).click();
     await page.getByRole('button', { name: /Профиль/i }).click();
     // Единая карточка турнира

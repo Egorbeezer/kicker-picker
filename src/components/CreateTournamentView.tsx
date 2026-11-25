@@ -353,6 +353,7 @@ export const CreateTournamentView: React.FC<Props> = ({
 
         {!isLastStep ? (
           <button
+            key="wizard-next-btn"
             type="button"
             disabled={isLocked}
             onClick={() => goToStep(safeStepIndex + 1)}
@@ -363,6 +364,7 @@ export const CreateTournamentView: React.FC<Props> = ({
           </button>
         ) : (
           <button
+            key="wizard-submit-btn"
             type="submit"
             disabled={isLocked}
             className="flex-[2] py-3 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
