@@ -1163,4 +1163,90 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       root.unmount();
     });
   });
+
+  it('TournamentTimersCard allows clearing and typing multi-digit numbers without snapping and supports +/- steppers', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const { TournamentTimersCard } = await import('../src/components/TournamentSettingsFields');
+
+    const Wrapper: React.FC = () => {
+      const [state, setState] = React.useState({
+        name: 'T',
+        tablesCount: 2,
+        disabledTables: [],
+        autoRounds: true,
+        dypMode: 'monster' as const,
+        teamFormat: 'pairs' as const,
+        roundRobinLoops: 1,
+        losLives: 3,
+        useBuckets: false,
+        targetScore: 7,
+        winByTwo: false,
+        maxScore: 9,
+        playoffSize: 8,
+        thirdPlaceMatch: true,
+        playoffFormat: 'best_of_3' as const,
+        playoffTargetScore: 5,
+        playoffWinByTwo: false,
+        playoffMaxScore: 7,
+        longMatchAlertMin: 15,
+        scoreReminderMin: 3,
+      });
+      return (
+        <TournamentTimersCard
+          value={state}
+          onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
+          defaultExpanded={true}
+        />
+      );
+    };
+
+    const c = document.createElement('div');
+    document.body.appendChild(c);
+    const r = createRoot(c);
+    await act(async () => {
+      r.render(<Wrapper />);
+    });
+
+    const alertInput = c.querySelector('#long-match-alert-input') as HTMLInputElement;
+    expect(alertInput.value).toBe('15');
+
+    await act(async () => {
+      setReactInputValue(alertInput, '');
+    });
+    expect(alertInput.value).toBe('');
+
+    await act(async () => {
+      setReactInputValue(alertInput, '1');
+    });
+    expect(alertInput.value).toBe('1');
+
+    await act(async () => {
+      setReactInputValue(alertInput, '12');
+    });
+    expect(alertInput.value).toBe('12');
+
+    const plusBtn = c.querySelector('[aria-label="Увеличить Сигнал долгого матча"]') as HTMLButtonElement;
+    const minusBtn = c.querySelector('[aria-label="Уменьшить Сигнал долгого матча"]') as HTMLButtonElement;
+    await act(async () => {
+      plusBtn.click();
+    });
+    expect(alertInput.value).toBe('13');
+    await act(async () => {
+      minusBtn.click();
+    });
+    expect(alertInput.value).toBe('12');
+
+    await act(async () => {
+      setReactInputValue(alertInput, '');
+    });
+    await act(async () => {
+      alertInput.dispatchEvent(new window.FocusEvent('focusout', { bubbles: true }));
+    });
+    expect(alertInput.value).toBe('15');
+
+    await act(async () => {
+      r.unmount();
+    });
+  });
 });

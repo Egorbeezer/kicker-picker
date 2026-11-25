@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BellRing, ChevronDown, ChevronUp, Heart, RotateCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BellRing, ChevronDown, ChevronUp, Heart, Minus, Plus, RotateCw } from 'lucide-react';
 import type { DypMode, PlayoffFormat, TeamFormat } from '../types';
 import { haptic } from '../utils/telegram';
 import { BucketsTooltip, ModeInfoTooltip, TOURNAMENT_MODE_CATALOG } from './InfoTooltip';
@@ -51,6 +51,95 @@ export const RadioCircle: React.FC<RadioCircleProps> = ({ selected, accent = 'bl
     >
       {selected && <span className={`w-2 h-2 rounded-full ${dotClass}`} />}
     </span>
+  );
+};
+
+interface NumericStepperInputProps {
+  id: string;
+  value: number;
+  min: number;
+  max: number;
+  fallback: number;
+  disabled?: boolean;
+  ariaLabel: string;
+  onCommit: (next: number) => void;
+}
+
+/** Числовое поле с кнопками -/+ и свободным вводом цифр без сброса при наборе. */
+const NumericStepperInput: React.FC<NumericStepperInputProps> = ({
+  id,
+  value,
+  min,
+  max,
+  fallback,
+  disabled = false,
+  ariaLabel,
+  onCommit,
+}) => {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const clampValue = (num: number) => Math.max(min, Math.min(max, num));
+
+  const stepBy = (delta: number) => {
+    if (disabled) return;
+    haptic('light');
+    const next = clampValue(value + delta);
+    setDraft(String(next));
+    onCommit(next);
+  };
+
+  return (
+    <div className="inline-flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-full p-1">
+      <button
+        type="button"
+        disabled={disabled || value <= min}
+        onClick={() => stepBy(-1)}
+        aria-label={`Уменьшить ${ariaLabel}`}
+        className="w-7 h-7 rounded-full bg-[var(--bg-3)] text-[var(--text)] flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
+      >
+        <Minus size={13} />
+      </button>
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        value={draft}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => {
+          const digitsOnly = e.target.value.replace(/\D+/g, '');
+          setDraft(digitsOnly);
+          if (digitsOnly !== '') {
+            const parsed = Number(digitsOnly);
+            if (Number.isFinite(parsed) && parsed >= min && parsed <= max) {
+              onCommit(parsed);
+            }
+          }
+        }}
+        onBlur={() => {
+          const parsed = draft === '' ? fallback : Number(draft);
+          const clamped = clampValue(Number.isFinite(parsed) ? parsed : fallback);
+          setDraft(String(clamped));
+          onCommit(clamped);
+        }}
+        className="w-11 bg-transparent text-center text-sm font-bold text-[var(--text)] focus:outline-none disabled:opacity-60 tabular-nums"
+      />
+      <button
+        type="button"
+        disabled={disabled || value >= max}
+        onClick={() => stepBy(1)}
+        aria-label={`Увеличить ${ariaLabel}`}
+        className="w-7 h-7 rounded-full bg-[var(--bg-3)] text-[var(--text)] flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
+      >
+        <Plus size={13} />
+      </button>
+    </div>
   );
 };
 
@@ -508,19 +597,15 @@ export const TournamentQualificationCard: React.FC<TournamentCardProps> = ({
             <label htmlFor="qual-max-score-input" className="text-sm text-[var(--text)]">
               Максимум голов (лимит)
             </label>
-            <input
+            <NumericStepperInput
               id="qual-max-score-input"
-              type="number"
-              disabled={disabled}
+              value={value.maxScore}
               min={value.targetScore}
               max={25}
-              value={value.maxScore}
-              onChange={(e) =>
-                onChange({
-                  maxScore: Math.max(value.targetScore, Number(e.target.value) || value.targetScore),
-                })
-              }
-              className="w-20 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-2.5 py-1.5 text-center text-sm text-[var(--text)] disabled:opacity-60"
+              fallback={value.targetScore + 2}
+              disabled={disabled}
+              ariaLabel="Максимум голов"
+              onCommit={(next) => onChange({ maxScore: next })}
             />
           </div>
         )}
@@ -700,22 +785,15 @@ export const TournamentPlayoffCard: React.FC<TournamentCardProps> = ({
           <label htmlFor="playoff-max-score-input" className="text-sm text-[var(--text)]">
             Лимит голов (плей-офф)
           </label>
-          <input
+          <NumericStepperInput
             id="playoff-max-score-input"
-            type="number"
-            disabled={disabled || !canEditPlayoff}
+            value={value.playoffMaxScore}
             min={value.playoffTargetScore}
             max={25}
-            value={value.playoffMaxScore}
-            onChange={(e) =>
-              onChange({
-                playoffMaxScore: Math.max(
-                  value.playoffTargetScore,
-                  Number(e.target.value) || value.playoffTargetScore
-                ),
-              })
-            }
-            className="w-20 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-2.5 py-1.5 text-center text-sm text-[var(--text)] disabled:opacity-60"
+            fallback={value.playoffTargetScore + 2}
+            disabled={disabled || !canEditPlayoff}
+            ariaLabel="Лимит голов в плей-офф"
+            onCommit={(next) => onChange({ playoffMaxScore: next })}
           />
         </div>
       )}
@@ -763,34 +841,30 @@ export const TournamentTimersCard: React.FC<TournamentTimersCardProps> = ({
             <label htmlFor="long-match-alert-input" className="text-[var(--muted)]">
               Сигнал, если матч дольше (мин)
             </label>
-            <input
+            <NumericStepperInput
               id="long-match-alert-input"
-              type="number"
-              disabled={disabled}
+              value={value.longMatchAlertMin}
               min={3}
               max={120}
-              value={value.longMatchAlertMin}
-              onChange={(e) =>
-                onChange({ longMatchAlertMin: Math.max(3, Number(e.target.value) || 15) })
-              }
-              className="w-16 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-2 py-1 text-center font-bold text-[var(--text)] disabled:opacity-60"
+              fallback={15}
+              disabled={disabled}
+              ariaLabel="Сигнал долгого матча"
+              onCommit={(next) => onChange({ longMatchAlertMin: next })}
             />
           </div>
           <div className="flex items-center justify-between gap-2">
             <label htmlFor="score-reminder-input" className="text-[var(--muted)]">
               Повторное напоминание о счёте (мин)
             </label>
-            <input
+            <NumericStepperInput
               id="score-reminder-input"
-              type="number"
-              disabled={disabled}
+              value={value.scoreReminderMin}
               min={1}
               max={30}
-              value={value.scoreReminderMin}
-              onChange={(e) =>
-                onChange({ scoreReminderMin: Math.max(1, Number(e.target.value) || 3) })
-              }
-              className="w-16 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-2 py-1 text-center font-bold text-[var(--text)] disabled:opacity-60"
+              fallback={3}
+              disabled={disabled}
+              ariaLabel="Повторное напоминание о счёте"
+              onCommit={(next) => onChange({ scoreReminderMin: next })}
             />
           </div>
         </div>
