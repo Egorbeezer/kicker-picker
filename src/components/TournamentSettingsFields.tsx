@@ -253,7 +253,7 @@ export const TournamentFormatCard: React.FC<TournamentCardProps> = ({
           value={value.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder={namePlaceholder}
-          className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 text-sm text-[var(--text)] focus:outline-none focus:border-[#2ea6ff] disabled:opacity-60"
+          className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 text-sm text-[var(--text)] caret-[var(--accent-text)] focus:outline-none focus:border-[#2ea6ff] focus:ring-2 focus:ring-[var(--accent-soft)] disabled:opacity-60"
         />
       </div>
 

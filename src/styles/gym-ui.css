@@ -231,6 +231,13 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+input,
+textarea {
+  caret-color: var(--accent-text);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* Логотип кикер пикер шрифтом Unbounded */
 .brand {
   display: inline-flex;
