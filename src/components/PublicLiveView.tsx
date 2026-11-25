@@ -356,9 +356,9 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
   ) : null;
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--bg)] text-white flex flex-col">
+    <div className="min-h-[100dvh] bg-[var(--bg)] text-[var(--text)] flex flex-col">
       {/* Top Bar */}
-      <header className="sticky top-0 z-20 bg-[#2c2c2e]/95 backdrop-blur-md border-b border-[#3a3a3c]">
+      <header className="sticky top-0 z-20 bg-[var(--bg)]/95 backdrop-blur-md border-b border-[var(--border)]">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">

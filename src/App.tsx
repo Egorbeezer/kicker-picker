@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Trophy,
   Gamepad2,
@@ -21,6 +21,7 @@ import {
 import { openTelegramChat, SUPPORT_BUTTON } from './support';
 import { haptic, notify } from './utils/telegram';
 import { formatDateRu } from './utils/date';
+import { isWiseV2User } from './utils/wiseFeature';
 import { useAppController } from './hooks/useAppController';
 import { ActionStatusBanner } from './components/ActionStatusBanner';
 import { PlayerMatchView } from './components/PlayerMatchView';
@@ -29,6 +30,10 @@ import { ProfileView } from './components/ProfileView';
 import { AdminDashboardView } from './components/AdminDashboardView';
 import { AdminPlayersView } from './components/AdminPlayersView';
 import { AdminSettingsView } from './components/AdminSettingsView';
+import { WiseProfileView } from './components/wise/WiseProfileView';
+import { WiseAdminDashboardView } from './components/wise/WiseAdminDashboardView';
+import { WiseAdminPlayersView } from './components/wise/WiseAdminPlayersView';
+import { WiseAdminSettingsView } from './components/wise/WiseAdminSettingsView';
 import { BottomNav, type BottomNavItem } from './components/BottomNav';
 import { Brand } from './components/Brand';
 import { Modal } from './components/Modal';
@@ -74,6 +79,19 @@ export default function App() {
     handleManageClubPlayer,
     handleSelectTournament,
   } = useAppController();
+
+  const isWiseV2 = isWiseV2User(appState?.user?.username);
+  const ActiveProfileView = isWiseV2 ? WiseProfileView : ProfileView;
+  const ActiveAdminDashboardView = isWiseV2 ? WiseAdminDashboardView : AdminDashboardView;
+  const ActiveAdminPlayersView = isWiseV2 ? WiseAdminPlayersView : AdminPlayersView;
+  const ActiveAdminSettingsView = isWiseV2 ? WiseAdminSettingsView : AdminSettingsView;
+
+  useEffect(() => {
+    document.documentElement.dataset.wiseV2 = isWiseV2 ? 'true' : 'false';
+    return () => {
+      delete document.documentElement.dataset.wiseV2;
+    };
+  }, [isWiseV2]);
 
   if (livePath) {
     return (
@@ -390,7 +408,7 @@ export default function App() {
       <div className={`flex-1 min-h-0 overflow-hidden relative ${hideBottomNav ? 'no-dock' : ''}`}>
         {!snapshot ? (
           playerTab === 'profile' ? (
-            <ProfileView
+            <ActiveProfileView
               snapshot={null}
               userName={fullUserName}
               userAvatarUrl={userAvatarUrl}
@@ -495,7 +513,7 @@ export default function App() {
               <LeaderboardView snapshot={snapshot} busy={busy} />
             )}
             {playerTab === 'profile' && (
-              <ProfileView
+              <ActiveProfileView
                 snapshot={snapshot}
                 tournamentHistory={appState?.tournamentHistory || []}
                 busy={busy}
@@ -526,7 +544,7 @@ export default function App() {
         ) : (
           <>
             {adminTab === 'dashboard' && (
-              <AdminDashboardView
+              <ActiveAdminDashboardView
                 snapshot={snapshot}
                 busy={busy}
                 onStartRound={() =>
@@ -600,7 +618,7 @@ export default function App() {
               />
             )}
             {adminTab === 'players' && (
-              <AdminPlayersView
+              <ActiveAdminPlayersView
                 snapshot={snapshot}
                 busy={busy}
                 clubPlayers={appState?.clubPlayers || []}
@@ -647,7 +665,7 @@ export default function App() {
               />
             )}
             {adminTab === 'settings' && (
-              <AdminSettingsView
+              <ActiveAdminSettingsView
                 snapshot={snapshot}
                 busy={busy}
                 onBack={() => setAdminTab('dashboard')}

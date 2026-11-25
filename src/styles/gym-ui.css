@@ -65,6 +65,19 @@
   color-scheme: light;
 }
 
+/* Усиленная чистота Wise v2 для канареечного rollout */
+:root[data-wise-v2="true"] .card {
+  border-color: transparent;
+}
+
+:root[data-wise-v2="true"] .btn-primary {
+  box-shadow: none;
+}
+
+:root[data-wise-v2="true"] .modal {
+  border-color: var(--border);
+}
+
 /* Глобальное переназначение акцента в палитре Wise (Bright Green / Forest Green) */
 .bg-\[\#2ea6ff\] {
   background-color: var(--accent) !important;

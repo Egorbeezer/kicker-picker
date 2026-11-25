@@ -99,16 +99,16 @@ const BracketNodeCard: React.FC<{
 
   return (
     <div
-      className={`h-full w-full rounded-xl border ${statusBorder} bg-[#2c2c2e] px-2.5 py-2 flex flex-col justify-between shadow-sm overflow-hidden`}
+      className={`h-full w-full rounded-[20px] border ${statusBorder} bg-[var(--card)] px-2.5 py-2 flex flex-col justify-between overflow-hidden`}
     >
       <div className="flex items-center justify-between gap-1.5 text-[10px] h-4 leading-none shrink-0">
-        <span className={`font-bold truncate ${isFinal ? 'text-yellow-500' : 'text-gray-400'}`}>
+        <span className={`font-bold truncate ${isFinal ? 'text-yellow-500' : 'text-[var(--muted)]'}`}>
           {slotLabel} • Ст. {match.tableNumber}
         </span>
         {match.status === 'FINISHED' ? (
-          <CheckCircle2 size={12} className="text-green-500 shrink-0" />
+          <CheckCircle2 size={12} className="text-[var(--ok)] shrink-0" />
         ) : match.status === 'WAITING_CONFIRM' ? (
-          <Clock size={12} className="text-[#2ea6ff] shrink-0" />
+          <Clock size={12} className="text-[var(--accent-text)] shrink-0" />
         ) : (
           <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
         )}
@@ -117,8 +117,8 @@ const BracketNodeCard: React.FC<{
       <div className="space-y-1.5">
         {/* Team 1 */}
         <div
-          className={`h-[34px] flex items-center justify-between gap-2 rounded-lg px-2 ${
-            t1Win ? 'bg-green-500/15' : t1HasMe ? 'bg-[#2ea6ff]/10' : 'bg-[#1c1c1d]/40'
+          className={`h-[34px] flex items-center justify-between gap-2 rounded-xl px-2 ${
+            t1Win ? 'bg-[var(--ok-soft)]' : t1HasMe ? 'bg-[var(--accent-soft)]' : 'bg-[var(--bg)]/60'
           }`}
         >
           <div className="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
@@ -137,20 +137,20 @@ const BracketNodeCard: React.FC<{
             <span
               className={`text-[11px] leading-tight truncate ${
                 t1Win
-                  ? 'font-bold text-white'
+                  ? 'font-bold text-[var(--text)]'
                   : match.status === 'FINISHED'
-                    ? 'text-gray-400 line-through'
+                    ? 'text-[var(--muted)] line-through'
                     : t1HasMe
-                      ? 'font-bold text-[#2ea6ff]'
-                      : 'text-gray-200'
+                      ? 'font-bold text-[var(--accent-text)]'
+                      : 'text-[var(--text)]'
               }`}
             >
               {match.team1Label}
             </span>
           </div>
           <span
-            className={`text-xs font-semibold shrink-0 min-w-[16px] text-right ${
-              t1Win ? 'text-green-400' : 'text-gray-300'
+            className={`text-xs font-semibold shrink-0 min-w-[16px] text-right tabular-nums ${
+              t1Win ? 'text-[var(--ok)]' : 'text-[var(--muted)]'
             }`}
           >
             {formatScoreChip(match, 1)}
@@ -159,8 +159,8 @@ const BracketNodeCard: React.FC<{
 
         {/* Team 2 */}
         <div
-          className={`h-[34px] flex items-center justify-between gap-2 rounded-lg px-2 ${
-            t2Win ? 'bg-green-500/15' : t2HasMe ? 'bg-[#2ea6ff]/10' : 'bg-[#1c1c1d]/40'
+          className={`h-[34px] flex items-center justify-between gap-2 rounded-xl px-2 ${
+            t2Win ? 'bg-[var(--ok-soft)]' : t2HasMe ? 'bg-[var(--accent-soft)]' : 'bg-[var(--bg)]/60'
           }`}
         >
           <div className="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
@@ -179,20 +179,20 @@ const BracketNodeCard: React.FC<{
             <span
               className={`text-[11px] leading-tight truncate ${
                 t2Win
-                  ? 'font-bold text-white'
+                  ? 'font-bold text-[var(--text)]'
                   : match.status === 'FINISHED'
-                    ? 'text-gray-400 line-through'
+                    ? 'text-[var(--muted)] line-through'
                     : t2HasMe
-                      ? 'font-bold text-[#2ea6ff]'
-                      : 'text-gray-200'
+                      ? 'font-bold text-[var(--accent-text)]'
+                      : 'text-[var(--text)]'
               }`}
             >
               {match.team2Label}
             </span>
           </div>
           <span
-            className={`text-xs font-semibold shrink-0 min-w-[16px] text-right ${
-              t2Win ? 'text-green-400' : 'text-gray-300'
+            className={`text-xs font-semibold shrink-0 min-w-[16px] text-right tabular-nums ${
+              t2Win ? 'text-[var(--ok)]' : 'text-[var(--muted)]'
             }`}
           >
             {formatScoreChip(match, 2)}

@@ -299,4 +299,64 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('Wise v2 rollout (@egor_beezer): включает data-wise-v2 и проходит по всем новым Wise-экранам без ошибок', async ({
+    page,
+  }) => {
+    const ownerUser = {
+      id: 777,
+      first_name: 'Егор',
+      last_name: 'Балагуров',
+      username: 'egor_beezer',
+      allows_write_to_pm: true,
+    };
+
+    const created = (await backend.callEndpoint(
+      'createTournament',
+      { name: 'Wise Кубок', tables: 2, dypMode: 'monster', targetScore: 5, autoRounds: false },
+      ownerUser
+    )) as { tournament: { id: number } };
+    const tid = created.tournament.id;
+    await backend.callEndpoint(
+      'addGuestPlayer',
+      { tournamentId: tid, names: ['Макс', 'Оля', 'Дима'] },
+      ownerUser
+    );
+    await backend.callEndpoint('startRound', { tournamentId: tid }, ownerUser);
+
+    const bridge = await attachTelegramBridge(page, backend, { user: ownerUser });
+    await page.goto('/');
+
+    // Включён канареечный флаг Wise v2
+    await expect(page.locator('html')).toHaveAttribute('data-wise-v2', 'true');
+
+    // 1. Админ: Дашборд
+    await expect(page.getByText('Wise Кубок')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Публичная Live-ссылка', exact: true })).toBeVisible();
+
+    // 2. Админ: Участники
+    const nav = page.getByRole('navigation', { name: 'Навигация' });
+    await nav.getByRole('button', { name: 'Участники' }).click();
+    await expect(page.getByText('Активных:')).toBeVisible();
+    await page.getByRole('button', { name: 'Действия для Макс' }).click();
+    await expect(page.getByRole('dialog').getByText('Переименовать')).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Закрыть' }).last().click();
+
+    // 3. Админ: Настройки
+    await nav.getByRole('button', { name: 'Настройки' }).click();
+    await expect(page.getByRole('button', { name: /Сохранить изменения/i })).toBeVisible();
+
+    // 4. Игрок: Профиль и переключение темы
+    await page.getByRole('button', { name: 'Игрок', exact: true }).click();
+    await nav.getByRole('button', { name: 'Профиль' }).click();
+    await page.getByTestId('profile-theme-btn').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+    // 5. Домой
+    await nav.getByRole('button', { name: 'Домой' }).click();
+    await expect(page.getByText('Текущие турниры')).toBeVisible();
+
+    expect(bridge.consoleErrors).toEqual([]);
+    expect(bridge.pageErrors).toEqual([]);
+  });
 });
