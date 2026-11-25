@@ -26,8 +26,8 @@ const CurrentMatchesFeed: React.FC<{
   return (
     <div className="space-y-2.5 pt-2">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-semibold text-gray-400">{title}</h3>
-        <span className="text-[11px] font-medium text-gray-500">
+        <h3 className="text-xs font-bold text-[var(--muted)]">{title}</h3>
+        <span className="text-[11px] font-semibold text-[var(--muted)]">
           {matches.filter((m) => m.status === 'FINISHED').length}/{matches.length} завершено
         </span>
       </div>
@@ -98,59 +98,59 @@ export const PlayerMatchView: React.FC<Props> = ({
     return (
       <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
         <div className="p-4 pt-6 pb-8 space-y-4">
-          <div className="bg-[var(--bg-2)] border border-yellow-500/35 rounded-3xl p-5 text-center space-y-2">
-            <div className="w-14 h-14 rounded-full bg-yellow-500/15 text-yellow-500 flex items-center justify-center mx-auto">
+          <div className="bg-[var(--card)] rounded-[24px] p-5 text-center space-y-2">
+            <div className="w-14 h-14 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center mx-auto">
               <Medal size={30} />
             </div>
-            <h2 className="text-xl font-semibold text-white">Турнир завершён!</h2>
-            <div className="text-sm font-semibold text-gray-300 truncate">{tournament.name}</div>
+            <h2 className="text-xl font-bold text-[var(--text)]">Турнир завершён!</h2>
+            <div className="text-sm font-semibold text-[var(--muted)] truncate">{tournament.name}</div>
             <div className="text-xs text-[var(--muted)]">
               {formatDateRu(tournament.finishedAt ?? tournament.startedAt ?? tournament.createdAt)}
             </div>
           </div>
 
           {(podium.first || podium.second || podium.third) ? (
-            <div className="bg-[var(--bg-2)] border border-[var(--border-strong)] rounded-3xl p-4 space-y-2">
-              <div className="text-xs font-semibold text-gray-400 px-1">
+            <div className="bg-[var(--card)] rounded-[24px] p-4 space-y-2">
+              <div className="text-xs font-bold text-[var(--muted)] px-1">
                 Призёры турнира
               </div>
               {podium.first && (
-                <div className="bg-[var(--bg)] border border-yellow-500/35 rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-yellow-500 font-bold shrink-0">🥇 1 место</span>
-                  <span className="font-bold text-white truncate">{podium.first}</span>
+                <div className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+                  <span className="text-amber-500 font-bold shrink-0">🥇 1 место</span>
+                  <span className="font-bold text-[var(--text)] truncate">{podium.first}</span>
                 </div>
               )}
               {podium.second && (
-                <div className="bg-[var(--bg)] border border-[var(--border-strong)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-gray-300 font-bold shrink-0">🥈 2 место</span>
-                  <span className="font-semibold text-white truncate">{podium.second}</span>
+                <div className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+                  <span className="text-[var(--muted)] font-bold shrink-0">🥈 2 место</span>
+                  <span className="font-semibold text-[var(--text)] truncate">{podium.second}</span>
                 </div>
               )}
               {podium.third && (
-                <div className="bg-[var(--bg)] border border-[var(--border-strong)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+                <div className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
                   <span className="text-amber-500 font-bold shrink-0">🥉 3 место</span>
-                  <span className="font-semibold text-white truncate">{podium.third}</span>
+                  <span className="font-semibold text-[var(--text)] truncate">{podium.third}</span>
                 </div>
               )}
             </div>
           ) : leader ? (
-            <div className="bg-[var(--bg-2)] border border-[var(--border-strong)] rounded-3xl p-4 text-center text-sm text-gray-300">
-              Лидер таблицы: <span className="text-[#2ea6ff] font-bold">{leader.name}</span> (
+            <div className="bg-[var(--card)] rounded-[24px] p-4 text-center text-sm text-[var(--text)]">
+              Лидер таблицы: <span className="text-[var(--accent-text)] font-bold">{leader.name}</span> (
               {leader.points} очк.)
             </div>
           ) : null}
 
           {myRow && (
-            <div className="bg-[var(--bg-2)] border border-[#2ea6ff]/35 rounded-3xl p-4 flex items-center justify-between gap-3">
+            <div className="bg-[var(--accent-soft)] rounded-[24px] p-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs text-[var(--muted)]">Ваш результат</div>
-                <div className="font-bold text-base text-white mt-0.5">
+                <div className="font-bold text-base text-[var(--text)] mt-0.5">
                   {myRow.rank} место в рейтинге
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold text-[#2ea6ff]">{myRow.points} очк.</div>
-                <div className="text-[11px] text-gray-400">
+                <div className="text-sm font-bold text-[var(--accent-text)]">{myRow.points} очк.</div>
+                <div className="text-[11px] text-[var(--muted)]">
                   {myRow.wins} поб. / {myRow.games} игр
                 </div>
               </div>
@@ -185,9 +185,11 @@ export const PlayerMatchView: React.FC<Props> = ({
   if (tournament.status === 'REGISTRATION') {
     return (
       <div className="flex flex-col h-full items-center justify-center p-6 text-center content-dock-pad">
-        <Clock size={48} className="text-[#2ea6ff] mb-4" />
-        <h2 className="text-xl font-bold mb-2">{tournament.name}</h2>
-        <p className="text-gray-400 text-sm max-w-xs">
+        <div className="w-14 h-14 rounded-full bg-[var(--accent-soft)] text-[var(--accent-text)] flex items-center justify-center mb-4">
+          <Clock size={28} />
+        </div>
+        <h2 className="text-xl font-bold text-[var(--text)] mb-2">{tournament.name}</h2>
+        <p className="text-[var(--muted)] text-sm max-w-xs">
           Идет регистрация участников ({players.filter((p) => p.isActive).length}).
           Ожидайте старта первого раунда от организатора.
         </p>
@@ -211,10 +213,12 @@ export const PlayerMatchView: React.FC<Props> = ({
   if (!myCurrentMatch) {
     return (
       <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
-        <div className="p-4 border-b border-[#3a3a3c] bg-[#2c2c2e] flex justify-between items-center sticky top-0 z-10">
+        <div className="p-4 border-b border-[var(--border)] bg-[var(--bg)] flex justify-between items-center sticky top-0 z-10">
           <div>
-            <h2 className="text-lg font-bold truncate max-w-[230px]">{tournament.name}</h2>
-            <div className="text-xs text-gray-400">
+            <h2 className="text-lg font-bold tracking-tight text-[var(--text)] truncate max-w-[230px]">
+              {tournament.name}
+            </h2>
+            <div className="text-xs text-[var(--muted)]">
               {tournament.status === 'PLAYOFF'
                 ? `Плей-офф • Раунд ${tournament.currentRound}`
                 : `Раунд ${tournament.currentRound}`}
@@ -223,10 +227,12 @@ export const PlayerMatchView: React.FC<Props> = ({
         </div>
 
         <div className="p-4 space-y-5">
-          <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-5 flex flex-col items-center text-center">
-            <Coffee size={40} className="text-gray-400 mb-3" />
-            <h3 className="text-lg font-bold mb-1">Вы отдыхаете в этом раунде</h3>
-            <p className="text-gray-400 text-xs max-w-xs leading-relaxed">
+          <div className="bg-[var(--card)] rounded-[24px] p-5 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full bg-[var(--bg)] text-[var(--muted)] flex items-center justify-center mb-3">
+              <Coffee size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-[var(--text)] mb-1">Вы отдыхаете в этом раунде</h3>
+            <p className="text-[var(--muted)] text-xs max-w-xs leading-relaxed">
               {myPlayerId
                 ? 'Сейчас у вас перерыв (Bye) или ваш матч уже завершён. Следите за результатами других столов ниже.'
                 : 'Вы не зарегистрированы как участник этого турнира, но можете следить за текущими матчами.'}
@@ -254,19 +260,19 @@ export const PlayerMatchView: React.FC<Props> = ({
     return (
       <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
         <div className="p-4 space-y-5">
-          <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-5 flex flex-col items-center text-center">
-            <Clock size={40} className="text-yellow-500 mb-3" />
-            <h2 className="text-xl font-bold mb-1.5">Ожидаем подтверждения</h2>
-            <p className="text-gray-400 text-xs max-w-xs mb-4">
+          <div className="bg-[var(--card)] rounded-[24px] p-5 flex flex-col items-center text-center">
+            <Clock size={36} className="text-amber-500 mb-3" />
+            <h2 className="text-xl font-bold text-[var(--text)] mb-1.5">Ожидаем подтверждения</h2>
+            <p className="text-[var(--muted)] text-xs max-w-xs mb-4">
               Отправлено соперникам для подтверждения результата:
             </p>
 
             <div className="w-full space-y-2 mb-4 text-left">
               <div
-                className={`flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 border ${
+                className={`flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 ${
                   myCurrentMatch.myTeam === 1
-                    ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/35'
-                    : 'bg-[#1c1c1d] border-[#3a3a3c]'
+                    ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+                    : 'bg-[var(--bg)]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -285,26 +291,26 @@ export const PlayerMatchView: React.FC<Props> = ({
                   <div className="min-w-0">
                     <div
                       className={`text-sm truncate ${
-                        myCurrentMatch.myTeam === 1 ? 'font-bold text-[#2ea6ff]' : 'font-semibold text-white'
+                        myCurrentMatch.myTeam === 1 ? 'font-bold text-[var(--accent-text)]' : 'font-semibold text-[var(--text)]'
                       }`}
                     >
                       {myCurrentMatch.team1Label}
                     </div>
                     {myCurrentMatch.myTeam === 1 && (
-                      <div className="text-[10px] text-[#2ea6ff] font-semibold">Ваша команда</div>
+                      <div className="text-[10px] text-[var(--accent-text)] font-semibold">Ваша команда</div>
                     )}
                   </div>
                 </div>
-                <div className="text-2xl font-semibold text-white shrink-0 min-w-[28px] text-right">
+                <div className="text-2xl font-bold text-[var(--text)] shrink-0 min-w-[28px] text-right tabular-nums">
                   {myCurrentMatch.score1}
                 </div>
               </div>
 
               <div
-                className={`flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 border ${
+                className={`flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 ${
                   myCurrentMatch.myTeam === 2
-                    ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/35'
-                    : 'bg-[#1c1c1d] border-[#3a3a3c]'
+                    ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+                    : 'bg-[var(--bg)]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -323,32 +329,32 @@ export const PlayerMatchView: React.FC<Props> = ({
                   <div className="min-w-0">
                     <div
                       className={`text-sm truncate ${
-                        myCurrentMatch.myTeam === 2 ? 'font-bold text-[#2ea6ff]' : 'font-semibold text-white'
+                        myCurrentMatch.myTeam === 2 ? 'font-bold text-[var(--accent-text)]' : 'font-semibold text-[var(--text)]'
                       }`}
                     >
                       {myCurrentMatch.team2Label}
                     </div>
                     {myCurrentMatch.myTeam === 2 && (
-                      <div className="text-[10px] text-[#2ea6ff] font-semibold">Ваша команда</div>
+                      <div className="text-[10px] text-[var(--accent-text)] font-semibold">Ваша команда</div>
                     )}
                   </div>
                 </div>
-                <div className="text-2xl font-semibold text-white shrink-0 min-w-[28px] text-right">
+                <div className="text-2xl font-bold text-[var(--text)] shrink-0 min-w-[28px] text-right tabular-nums">
                   {myCurrentMatch.score2}
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#2ea6ff]/10 border border-[#2ea6ff]/30 rounded-xl px-3 py-2 text-xs text-[#2ea6ff] mb-5">
+            <div className="bg-[var(--accent-soft)] rounded-2xl px-3.5 py-2 text-xs text-[var(--accent-text)] mb-5">
               Ожидается подтверждение от: <span className="font-bold">{waitingFromLabel}</span>
             </div>
             <button
               type="button"
               disabled={busy}
               onClick={() => onRemindConfirm(myCurrentMatch.id)}
-              className="flex items-center gap-2 bg-[#1c1c1d] border border-[#3a3a3c] text-white px-5 py-3 rounded-xl text-sm font-semibold active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 bg-[var(--bg-3)] text-[var(--text)] px-6 py-3 rounded-full text-sm font-bold active:scale-95 disabled:opacity-50"
             >
-              <Bell size={16} className="text-yellow-500" />
+              <Bell size={16} className="text-amber-500" />
               {busy ? 'Отправка...' : 'Напомнить еще раз'}
             </button>
           </div>
@@ -367,19 +373,19 @@ export const PlayerMatchView: React.FC<Props> = ({
     return (
       <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
         <div className="p-4 space-y-5">
-          <div className="bg-[#2c2c2e] border border-[#2ea6ff]/40 rounded-2xl p-5 flex flex-col items-center text-center">
-            <AlertTriangle size={40} className="text-[#2ea6ff] mb-3" />
-            <h2 className="text-xl font-bold mb-1.5">Подтвердите счет</h2>
-            <p className="text-gray-400 text-xs mb-4">
+          <div className="bg-[var(--card)] rounded-[24px] p-5 flex flex-col items-center text-center">
+            <AlertTriangle size={36} className="text-[var(--accent-text)] mb-3" />
+            <h2 className="text-xl font-bold text-[var(--text)] mb-1.5">Подтвердите счет</h2>
+            <p className="text-[var(--muted)] text-xs mb-4">
               Соперники указали результат ({myCurrentMatch.stage === 'PLAYOFF' ? 'сет' : 'матч'}):
             </p>
 
             <div className="w-full space-y-2 mb-5 text-left">
               <div
-                className={`flex items-center justify-between gap-3 rounded-xl px-3.5 py-3 border ${
+                className={`flex items-center justify-between gap-3 rounded-2xl px-3.5 py-3 ${
                   myCurrentMatch.myTeam === 1
-                    ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/40'
-                    : 'bg-[#1c1c1d] border-[#3a3a3c]'
+                    ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+                    : 'bg-[var(--bg)]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -398,26 +404,26 @@ export const PlayerMatchView: React.FC<Props> = ({
                   <div className="min-w-0">
                     <div
                       className={`text-sm truncate ${
-                        myCurrentMatch.myTeam === 1 ? 'font-bold text-[#2ea6ff]' : 'font-semibold text-white'
+                        myCurrentMatch.myTeam === 1 ? 'font-bold text-[var(--accent-text)]' : 'font-semibold text-[var(--text)]'
                       }`}
                     >
                       {myCurrentMatch.team1Label}
                     </div>
                     {myCurrentMatch.myTeam === 1 && (
-                      <div className="text-[10px] text-[#2ea6ff] font-semibold">Ваша команда</div>
+                      <div className="text-[10px] text-[var(--accent-text)] font-semibold">Ваша команда</div>
                     )}
                   </div>
                 </div>
-                <div className="text-3xl font-semibold text-white shrink-0 min-w-[32px] text-right">
+                <div className="text-3xl font-bold text-[var(--text)] shrink-0 min-w-[32px] text-right tabular-nums">
                   {myCurrentMatch.score1}
                 </div>
               </div>
 
               <div
-                className={`flex items-center justify-between gap-3 rounded-xl px-3.5 py-3 border ${
+                className={`flex items-center justify-between gap-3 rounded-2xl px-3.5 py-3 ${
                   myCurrentMatch.myTeam === 2
-                    ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/40'
-                    : 'bg-[#1c1c1d] border-[#3a3a3c]'
+                    ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+                    : 'bg-[var(--bg)]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -436,17 +442,17 @@ export const PlayerMatchView: React.FC<Props> = ({
                   <div className="min-w-0">
                     <div
                       className={`text-sm truncate ${
-                        myCurrentMatch.myTeam === 2 ? 'font-bold text-[#2ea6ff]' : 'font-semibold text-white'
+                        myCurrentMatch.myTeam === 2 ? 'font-bold text-[var(--accent-text)]' : 'font-semibold text-[var(--text)]'
                       }`}
                     >
                       {myCurrentMatch.team2Label}
                     </div>
                     {myCurrentMatch.myTeam === 2 && (
-                      <div className="text-[10px] text-[#2ea6ff] font-semibold">Ваша команда</div>
+                      <div className="text-[10px] text-[var(--accent-text)] font-semibold">Ваша команда</div>
                     )}
                   </div>
                 </div>
-                <div className="text-3xl font-semibold text-white shrink-0 min-w-[32px] text-right">
+                <div className="text-3xl font-bold text-[var(--text)] shrink-0 min-w-[32px] text-right tabular-nums">
                   {myCurrentMatch.score2}
                 </div>
               </div>
@@ -457,7 +463,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                 type="button"
                 disabled={busy}
                 onClick={() => onConfirmScore(myCurrentMatch.id, 'dispute')}
-                className="flex-1 bg-[#1c1c1d] border border-[#3a3a3c] text-white py-3.5 rounded-xl font-semibold active:scale-95 disabled:opacity-50"
+                className="flex-1 bg-[var(--bg-3)] text-[var(--text)] py-3.5 rounded-full font-bold active:scale-95 disabled:opacity-50"
               >
                 {busy ? 'Обработка...' : 'Оспорить'}
               </button>
@@ -465,7 +471,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                 type="button"
                 disabled={busy}
                 onClick={() => onConfirmScore(myCurrentMatch.id, 'confirm')}
-                className="flex-1 bg-[#2ea6ff] text-white py-3.5 rounded-xl font-semibold shadow-[0_4px_20px_rgba(46,166,255,0.4)] active:scale-95 disabled:opacity-50"
+                className="flex-1 bg-[var(--accent)] text-[var(--on-accent)] py-3.5 rounded-full font-bold active:scale-95 disabled:opacity-50"
               >
                 {busy ? 'Обработка...' : 'Подтвердить'}
               </button>
@@ -499,24 +505,26 @@ export const PlayerMatchView: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
-      <div className="p-4 border-b border-[#3a3a3c] flex justify-between items-center bg-[#2c2c2e] sticky top-0 z-10">
-        <div>
-          <h2 className="text-lg font-bold truncate max-w-[220px]">{tournament.name}</h2>
-          <div className="text-xs text-gray-400">{stageText}</div>
+      <div className="p-4 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg)] sticky top-0 z-10">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold tracking-tight text-[var(--text)] truncate max-w-[220px]">
+            {tournament.name}
+          </h2>
+          <div className="text-xs text-[var(--muted)]">{stageText}</div>
         </div>
-        <div className="bg-[#1c1c1d] border border-[#3a3a3c] px-3 py-1.5 rounded-lg text-sm font-bold text-white h-9 flex items-center shrink-0">
-          СТОЛ {myCurrentMatch.tableNumber}
+        <div className="bg-[var(--accent-soft)] px-3.5 py-1.5 rounded-full text-xs font-bold text-[var(--accent-text)] flex items-center shrink-0">
+          Стол {myCurrentMatch.tableNumber}
         </div>
       </div>
 
-      <div className="p-4 space-y-5">
+      <div className="p-4 space-y-4">
         <div className="space-y-3">
           {/* Team 1 */}
           <div
-            className={`p-3.5 rounded-2xl border space-y-3 ${
+            className={`p-4 rounded-[24px] space-y-3 ${
               myCurrentMatch.myTeam === 1
-                ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/35'
-                : 'bg-[#2c2c2e] border-[#3a3a3c]'
+                ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+                : 'bg-[var(--card)]'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -540,8 +548,8 @@ export const PlayerMatchView: React.FC<Props> = ({
                       key={p.id}
                       className={`truncate ${
                         p.id === myPlayerId
-                          ? 'font-bold text-sm text-[#2ea6ff]'
-                          : 'font-medium text-xs text-gray-300'
+                          ? 'font-bold text-sm text-[var(--accent-text)]'
+                          : 'font-semibold text-xs text-[var(--text)]'
                       }`}
                     >
                       {p.name}
@@ -550,8 +558,8 @@ export const PlayerMatchView: React.FC<Props> = ({
                 </div>
               </div>
               <div
-                className={`text-4xl font-semibold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
-                  score1 > 0 ? 'text-[#2ea6ff]' : 'text-[var(--text)]'
+                className={`text-4xl font-bold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
+                  score1 > 0 ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
                 }`}
               >
                 {score1}
@@ -562,16 +570,16 @@ export const PlayerMatchView: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="text-center text-gray-500 font-semibold text-xs italic tracking-widest">
+          <div className="text-center text-[var(--muted)] font-bold text-xs tracking-widest">
             VS
           </div>
 
           {/* Team 2 */}
           <div
-            className={`p-3.5 rounded-2xl border space-y-3 ${
+            className={`p-4 rounded-[24px] space-y-3 ${
               myCurrentMatch.myTeam === 2
-                ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/35'
-                : 'bg-[#2c2c2e] border-[#3a3a3c]'
+                ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+                : 'bg-[var(--card)]'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -595,8 +603,8 @@ export const PlayerMatchView: React.FC<Props> = ({
                       key={p.id}
                       className={`truncate ${
                         p.id === myPlayerId
-                          ? 'font-bold text-sm text-[#2ea6ff]'
-                          : 'font-medium text-xs text-gray-300'
+                          ? 'font-bold text-sm text-[var(--accent-text)]'
+                          : 'font-semibold text-xs text-[var(--text)]'
                       }`}
                     >
                       {p.name}
@@ -605,8 +613,8 @@ export const PlayerMatchView: React.FC<Props> = ({
                 </div>
               </div>
               <div
-                className={`text-4xl font-semibold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
-                  score2 > 0 ? 'text-[#2ea6ff]' : 'text-[var(--text)]'
+                className={`text-4xl font-bold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
+                  score2 > 0 ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
                 }`}
               >
                 {score2}
@@ -621,7 +629,7 @@ export const PlayerMatchView: React.FC<Props> = ({
             type="button"
             disabled={busy || !isScoreChanged}
             onClick={() => onSubmitScore(myCurrentMatch.id, score1, score2)}
-            className="btn btn-primary w-full py-3.5 text-[15px] shadow-[0_4px_20px_rgba(46,166,255,0.35)] disabled:opacity-40"
+            className="w-full py-3.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-[15px] active:scale-[0.98] transition-transform disabled:opacity-40"
           >
             {busy ? 'Отправка...' : `Сохранить счет: ${score1} : ${score2}`}
           </button>
@@ -639,7 +647,7 @@ export const PlayerMatchView: React.FC<Props> = ({
               <RubleCoin key={flipId} animate result={coinFlipResult} size={112} />
               <div className="h-8 flex items-center justify-center">
                 {coinShowLabel && (
-                  <div className="text-xl font-semibold text-yellow-400 tracking-wide animate-fade-slide-up">
+                  <div className="text-xl font-bold text-amber-500 tracking-wide animate-fade-slide-up">
                     {coinFlipResult}!
                   </div>
                 )}
@@ -649,12 +657,12 @@ export const PlayerMatchView: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleCoinFlip}
-              className="bg-[#2c2c2e] hover:bg-[#333335] border border-[#3a3a3c] rounded-2xl px-6 py-3 flex items-center justify-center gap-3 text-white active:scale-95 transition-colors duration-150 ease-out shadow-sm"
+              className="bg-[var(--card)] border border-[var(--border)] rounded-full px-6 py-2.5 flex items-center justify-center gap-3 text-[var(--text)] active:scale-95 transition-colors duration-150 ease-out"
             >
               <div>
-                <RubleCoin animate={false} result="Решка" size={38} />
+                <RubleCoin animate={false} result="Решка" size={36} />
               </div>
-              <span className="font-bold text-sm tracking-wide">Бросить монетку</span>
+              <span className="font-bold text-sm">Бросить монетку</span>
             </button>
           )}
         </div>

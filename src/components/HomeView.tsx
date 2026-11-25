@@ -138,20 +138,8 @@ export const HomeView: React.FC<Props> = ({
   );
 
   return (
-    <div className="space-y-4 pb-8">
-      <button
-        type="button"
-        onClick={() => {
-          haptic('light');
-          onCreateTournament();
-        }}
-        className="w-full py-3.5 px-4 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-      >
-        <Plus size={18} />
-        Создать новый турнир
-      </button>
-
-      {/* Главный профиль игрока (компактный по умолчанию, раскрывается по тапу) */}
+    <div className="space-y-5 pb-8">
+      {/* Hero статистика игрока на чистом фоне в стиле Wise iOS */}
       {playerProfile && (
         <section
           role="button"
@@ -169,29 +157,24 @@ export const HomeView: React.FC<Props> = ({
               setProfileExpanded((v) => !v);
             }
           }}
-          className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-4 cursor-pointer select-none transition-colors hover:border-[var(--border-strong)]"
+          className="pt-1 cursor-pointer select-none"
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
               <PlayerAvatar
                 avatarUrl={userAvatarUrl}
                 initials={getInitials(userName)}
                 name={userName || 'Игрок кикера'}
-                size="md"
-                className="border-[#2ea6ff] bg-[#2ea6ff]/15 text-[#2ea6ff]"
+                size="sm"
+                className="bg-[var(--card)] text-[var(--text)] border-transparent"
               />
-              <div className="min-w-0">
-                <div className="text-xs font-medium text-[#2ea6ff]">
-                  Мой профиль
-                </div>
-                <div className="text-base font-semibold text-[var(--text)] truncate">
-                  {userName || 'Игрок кикера'}
-                </div>
-              </div>
+              <span className="text-sm font-bold text-[var(--text)] truncate">
+                {userName || 'Игрок кикера'}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               {playerProfile.championCount > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-500 text-xs font-bold">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--accent-soft)] text-[var(--accent-text)] text-xs font-bold">
                   <Crown size={13} />
                   {playerProfile.championCount} {playerProfile.championCount === 1 ? 'титул' : 'титула'}
                 </span>
@@ -205,30 +188,14 @@ export const HomeView: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 text-center mt-3">
-            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-semibold text-[var(--text)] leading-tight">
-                {playerProfile.tournamentsPlayed}
-              </div>
-              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Турниров</div>
+          <div className="mt-3 space-y-1">
+            <div className="text-xs font-semibold text-[var(--muted)]">Твой винрейт</div>
+            <div className="text-[36px] leading-none font-bold tracking-tight tabular-nums text-[var(--text)]">
+              {playerProfile.winRate}%
             </div>
-            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-semibold text-emerald-500 leading-tight">
-                {playerProfile.totalWins}/{playerProfile.totalMatches}
-              </div>
-              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Побед</div>
-            </div>
-            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-semibold text-[#2ea6ff] leading-tight">
-                {playerProfile.winRate}%
-              </div>
-              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Винрейт</div>
-            </div>
-            <div className="aspect-square rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center p-1">
-              <div className="text-sm font-semibold text-[var(--text)] leading-tight">
-                {playerProfile.avgGoalsPerMatch}
-              </div>
-              <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">Гол/матч</div>
+            <div className="text-xs font-medium text-[var(--muted)] pt-0.5">
+              {playerProfile.totalWins} побед из {playerProfile.totalMatches} игр ·{' '}
+              {playerProfile.tournamentsPlayed} турн. · {playerProfile.avgGoalsPerMatch} гол/матч
             </div>
           </div>
 
@@ -242,120 +209,180 @@ export const HomeView: React.FC<Props> = ({
             }`}
           >
             <div className="min-h-0 overflow-hidden">
-              <div className="space-y-3 pt-3">
-              {/* Напарники и неудобный соперник */}
-              {(playerProfile.mostFrequentPartner || playerProfile.bestPartner || playerProfile.toughestOpponent) && (
-                <div className="grid grid-cols-1 gap-2">
-                  {playerProfile.mostFrequentPartner && (
-                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                      <span className="text-[var(--muted)] flex items-center gap-1.5">
-                        <Users size={13} className="text-[#2ea6ff]" />
-                        Частый напарник
-                      </span>
-                      <span className="font-bold text-[var(--text)] truncate">
-                        {playerProfile.mostFrequentPartner.name}{' '}
-                        <span className="font-normal text-[var(--muted)]">
-                          ({playerProfile.mostFrequentPartner.games} игр, {playerProfile.mostFrequentPartner.winRate}%)
+              <div className="space-y-2.5 pt-3.5">
+                {(playerProfile.mostFrequentPartner || playerProfile.bestPartner || playerProfile.toughestOpponent) && (
+                  <div className="grid grid-cols-1 gap-2">
+                    {playerProfile.mostFrequentPartner && (
+                      <div className="bg-[var(--card)] rounded-[20px] px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[var(--muted)] flex items-center gap-1.5">
+                          <Users size={13} className="text-[var(--accent-text)]" />
+                          Частый напарник
                         </span>
-                      </span>
-                    </div>
-                  )}
-
-                  {playerProfile.bestPartner && (
-                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                      <span className="text-[var(--muted)] flex items-center gap-1.5">
-                        <HeartHandshake size={13} className="text-emerald-500" />
-                        Лучший напарник
-                      </span>
-                      <span className="font-bold text-emerald-500 truncate">
-                        {playerProfile.bestPartner.name}{' '}
-                        <span className="font-normal text-[var(--muted)]">
-                          ({playerProfile.bestPartner.winRate}% • {playerProfile.bestPartner.wins}/{playerProfile.bestPartner.games})
+                        <span className="font-bold text-[var(--text)] truncate">
+                          {playerProfile.mostFrequentPartner.name}{' '}
+                          <span className="font-normal text-[var(--muted)]">
+                            ({playerProfile.mostFrequentPartner.games} игр, {playerProfile.mostFrequentPartner.winRate}%)
+                          </span>
                         </span>
-                      </span>
-                    </div>
-                  )}
-
-                  {playerProfile.toughestOpponent && (
-                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                      <span className="text-[var(--muted)] flex items-center gap-1.5">
-                        <Swords size={13} className="text-red-500" />
-                        Неудобный соперник (H2H)
-                      </span>
-                      <span className="font-bold text-red-500 truncate">
-                        {playerProfile.toughestOpponent.name}{' '}
-                        <span className="font-normal text-[var(--muted)]">
-                          ({playerProfile.toughestOpponent.losses} пор. из {playerProfile.toughestOpponent.games})
-                        </span>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* График среднего балла */}
-              <AvgPointsSparkline timeline={playerProfile.timeline} />
-
-              {/* Клубные бейджи */}
-              {playerProfile.badges.length > 0 && (
-                <div className="space-y-1.5">
-                  <div className="text-xs font-semibold text-[var(--muted)]">
-                    Достижения клуба
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {playerProfile.badges.map((b) => (
-                      <div
-                        key={b.id}
-                        title={b.description}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-xs font-semibold text-[var(--text)]"
-                      >
-                        <span>{b.emoji}</span>
-                        <span>{b.title}</span>
-                        {b.count > 1 && (
-                          <span className="text-[10px] font-bold text-[#2ea6ff]">×{b.count}</span>
-                        )}
                       </div>
-                    ))}
+                    )}
+
+                    {playerProfile.bestPartner && (
+                      <div className="bg-[var(--card)] rounded-[20px] px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[var(--muted)] flex items-center gap-1.5">
+                          <HeartHandshake size={13} className="text-[var(--ok)]" />
+                          Лучший напарник
+                        </span>
+                        <span className="font-bold text-[var(--ok)] truncate">
+                          {playerProfile.bestPartner.name}{' '}
+                          <span className="font-normal text-[var(--muted)]">
+                            ({playerProfile.bestPartner.winRate}% • {playerProfile.bestPartner.wins}/{playerProfile.bestPartner.games})
+                          </span>
+                        </span>
+                      </div>
+                    )}
+
+                    {playerProfile.toughestOpponent && (
+                      <div className="bg-[var(--card)] rounded-[20px] px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[var(--muted)] flex items-center gap-1.5">
+                          <Swords size={13} className="text-[var(--danger)]" />
+                          Неудобный соперник (H2H)
+                        </span>
+                        <span className="font-bold text-[var(--danger)] truncate">
+                          {playerProfile.toughestOpponent.name}{' '}
+                          <span className="font-normal text-[var(--muted)]">
+                            ({playerProfile.toughestOpponent.losses} пор. из {playerProfile.toughestOpponent.games})
+                          </span>
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                )}
+
+                <AvgPointsSparkline timeline={playerProfile.timeline} />
+
+                {playerProfile.badges.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-[var(--muted)]">
+                      Достижения клуба
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {playerProfile.badges.map((b) => (
+                        <div
+                          key={b.id}
+                          title={b.description}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--card)] text-xs font-semibold text-[var(--text)]"
+                        >
+                          <span>{b.emoji}</span>
+                          <span>{b.title}</span>
+                          {b.count > 1 && (
+                            <span className="text-[10px] font-bold text-[var(--accent-text)]">×{b.count}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </section>
       )}
 
+      {/* Круглые быстрые действия в стиле Wise iOS */}
+      <section className="grid grid-cols-4 gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            haptic('light');
+            onCreateTournament();
+          }}
+          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
+        >
+          <span className="w-12 h-12 rounded-full bg-[var(--accent)] text-[var(--on-accent)] flex items-center justify-center">
+            <Plus size={22} strokeWidth={2.4} />
+          </span>
+          <span className="text-[11px] font-semibold text-[var(--text)]">
+            Турнир<span className="sr-only"> Создать новый турнир</span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          disabled={activeTournaments.length === 0}
+          onClick={() => {
+            if (activeTournaments[0]) {
+              haptic('light');
+              onSelectTournament(activeTournaments[0].id);
+            }
+          }}
+          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-45"
+        >
+          <span className="w-12 h-12 rounded-full bg-[var(--card)] text-[var(--text)] flex items-center justify-center">
+            <Trophy size={19} />
+          </span>
+          <span className="text-[11px] font-semibold text-[var(--text)]">Активный</span>
+        </button>
+
+        <button
+          type="button"
+          disabled={!playerProfile}
+          onClick={() => {
+            haptic('light');
+            setProfileExpanded((v) => !v);
+          }}
+          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-45"
+        >
+          <span className="w-12 h-12 rounded-full bg-[var(--card)] text-[var(--text)] flex items-center justify-center">
+            <TrendingUp size={19} />
+          </span>
+          <span className="text-[11px] font-semibold text-[var(--text)]">Статистика</span>
+        </button>
+
+        <button
+          type="button"
+          disabled={finishedTournaments.length === 0}
+          onClick={() => {
+            haptic('light');
+            setPastOpen((v) => !v);
+          }}
+          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-45"
+        >
+          <span className="w-12 h-12 rounded-full bg-[var(--card)] text-[var(--text)] flex items-center justify-center">
+            <Users size={19} />
+          </span>
+          <span className="text-[11px] font-semibold text-[var(--text)]">История</span>
+        </button>
+      </section>
+
       {/* Текущие турниры */}
       <section className="space-y-2.5">
-        <div className="text-xs font-semibold text-[var(--muted)] px-1">
+        <div className="text-sm font-bold text-[var(--text)]">
           Текущие турниры ({activeTournaments.length})
         </div>
         {activeTournaments.length === 0 ? (
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-5 text-center text-xs text-[var(--muted)]">
-            Сейчас нет активных турниров. Создайте новый или откройте ссылку от организатора!
+          <div className="bg-[var(--card)] rounded-[24px] p-5 text-center text-xs text-[var(--muted)]">
+            Сейчас нет активных турниров. Нажмите «+» выше, чтобы создать новый!
           </div>
         ) : (
           <div className="space-y-2.5">{activeTournaments.map(renderCard)}</div>
         )}
       </section>
 
-      {/* Прошедшие турниры */}
+      {/* Прошедшие турниры (лента транзакций Wise) */}
       {finishedTournaments.length > 0 && (
-        <section className="space-y-2.5">
+        <section className="space-y-2">
           <button
             type="button"
             onClick={() => {
               haptic('light');
               setPastOpen((v) => !v);
             }}
-            className="w-full flex items-center justify-between bg-[var(--card)] border border-[var(--border)] rounded-3xl px-4 py-3 text-left transition-colors hover:border-[var(--border-strong)]"
+            className="w-full flex items-center justify-between py-2 text-left"
           >
-            <div className="flex items-center gap-2">
-              <Trophy size={15} className="text-emerald-500" />
-              <span className="text-xs font-semibold text-[var(--text)]">
-                Прошедшие турниры ({finishedTournaments.length})
-              </span>
-            </div>
+            <span className="text-sm font-bold text-[var(--text)]">
+              Прошедшие турниры ({finishedTournaments.length})
+            </span>
             {pastOpen ? (
               <ChevronUp size={16} className="text-[var(--muted)]" />
             ) : (
@@ -363,7 +390,19 @@ export const HomeView: React.FC<Props> = ({
             )}
           </button>
 
-          {pastOpen && <div className="space-y-2.5">{finishedTournaments.map(renderCard)}</div>}
+          {pastOpen && (
+            <div className="divide-y divide-[var(--border)]">
+              {finishedTournaments.map((t) => (
+                <TournamentHistoryCard
+                  key={t.id}
+                  item={t}
+                  isCurrent={t.id === currentTournamentId}
+                  variant="row"
+                  onClick={() => onSelectTournament(t.id)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>

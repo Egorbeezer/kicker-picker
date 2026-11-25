@@ -340,13 +340,12 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(profileCard?.getAttribute('aria-expanded')).toBe('false');
     const avatarImg = profileCard?.querySelector('img[alt="Егор Балагуров"]') as HTMLImageElement | null;
     expect(avatarImg?.getAttribute('src')).toBe('https://example.com/avatar.jpg');
-    expect(container.textContent).toContain('Мой профиль');
+    expect(container.textContent).toContain('Твой винрейт');
     expect(container.textContent).toContain('75%');
-    expect(container.textContent).toContain('Турниров');
-    expect(container.textContent).toContain('Побед');
-    expect(container.textContent).toContain('Винрейт');
-    expect(container.textContent).toContain('Гол/матч');
-    expect(profileCard!.querySelectorAll('.rounded-full').length).toBeGreaterThanOrEqual(4);
+    expect(container.textContent).toContain('18 побед из 24 игр');
+    expect(container.textContent).toContain('6 турн.');
+    expect(container.textContent).toContain('4.5 гол/матч');
+    expect(profileCard!.querySelectorAll('.rounded-full').length).toBeGreaterThanOrEqual(3);
     const detailsEl = container.querySelector('[data-testid="home-profile-details"]') as HTMLElement | null;
     expect(detailsEl).not.toBeNull();
     expect(detailsEl?.getAttribute('aria-hidden')).toBe('true');

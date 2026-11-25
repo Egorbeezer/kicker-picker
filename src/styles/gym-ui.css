@@ -251,33 +251,31 @@ body {
   color: #96f84d;
 }
 
-/* Отступ контента снизу под приподнятый dock + подпись */
+/* Отступ контента снизу под tab bar */
 .content-dock-pad {
-  padding-bottom: calc(132px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
+  padding-bottom: calc(84px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
 }
 
 .no-dock .content-dock-pad {
   padding-bottom: calc(28px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
 }
 
-/* Нижнее меню в стиле daisyUI Dock (как в gym-gym) */
+/* Нижняя панель навигации в стиле Wise iOS */
 .dock {
   display: flex;
-  width: calc(100% - 20px);
-  max-width: 428px;
+  width: 100%;
+  max-width: 448px;
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(34px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
+  bottom: 0;
   z-index: 30;
-  gap: 4px;
-  padding: 6px;
+  gap: 6px;
+  padding: 6px 12px calc(8px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
   background: var(--bg);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px var(--shadow);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
   box-sizing: border-box;
 }
 
@@ -294,10 +292,10 @@ body.field-focus .footer-sign {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 5px 4px;
-  min-height: 50px;
-  border-radius: 999px;
+  gap: 3px;
+  padding: 6px 4px;
+  min-height: 46px;
+  border-radius: 16px;
   color: var(--muted);
   background: transparent;
   border: none;
@@ -351,8 +349,8 @@ body.field-focus .footer-sign {
 }
 
 .dock-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
@@ -361,20 +359,9 @@ body.field-focus .footer-sign {
   transition: color 0.2s ease, font-weight 0.2s ease;
 }
 
-/* Подпись-логотип под нижним меню */
+/* Подпись-логотип скрыта в стиле Wise iOS tab bar */
 .footer-sign {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: calc(34px + max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px)));
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-inset-bottom, 0px));
-  z-index: 29;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  pointer-events: none;
+  display: none;
 }
 
 .footer-brand {

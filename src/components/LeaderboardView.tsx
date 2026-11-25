@@ -207,11 +207,11 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
       <div className="p-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg)] z-10">
         <div className="flex justify-between items-center gap-2">
           <div className="min-w-0">
-            <h2 className="text-xl font-bold truncate">
+            <h2 className="text-xl font-bold tracking-tight text-[var(--text)] truncate">
               {hasPlayoff && subTab === 'playoff' ? 'Сетка плей-офф' : 'Турнирная таблица'}
             </h2>
             {(!hasPlayoff || subTab === 'group') && sortLabels.length > 0 && (
-              <div className="text-[10px] text-gray-500 mt-0.5 truncate">
+              <div className="text-[11px] text-[var(--muted)] mt-0.5 truncate">
                 Приоритет: {sortLabels.join(' → ')}
               </div>
             )}
@@ -233,24 +233,24 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
                   ? 'Поделиться сеткой плей-офф как фото'
                   : 'Поделиться полной таблицей как фото'
               }
-              className="w-9 h-9 rounded-xl bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center active:scale-95 disabled:opacity-50 transition-opacity"
+              className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center active:scale-95 disabled:opacity-50 transition-opacity"
             >
               {sharing ? (
-                <span className="loading loading-spinner loading-xs text-[#2ea6ff]" />
+                <span className="loading loading-spinner loading-xs text-[var(--accent-text)]" />
               ) : (
-                <ScreenshotIcon size={22} />
+                <ScreenshotIcon size={20} />
               )}
             </button>
             {(!hasPlayoff || subTab === 'group') && (
               <>
-                <span className="text-xs text-gray-400 bg-[#2c2c2e] px-2.5 py-1 rounded-full border border-[#3a3a3c]">
+                <span className="text-xs font-bold text-[var(--text)] bg-[var(--card)] px-3 py-1.5 rounded-full">
                   Топ-{tournament.playoffSize}
                 </span>
                 {isAdmin && onSaveTableConfig && (
                   <button
                     type="button"
                     onClick={() => setEditingConfig(activeConfig)}
-                    className="p-1.5 rounded-full bg-[#2c2c2e] border border-[#3a3a3c] text-gray-300 hover:text-white active:scale-95"
+                    className="w-9 h-9 rounded-full bg-[var(--card)] text-[var(--text)] flex items-center justify-center active:scale-95"
                     title="Настроить таблицу"
                     aria-label="Настроить таблицу"
                   >
@@ -264,14 +264,14 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
 
         {/* Playoff / Group sub-tabs when playoff has started */}
         {hasPlayoff && (
-          <div className="grid grid-cols-2 gap-1 bg-[#2c2c2e] border border-[#3a3a3c] p-1 rounded-xl mt-3">
+          <div className="grid grid-cols-2 gap-1 bg-[var(--card)] p-1 rounded-full mt-3">
             <button
               type="button"
               onClick={() => setSubTab('playoff')}
-              className={`py-2 rounded-lg text-xs font-bold transition-colors ${
+              className={`py-2 rounded-full text-xs font-bold transition-colors ${
                 subTab === 'playoff'
-                  ? 'bg-[#2ea6ff] text-white shadow-sm'
-                  : 'text-gray-400'
+                  ? 'bg-[var(--bg)] text-[var(--text)] shadow-sm'
+                  : 'text-[var(--muted)]'
               }`}
             >
               Плей-офф
@@ -279,10 +279,10 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
             <button
               type="button"
               onClick={() => setSubTab('group')}
-              className={`py-2 rounded-lg text-xs font-bold transition-colors ${
+              className={`py-2 rounded-full text-xs font-bold transition-colors ${
                 subTab === 'group'
-                  ? 'bg-[#2ea6ff] text-white shadow-sm'
-                  : 'text-gray-400'
+                  ? 'bg-[var(--bg)] text-[var(--text)] shadow-sm'
+                  : 'text-[var(--muted)]'
               }`}
             >
               Групповая
@@ -291,7 +291,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
         )}
 
         {(!hasPlayoff || subTab === 'group') && (
-          <div className="flex text-[11px] font-bold text-gray-500 mt-3 uppercase tracking-wider px-2">
+          <div className="flex text-[11px] font-bold text-[var(--muted)] mt-3 uppercase tracking-wider px-2">
             <div className="w-7 text-center">#</div>
             <div className="flex-1">{nameVisible ? 'Игрок' : ''}</div>
             {visibleStatCols.map((col) => {
@@ -314,7 +314,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
           myPlayerId={myPlayerId}
         />
       ) : (
-        <div className="p-2 space-y-1">
+        <div className="mx-3 my-2.5 bg-[var(--card)] rounded-[24px] overflow-hidden divide-y divide-[var(--border)]">
           {leaderboard.map((row) => {
             const isMe = row.playerId === myPlayerId;
             const inPlayoffZone = qualifiedIds.has(row.playerId);
@@ -322,23 +322,24 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
             return (
               <div
                 key={row.playerId}
-                className={`flex items-center px-2 py-3 rounded-xl border ${
+                data-testid="leaderboard-row"
+                className={`flex items-center px-3 py-3 border-l-4 ${
+                  inPlayoffZone ? 'border-l-[var(--accent)]' : 'border-l-transparent'
+                } ${
                   !row.isActive
-                    ? 'bg-gray-500/20 border-gray-500/30 opacity-75'
+                    ? 'bg-gray-500/20 opacity-65'
                     : isMe
-                      ? 'bg-[#2ea6ff]/10 border-[#2ea6ff]/30'
-                      : inPlayoffZone
-                        ? 'bg-[#2c2c2e]/50 border-transparent'
-                        : 'border-transparent opacity-80'
+                      ? 'bg-[var(--accent-soft)]'
+                      : ''
                 }`}
               >
                 <div
-                  className={`w-7 text-center font-bold text-sm ${
+                  className={`w-7 text-center font-bold text-sm tabular-nums ${
                     row.rank <= 3
-                      ? 'text-yellow-500'
+                      ? 'text-[var(--accent-text)]'
                       : inPlayoffZone
-                        ? 'text-gray-200'
-                        : 'text-gray-500'
+                        ? 'text-[var(--text)]'
+                        : 'text-[var(--muted)]'
                   }`}
                 >
                   {row.rank}
@@ -354,17 +355,17 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
                   {nameVisible && (
                     <div className="min-w-0">
                       <div
-                        className={`font-medium text-sm truncate flex items-center gap-1 ${
-                          isMe ? 'text-[#2ea6ff] font-bold' : 'text-white'
+                        className={`font-semibold text-sm truncate flex items-center gap-1 ${
+                          isMe ? 'text-[var(--accent-text)] font-bold' : 'text-[var(--text)]'
                         }`}
                       >
                         <span className="truncate">{row.name} {isMe ? '(Вы)' : ''}</span>
                         {tournament.useBuckets && row.dypRole && (
                           <span
-                            className={`text-[9px] font-semibold px-1 py-0.5 rounded shrink-0 ${
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
                               row.dypRole === 'A'
-                                ? 'bg-[#2ea6ff]/20 text-[#2ea6ff]'
-                                : 'bg-[#96f84d]/20 text-[#96f84d]'
+                                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                                : 'bg-[var(--bg)] text-[var(--muted)]'
                             }`}
                           >
                             {row.dypRole}
@@ -372,7 +373,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
                         )}
                       </div>
                       {!row.isActive && (
-                        <span className="text-[10px] font-medium text-gray-400">Отсутствует</span>
+                        <span className="text-[10px] font-medium text-[var(--muted)]">Отсутствует</span>
                       )}
                     </div>
                   )}

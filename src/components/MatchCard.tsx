@@ -85,40 +85,27 @@ export const MatchCard: React.FC<Props> = ({
 
   return (
     <div
-      className={`p-3.5 rounded-2xl border shadow-sm relative overflow-hidden bg-[#2c2c2e] ${
+      className={`p-3.5 rounded-[22px] relative overflow-hidden bg-[var(--card)] ${
         match.status === 'CANCELLED'
-          ? 'border-[#3a3a3c] opacity-65'
+          ? 'opacity-60'
           : isMyMatch
-            ? 'border-[#2ea6ff]/45'
-            : 'border-[#3a3a3c]'
+            ? 'ring-1 ring-[var(--accent-text)]/35'
+            : ''
       } ${onClick ? 'transition-transform active:scale-[0.98]' : ''}`}
     >
-      {match.status === 'PLAYING' && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-500" />
-      )}
-      {match.status === 'WAITING_CONFIRM' && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#2ea6ff]" />
-      )}
-      {match.status === 'FINISHED' && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500" />
-      )}
-      {match.status === 'CANCELLED' && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-500" />
-      )}
-
       <div {...interactiveProps} className={onClick ? 'cursor-pointer' : undefined}>
-        <div className="flex justify-between items-center gap-2 mb-2.5 pl-1">
+        <div className="flex justify-between items-center gap-2 mb-2.5">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="font-bold text-[11px] bg-[#1c1c1d] px-2.5 py-1 rounded-full border border-[#3a3a3c] text-white">
+          <span className="font-bold text-[11px] bg-[var(--bg)] px-2.5 py-1 rounded-full text-[var(--text)]">
             Стол {match.tableNumber}
           </span>
           {slotLabel && (
-            <span className="text-[11px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-bold text-amber-500 bg-amber-500/15 px-2.5 py-0.5 rounded-full">
               {slotLabel}
             </span>
           )}
           {isMyMatch && (
-            <span className="text-[10px] font-bold text-[#2ea6ff] bg-[#2ea6ff]/15 px-2 py-0.5 rounded-md">
+            <span className="text-[10px] font-bold text-[var(--accent-text)] bg-[var(--accent-soft)] px-2.5 py-0.5 rounded-full">
               Ваш матч
             </span>
           )}
@@ -131,36 +118,36 @@ export const MatchCard: React.FC<Props> = ({
                 <Clock size={10} /> {elapsedMin}м
               </span>
             )}
-            <span className="text-yellow-500 bg-yellow-500/10 px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 shrink-0">
+            <span className="text-amber-500 bg-amber-500/15 px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 shrink-0">
               <Clock size={12} /> В игре
             </span>
           </div>
         )}
         {match.status === 'WAITING_CONFIRM' && (
-          <span className="text-[#2ea6ff] bg-[#2ea6ff]/10 px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 shrink-0">
+          <span className="text-[var(--accent-text)] bg-[var(--accent-soft)] px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 shrink-0">
             <Clock size={12} /> Ждёт подтв.
           </span>
         )}
         {match.status === 'FINISHED' && (
           <div className="flex items-center gap-1.5 shrink-0">
             {durationLabel && (
-              <span className="text-[10px] font-semibold text-gray-400 bg-[#1c1c1d] border border-[#3a3a3c] px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-semibold text-[var(--muted)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
                 {durationLabel}
               </span>
             )}
-            <span className="text-green-500 bg-green-500/10 px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1">
+            <span className="text-[var(--ok)] bg-[var(--ok-soft)] px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1">
               <CheckCircle size={12} /> Завершён
             </span>
           </div>
         )}
         {match.status === 'CANCELLED' && (
-          <span className="text-gray-400 bg-gray-500/15 px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 shrink-0">
+          <span className="text-[var(--muted)] bg-[var(--bg-3)] px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 shrink-0">
             <Ban size={12} /> Отменён
           </span>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 pl-1">
+      <div className="flex items-center justify-between gap-2">
         {/* Team 1 */}
         <div className="flex-1 flex flex-col items-start gap-1 min-w-0">
           <div className="flex -space-x-1.5">
@@ -177,7 +164,7 @@ export const MatchCard: React.FC<Props> = ({
           </div>
           <div
             className={`text-xs leading-tight line-clamp-2 ${
-              match.myTeam === 1 ? 'font-bold text-[#2ea6ff]' : 'font-medium text-white'
+              match.myTeam === 1 ? 'font-bold text-[var(--accent-text)]' : 'font-medium text-[var(--text)]'
             }`}
           >
             {match.team1Label}
@@ -187,16 +174,16 @@ export const MatchCard: React.FC<Props> = ({
         {/* Center score / VS */}
         <div className="px-2 text-center shrink-0">
           {match.status === 'CANCELLED' ? (
-            <div className="font-bold text-xs text-gray-500 uppercase">Отменён</div>
+            <div className="font-bold text-xs text-[var(--muted)] uppercase">Отменён</div>
           ) : match.status !== 'PLAYING' ? (
-            <div className="font-semibold text-xl text-white tracking-tight">
+            <div className="font-bold text-xl text-[var(--text)] tracking-tight tabular-nums">
               {match.score1} : {match.score2}
             </div>
           ) : (
-            <div className="font-semibold text-base text-gray-400">VS</div>
+            <div className="font-semibold text-sm text-[var(--muted)]">VS</div>
           )}
           {hasSets && (
-            <div className="text-[10px] font-bold text-yellow-500 mt-0.5">
+            <div className="text-[10px] font-bold text-amber-500 mt-0.5">
               Сеты {match.setsWon1}:{match.setsWon2}
             </div>
           )}
@@ -218,7 +205,7 @@ export const MatchCard: React.FC<Props> = ({
           </div>
           <div
             className={`text-xs leading-tight line-clamp-2 ${
-              match.myTeam === 2 ? 'font-bold text-[#2ea6ff]' : 'font-medium text-white'
+              match.myTeam === 2 ? 'font-bold text-[var(--accent-text)]' : 'font-medium text-[var(--text)]'
             }`}
           >
             {match.team2Label}
@@ -227,7 +214,7 @@ export const MatchCard: React.FC<Props> = ({
       </div>
 
       {isWaiting && (
-        <div className="mt-2.5 ml-1 bg-[#2ea6ff]/10 border border-[#2ea6ff]/25 rounded-xl px-2.5 py-1.5 text-[11px] text-[#2ea6ff] font-medium">
+        <div className="mt-2.5 bg-[var(--accent-soft)] rounded-2xl px-3 py-1.5 text-[11px] text-[var(--accent-text)] font-medium">
           Ожидается подтверждение от: <span className="font-bold">{waitingFromLabel}</span>
         </div>
       )}
@@ -235,7 +222,7 @@ export const MatchCard: React.FC<Props> = ({
 
       {inlineFooter && (
         <div
-          className="mt-2.5 ml-1 pt-2.5 border-t border-[var(--border)]"
+          className="mt-2.5 pt-2.5 border-t border-[var(--border)]"
         >
           {inlineFooter}
         </div>

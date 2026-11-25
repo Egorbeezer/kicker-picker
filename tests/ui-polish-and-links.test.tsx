@@ -679,7 +679,7 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
     expect(cLb.textContent).toContain('Отсутствует');
     expect(cLb.textContent).not.toContain('На паузе');
-    const absentRow = Array.from(cLb.querySelectorAll('div.rounded-xl')).find((el) =>
+    const absentRow = Array.from(cLb.querySelectorAll('[data-testid="leaderboard-row"]')).find((el) =>
       el.textContent?.includes('Отсутствующий Второй')
     );
     expect(absentRow?.className).toContain('bg-gray-500/20');
