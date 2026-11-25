@@ -263,6 +263,11 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
 
     const liveSwitch = container.querySelector('[role="switch"][aria-label="Включить Live-трансляцию"]') as HTMLButtonElement;
     expect(liveSwitch).not.toBeNull();
+    expect(liveSwitch.getAttribute('aria-checked')).toBe('true');
+
+    await act(async () => {
+      liveSwitch.click();
+    });
     expect(liveSwitch.getAttribute('aria-checked')).toBe('false');
 
     await act(async () => {

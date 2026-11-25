@@ -69,7 +69,7 @@ export const CreateTournamentView: React.FC<Props> = ({
     longMatchAlertMin: 15,
     scoreReminderMin: 3,
   });
-  const [liveEnabled, setLiveEnabled] = useState(false);
+  const [liveEnabled, setLiveEnabled] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const submitLockRef = useRef(false);
