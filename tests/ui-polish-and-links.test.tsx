@@ -179,7 +179,7 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     const liveBtn = Array.from(c1.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('LIVE')
     );
-    expect(liveBtn).toBeUndefined();
+    expect(liveBtn).toBeDefined();
     expect(c1.textContent).not.toContain('kp_77_abc');
 
     const screenshotBtn = c1.querySelector('[data-testid="share-table-screenshot-btn"]');
@@ -792,5 +792,48 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
 
     window.localStorage.setItem('kp-theme', 'dark');
     expect(currentTheme()).toBe('dark');
+  });
+
+  it('LeaderboardView uses independent scroll container and shows player LIVE button when publicPath is active', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const { LeaderboardView } = await import('../src/components/LeaderboardView');
+
+    const snapshotWithLive = makePlayoffSnapshot({ isAdmin: false });
+    snapshotWithLive.tournament.publicPath = 'kp_live_123';
+
+    const c = document.createElement('div');
+    document.body.appendChild(c);
+    const r = createRoot(c);
+    await act(async () => {
+      r.render(<LeaderboardView snapshot={snapshotWithLive} busy={false} />);
+    });
+
+    const scrollEl = c.querySelector('[data-testid="leaderboard-scroll"]') as HTMLElement | null;
+    expect(scrollEl).not.toBeNull();
+    expect(scrollEl!.className).toContain('flex-1');
+    expect(scrollEl!.className).toContain('min-h-0');
+    expect(scrollEl!.className).toContain('overflow-y-auto');
+    expect(scrollEl!.className).toContain('content-dock-pad');
+
+    const liveBtn = c.querySelector('[data-testid="leaderboard-live-btn"]') as HTMLButtonElement | null;
+    expect(liveBtn).not.toBeNull();
+    await act(async () => {
+      liveBtn!.click();
+    });
+    expect(document.body.textContent).toContain('Live-трансляция');
+    expect(document.body.textContent).toContain('Открыть в браузере');
+    expect(document.body.textContent).toContain('Поделиться ссылкой');
+
+    const snapshotNoLive = makePlayoffSnapshot({ isAdmin: false });
+    snapshotNoLive.tournament.publicPath = null;
+    await act(async () => {
+      r.render(<LeaderboardView snapshot={snapshotNoLive} busy={false} />);
+    });
+    expect(c.querySelector('[data-testid="leaderboard-live-btn"]')).toBeNull();
+
+    await act(async () => {
+      r.unmount();
+    });
   });
 });

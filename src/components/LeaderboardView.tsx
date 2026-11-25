@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, Clock, Share2 } from 'lucide-react';
+import { SlidersHorizontal, Clock, Share2, Radio, ExternalLink } from 'lucide-react';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
+import { buildPublicLiveUrl } from '../api/client';
 import { haptic, notify } from '../utils/telegram';
 import { formatTimeHm } from '../utils/date';
 import { renderLeaderboardToPng } from '../utils/exportTableImage';
 import { getPlayoffQualifiedIds } from '../utils/playoffZone';
 import { renderPlayoffToPng } from '../utils/exportPlayoffImage';
-import { shareImageFile } from '../utils/share';
+import { shareImageFile, shareLiveUrlInTelegram } from '../utils/share';
 import { Modal } from './Modal';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayoffBracketView } from './PlayoffBracketView';
@@ -119,6 +120,7 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
     hasPlayoff ? 'playoff' : 'group'
   );
   const [editingConfig, setEditingConfig] = useState<TableColumnConfig[] | null>(null);
+  const [showLiveModal, setShowLiveModal] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [sendingPreview, setSendingPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState<{
@@ -203,8 +205,8 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
   const qualifiedIds = getPlayoffQualifiedIds(leaderboard, tournament.playoffSize);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
-      <div className="p-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg)] z-10">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="shrink-0 p-4 border-b border-[var(--border)] bg-[var(--bg)] z-10">
         <div className="flex justify-between items-center gap-2">
           <div className="min-w-0">
             <h2 className="text-xl font-bold tracking-tight text-[var(--text)] truncate">
@@ -218,6 +220,22 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {tournament.publicPath && (
+              <button
+                type="button"
+                data-testid="leaderboard-live-btn"
+                onClick={() => {
+                  haptic('light');
+                  setShowLiveModal(true);
+                }}
+                aria-label="Live-трансляция"
+                title="Live-трансляция"
+                className="h-9 px-2.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-xs font-bold inline-flex items-center gap-1 active:scale-95 transition-transform"
+              >
+                <Radio size={14} />
+                <span>LIVE</span>
+              </button>
+            )}
             <button
               type="button"
               data-testid="share-table-screenshot-btn"
@@ -306,144 +324,199 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
         )}
       </div>
 
-      {hasPlayoff && subTab === 'playoff' ? (
-        <PlayoffBracketView
-          matches={playoffMatches}
-          playoffSize={tournament.playoffSize}
-          thirdPlaceMatch={tournament.thirdPlaceMatch}
-          myPlayerId={myPlayerId}
-        />
-      ) : (
-        <div className="mx-3 my-2.5 bg-[var(--card)] rounded-[24px] overflow-hidden divide-y divide-[var(--border)]">
-          {leaderboard.map((row) => {
-            const isMe = row.playerId === myPlayerId;
-            const inPlayoffZone = qualifiedIds.has(row.playerId);
+      <div
+        data-testid="leaderboard-scroll"
+        className="flex-1 min-h-0 overflow-y-auto content-dock-pad"
+      >
+        {hasPlayoff && subTab === 'playoff' ? (
+          <PlayoffBracketView
+            matches={playoffMatches}
+            playoffSize={tournament.playoffSize}
+            thirdPlaceMatch={tournament.thirdPlaceMatch}
+            myPlayerId={myPlayerId}
+          />
+        ) : (
+          <>
+            <div className="mx-3 my-2.5 bg-[var(--card)] rounded-[24px] overflow-hidden divide-y divide-[var(--border)]">
+              {leaderboard.map((row) => {
+                const isMe = row.playerId === myPlayerId;
+                const inPlayoffZone = qualifiedIds.has(row.playerId);
 
-            return (
-              <div
-                key={row.playerId}
-                data-testid="leaderboard-row"
-                className={`flex items-center px-3 py-3 border-l-4 ${
-                  inPlayoffZone ? 'border-l-[var(--accent)]' : 'border-l-transparent'
-                } ${
-                  !row.isActive
-                    ? 'bg-gray-500/20 opacity-65'
-                    : isMe
-                      ? 'bg-[var(--accent-soft)]'
-                      : ''
-                }`}
-              >
-                <div
-                  className={`w-7 text-center font-bold text-sm tabular-nums ${
-                    row.rank <= 3
-                      ? 'text-[var(--accent-text)]'
-                      : inPlayoffZone
-                        ? 'text-[var(--text)]'
-                        : 'text-[var(--muted)]'
-                  }`}
-                >
-                  {row.rank}
-                </div>
-                <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                  <PlayerAvatar
-                    avatarUrl={row.avatarUrl}
-                    initials={row.initials}
-                    name={row.name}
-                    isMe={isMe}
-                    size="sm"
-                  />
-                  {nameVisible && (
-                    <div className="min-w-0">
-                      <div
-                        className={`font-semibold text-sm truncate flex items-center gap-1 ${
-                          isMe ? 'text-[var(--accent-text)] font-bold' : 'text-[var(--text)]'
-                        }`}
-                      >
-                        <span className="truncate">{row.name} {isMe ? '(Вы)' : ''}</span>
-                        {tournament.useBuckets && row.dypRole && (
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                              row.dypRole === 'A'
-                                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                                : 'bg-[var(--bg)] text-[var(--muted)]'
+                return (
+                  <div
+                    key={row.playerId}
+                    data-testid="leaderboard-row"
+                    className={`flex items-center px-3 py-3 border-l-4 ${
+                      inPlayoffZone ? 'border-l-[var(--accent)]' : 'border-l-transparent'
+                    } ${
+                      !row.isActive
+                        ? 'bg-gray-500/20 opacity-65'
+                        : isMe
+                          ? 'bg-[var(--accent-soft)]'
+                          : ''
+                    }`}
+                  >
+                    <div
+                      className={`w-7 text-center font-bold text-sm tabular-nums ${
+                        row.rank <= 3
+                          ? 'text-[var(--accent-text)]'
+                          : inPlayoffZone
+                            ? 'text-[var(--text)]'
+                            : 'text-[var(--muted)]'
+                      }`}
+                    >
+                      {row.rank}
+                    </div>
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                      <PlayerAvatar
+                        avatarUrl={row.avatarUrl}
+                        initials={row.initials}
+                        name={row.name}
+                        isMe={isMe}
+                        size="sm"
+                      />
+                      {nameVisible && (
+                        <div className="min-w-0">
+                          <div
+                            className={`font-semibold text-sm truncate flex items-center gap-1 ${
+                              isMe ? 'text-[var(--accent-text)] font-bold' : 'text-[var(--text)]'
                             }`}
                           >
-                            {row.dypRole}
-                          </span>
-                        )}
-                      </div>
-                      {!row.isActive && (
-                        <span className="text-[10px] font-medium text-[var(--muted)]">Отсутствует</span>
+                            <span className="truncate">{row.name} {isMe ? '(Вы)' : ''}</span>
+                            {tournament.useBuckets && row.dypRole && (
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                  row.dypRole === 'A'
+                                    ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                                    : 'bg-[var(--bg)] text-[var(--muted)]'
+                                }`}
+                              >
+                                {row.dypRole}
+                              </span>
+                            )}
+                          </div>
+                          {!row.isActive && (
+                            <span className="text-[10px] font-medium text-[var(--muted)]">Отсутствует</span>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
+                    {visibleStatCols.map((col) => {
+                      const meta = META_BY_KEY.get(col.key);
+                      return (
+                        <div key={col.key} className={`${meta?.widthClass || 'w-10'} text-center`}>
+                          {renderStatCell(col.key, row, col.key === primarySortKey)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              {leaderboard.length === 0 && (
+                <div className="text-center text-[var(--muted)] text-sm py-12">
+                  Пока нет участников
                 </div>
-                {visibleStatCols.map((col) => {
-                  const meta = META_BY_KEY.get(col.key);
-                  return (
-                    <div key={col.key} className={`${meta?.widthClass || 'w-10'} text-center`}>
-                      {renderStatCell(col.key, row, col.key === primarySortKey)}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-
-          {leaderboard.length === 0 && (
-            <div className="text-center text-gray-500 text-sm py-12">
-              Пока нет участников
+              )}
             </div>
-          )}
 
-          {leaderboard.some((r) => r.isBelowGameThreshold) &&
-            visibleStatCols.some((c) => c.key === 'fairPpm') && (
-              <div className="text-[11px] text-gray-400 px-2 pt-1">
-                * Сыграно меньше 75% матчей: среднее очко уменьшено пропорционально порогу.
+            {leaderboard.some((r) => r.isBelowGameThreshold) &&
+              visibleStatCols.some((c) => c.key === 'fairPpm') && (
+                <div className="text-[11px] text-[var(--muted)] px-4 pt-1">
+                  * Сыграно меньше 75% матчей: среднее очко уменьшено пропорционально порогу.
+                </div>
+              )}
+
+            {snapshot.timings && (snapshot.timings.totalCount > 0 || snapshot.timings.elapsedMinutes > 0) && (
+              <div className="mx-3 mt-3 mb-2 bg-[var(--card)] rounded-[24px] p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-[var(--text)]">
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={14} className="text-[var(--accent-text)]" /> Тайминги турнира
+                  </span>
+                  <span className="text-[var(--accent-text)]">{snapshot.timings.progressPercent}%</span>
+                </div>
+                <div className="w-full bg-[var(--bg-3)] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-[var(--accent-text)] h-full transition-[width] duration-500 ease-out"
+                    style={{ width: `${snapshot.timings.progressPercent}%` }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-[var(--muted)] pt-0.5">
+                  <div>
+                    Прошло: <strong className="text-[var(--text)]">{snapshot.timings.elapsedMinutes} мин</strong>
+                  </div>
+                  <div>
+                    Матчей: <strong className="text-[var(--text)]">{snapshot.timings.playedCount}/{snapshot.timings.totalCount}</strong>
+                  </div>
+                  <div>
+                    Средний матч:{' '}
+                    <strong className="text-[var(--text)]">
+                      {snapshot.timings.avgMatchMinutes !== null
+                        ? `~${snapshot.timings.avgMatchMinutes} мин`
+                        : '—'}
+                    </strong>
+                  </div>
+                  <div>
+                    {tournament.status === 'FINISHED' ? 'Завершён' : 'Окончание раунда'}:{' '}
+                    <strong className="text-[var(--text)]">
+                      {snapshot.timings.estimatedEndAt
+                        ? formatTimeHm(snapshot.timings.estimatedEndAt)
+                        : '—'}
+                    </strong>
+                  </div>
+                </div>
               </div>
             )}
+          </>
+        )}
+      </div>
 
-          {snapshot.timings && (snapshot.timings.totalCount > 0 || snapshot.timings.elapsedMinutes > 0) && (
-            <div className="mt-3 bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-gray-300">
-                <span className="flex items-center gap-1.5">
-                  <Clock size={14} className="text-[#2ea6ff]" /> Тайминги турнира
-                </span>
-                <span className="text-[#2ea6ff]">{snapshot.timings.progressPercent}%</span>
-              </div>
-              <div className="w-full bg-[#1c1c1d] h-1.5 rounded-full overflow-hidden border border-[#3a3a3c]">
-                <div
-                  className="bg-[#2ea6ff] h-full transition-[width] duration-500 ease-out"
-                  style={{ width: `${snapshot.timings.progressPercent}%` }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-400 pt-0.5">
-                <div>
-                  Прошло: <strong className="text-white">{snapshot.timings.elapsedMinutes} мин</strong>
-                </div>
-                <div>
-                  Матчей: <strong className="text-white">{snapshot.timings.playedCount}/{snapshot.timings.totalCount}</strong>
-                </div>
-                <div>
-                  Средний матч:{' '}
-                  <strong className="text-white">
-                    {snapshot.timings.avgMatchMinutes !== null
-                      ? `~${snapshot.timings.avgMatchMinutes} мин`
-                      : '—'}
-                  </strong>
-                </div>
-                <div>
-                  {tournament.status === 'FINISHED' ? 'Завершён' : 'Окончание раунда'}:{' '}
-                  <strong className="text-white">
-                    {snapshot.timings.estimatedEndAt
-                      ? formatTimeHm(snapshot.timings.estimatedEndAt)
-                      : '—'}
-                  </strong>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Live-трансляция для игрока */}
+      {showLiveModal && tournament.publicPath && (
+        <Modal
+          title="Live-трансляция"
+          onClose={() => setShowLiveModal(false)}
+          closeLabel="Закрыть"
+        >
+          <div className="space-y-3">
+            <p className="text-xs text-[var(--muted)] leading-relaxed">
+              Публичное табло с таблицей, матчами и сеткой для браузера и ТВ.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                haptic('light');
+                const liveUrl = buildPublicLiveUrl(tournament.publicPath!);
+                const tgWebApp = window.Telegram?.WebApp as
+                  | { openLink?: (url: string) => void }
+                  | undefined;
+                if (tgWebApp?.openLink) {
+                  tgWebApp.openLink(liveUrl);
+                } else {
+                  window.open(liveUrl, '_blank', 'noopener,noreferrer');
+                }
+              }}
+              className="btn btn-primary w-full py-3"
+            >
+              <ExternalLink size={16} />
+              Открыть в браузере
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                haptic('light');
+                shareLiveUrlInTelegram({
+                  name: tournament.name,
+                  publicPath: tournament.publicPath!,
+                });
+              }}
+              className="w-full py-3 rounded-full bg-[var(--card)] text-[var(--text)] font-bold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <Share2 size={16} />
+              Поделиться ссылкой
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* Table / playoff image preview modal */}
