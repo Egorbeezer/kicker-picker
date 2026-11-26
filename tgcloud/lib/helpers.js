@@ -24,6 +24,7 @@ export {
 } from './helpers/access.js';
 export {
   formatMatchTeamsColumns,
+  formatMatchTeamsHtml,
   formatMatchTeamsSummary,
   formatBracketSlotRu,
   formatMatchStageLabel,

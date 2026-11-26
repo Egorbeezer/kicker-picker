@@ -27,6 +27,18 @@ export function formatMatchTeamsColumns(t1, t2) {
   return rows.join('\n');
 }
 
+export function formatMatchTeamsHtml(t1, t2) {
+  const formatTeam = (players, fallback) => {
+    const names =
+      players.length > 0
+        ? players.map((p) => truncateName(p.name, 20) || 'Игрок')
+        : [fallback];
+    const icon = players.length === 1 ? '👤' : '👥';
+    return `${icon} <b>${escapeHtml(names.join(' · '))}</b>`;
+  };
+  return `${formatTeam(t1, 'Команда 1')}\nvs\n${formatTeam(t2, 'Команда 2')}`;
+}
+
 export function formatMatchTeamsSummary(match, playersById) {
   const t1 = [playersById.get(match.team1Player1Id), playersById.get(match.team1Player2Id)].filter(Boolean);
   const t2 = [playersById.get(match.team2Player1Id), playersById.get(match.team2Player2Id)].filter(Boolean);
@@ -131,9 +143,9 @@ export async function notifyRoundStart({ tournament, createdMatches, playersById
       await safeSendMessage({
         chat_id: p.tgId,
         text:
-          `⚽ <b>${escapeHtml(tournament.name)}</b> — ${escapeHtml(stageLabel)}\n` +
+          `⚽ ${escapeHtml(tournament.name)} — ${escapeHtml(stageLabel)}\n` +
           `🪑 <b>Стол ${m.tableNumber}</b>\n\n` +
-          `<blockquote><code>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</code></blockquote>`,
+          formatMatchTeamsHtml(t1, t2),
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
@@ -249,16 +261,16 @@ export async function checkAndSendLongMatchReminders({
     }
 
     const elapsedMin = Math.round((nowMs - startMs) / 60000);
-    const columnsHtml = `<blockquote><code>${escapeHtml(formatMatchTeamsColumns(t1, t2))}</code></blockquote>`;
+    const teamsHtml = formatMatchTeamsHtml(t1, t2);
     const text =
       nextStage === 1
         ? `⏰ <b>Долгий матч (${elapsedMin} мин)</b>\n` +
           `🏆 ${escapeHtml(tournament.name)} • Стол ${m.tableNumber}\n\n` +
-          `${columnsHtml}\n\n` +
+          `${teamsHtml}\n\n` +
           `<i>Если игра закончилась — внесите, пожалуйста, счёт.</i>`
         : `📊 <b>Напоминание: внесите счёт</b>\n` +
           `🏆 ${escapeHtml(tournament.name)} • Стол ${m.tableNumber} (идёт ${elapsedMin} мин)\n\n` +
-          columnsHtml;
+          teamsHtml;
 
     const claimedRem = await db
       .update(matches)

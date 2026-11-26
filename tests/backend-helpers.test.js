@@ -52,6 +52,7 @@ const {
   buildGlobalPlayerProfile,
   checkAndSendLongMatchReminders,
   formatMatchTeamsColumns,
+  formatMatchTeamsHtml,
   notifyRoundStart,
 } = await import('../tgcloud/lib/helpers.js');
 
@@ -226,6 +227,7 @@ describe('checkAndSendLongMatchReminders', () => {
     // 2 players + creator + coAdmin = 4 messages
     expect(sendMessageSpy).toHaveBeenCalledTimes(4);
     expect(sendMessageSpy.mock.calls[0][0].text).toContain('Долгий матч');
+    expect(sendMessageSpy.mock.calls[0][0].text).toContain('👤 <b>A</b>\nvs\n👤 <b>B</b>');
 
     sendMessageSpy.mockClear();
     // 3+ minutes after stage 1 -> stage 2 score reminder
@@ -242,10 +244,11 @@ describe('checkAndSendLongMatchReminders', () => {
     });
     expect(count2).toBe(1);
     expect(sendMessageSpy.mock.calls[0][0].text).toContain('Напоминание: внесите счёт');
+    expect(sendMessageSpy.mock.calls[0][0].text).toContain('👤 <b>A</b>\nvs\n👤 <b>B</b>');
   });
 });
 
-describe('formatMatchTeamsColumns and notifyRoundStart', () => {
+describe('formatMatchTeamsColumns, formatMatchTeamsHtml and notifyRoundStart', () => {
   beforeEach(() => {
     sendMessageSpy.mockClear();
   });
@@ -270,7 +273,20 @@ describe('formatMatchTeamsColumns and notifyRoundStart', () => {
     );
   });
 
-  it('notifyRoundStart sends <pre> aligned columns and escapes HTML safely', async () => {
+  it('formats teams in large bold HTML with pair/single icons and escapes HTML', () => {
+    expect(
+      formatMatchTeamsHtml(
+        [{ name: 'Егор <Pro>' }, { name: 'Коля' }],
+        [{ name: 'Толя' }, { name: 'Оля' }]
+      )
+    ).toBe('👥 <b>Егор &lt;Pro&gt; · Коля</b>\nvs\n👥 <b>Толя · Оля</b>');
+
+    expect(formatMatchTeamsHtml([{ name: 'Егор' }], [{ name: 'Толя' }])).toBe(
+      '👤 <b>Егор</b>\nvs\n👤 <b>Толя</b>'
+    );
+  });
+
+  it('notifyRoundStart sends bold team lines without blockquote/code and escapes HTML safely', async () => {
     const players = [
       { id: 1, tgId: 101, name: 'Егор <Pro>' },
       { id: 2, tgId: 102, name: 'Коля' },
@@ -298,7 +314,9 @@ describe('formatMatchTeamsColumns and notifyRoundStart', () => {
 
     expect(sendMessageSpy).toHaveBeenCalledTimes(4);
     const msgText = sendMessageSpy.mock.calls[0][0].text;
-    expect(msgText).toContain('Стол 2');
-    expect(msgText).toContain('<blockquote><code>Егор &lt;Pro&gt;   vs   Толя\nКоля              Оля</code></blockquote>');
+    expect(msgText).toContain('🪑 <b>Стол 2</b>');
+    expect(msgText).toContain('👥 <b>Егор &lt;Pro&gt; · Коля</b>\nvs\n👥 <b>Толя · Оля</b>');
+    expect(msgText).not.toContain('<blockquote>');
+    expect(msgText).not.toContain('<code>');
   });
 });
