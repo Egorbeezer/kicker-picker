@@ -636,29 +636,28 @@ export const PlayerMatchView: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
-      <div className="px-3.5 py-2.5 border-b border-[var(--border)] bg-[var(--bg)] sticky top-0 z-10 space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
+      <div className="px-3.5 py-2.5 border-b border-[var(--border)] flex justify-between items-center gap-2 bg-[var(--bg)] sticky top-0 z-10">
+        <div className="min-w-0">
           <h2 className="text-base font-bold tracking-tight text-[var(--text)] truncate">
             {tournament.name}
           </h2>
-          <div className="bg-[var(--accent-soft)] px-3 py-1 rounded-full text-xs font-bold text-[var(--accent-text)] flex items-center shrink-0">
-            Стол {myCurrentMatch.tableNumber}
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-[var(--muted)] truncate">{stageText}</div>
-          <button
-            type="button"
-            onClick={handleCoinFlip}
-            className="bg-[var(--card)] border border-[var(--border)] rounded-full pl-1.5 pr-3 py-1 flex items-center gap-1.5 text-[var(--text)] text-xs font-bold active:scale-95 transition-transform shrink-0"
-          >
-            <RubleCoin animate={false} result="Решка" size={20} showShadow={false} />
-            <span>Монетка</span>
-          </button>
+        </div>
+        <div className="bg-[var(--accent-soft)] px-3 py-1 rounded-full text-xs font-bold text-[var(--accent-text)] flex items-center shrink-0">
+          Стол {myCurrentMatch.tableNumber}
         </div>
       </div>
 
-      <div className="px-3.5 py-3 space-y-3">
+      <div className="px-3.5 py-3 space-y-2.5">
+        <button
+          type="button"
+          onClick={handleCoinFlip}
+          className="w-full bg-[var(--card)] border border-[var(--border)] rounded-full px-4 py-2.5 flex items-center justify-center gap-2.5 text-[var(--text)] active:scale-[0.98] transition-transform"
+        >
+          <RubleCoin animate={false} result="Решка" size={26} showShadow={false} />
+          <span className="font-bold text-sm">Бросить монетку</span>
+        </button>
+
         <div className="space-y-2">
           {[
             {

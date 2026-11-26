@@ -102,7 +102,15 @@ export const RubleCoin: React.FC<RubleCoinProps> = ({
             data-testid="coin-result-label"
             className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
           >
-            <span className="px-4 py-1.5 rounded-full bg-black/75 text-white text-xl font-extrabold tracking-wide shadow-lg animate-fade-slide-up">
+            <span
+              style={{
+                backgroundColor: 'rgba(14, 15, 12, 0.9)',
+                color: '#ffffff',
+                boxShadow:
+                  '0 4px 16px rgba(0, 0, 0, 0.35), inset 0 0 0 1.5px rgba(255, 255, 255, 0.85)',
+              }}
+              className="px-4 py-1.5 rounded-full text-xl font-bold tracking-wide animate-fade-slide-up"
+            >
               {label}
             </span>
           </div>

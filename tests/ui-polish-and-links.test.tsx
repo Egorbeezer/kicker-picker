@@ -335,11 +335,13 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(playerLines.length).toBe(2);
     expect(playerLines[0].textContent).toContain('·');
 
-    // Кнопка монетки в шапке открывает центрированный оверлей с результатом внутри монетки
+    // Большая пилюля монетки над блоком пары открывает центрированный оверлей с контрастным результатом внутри монетки
     const coinBtn = Array.from(c.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Монетка')
+      b.textContent?.includes('Бросить монетку')
     );
     expect(coinBtn).toBeDefined();
+    expect(coinBtn!.className).toContain('w-full');
+    expect(coinBtn!.className).toContain('rounded-full');
 
     vi.useFakeTimers();
     try {
@@ -360,6 +362,10 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       const label = c.querySelector('[data-testid="coin-result-label"]');
       expect(label).not.toBeNull();
       expect(['Орёл!', 'Решка!']).toContain(label!.textContent?.trim());
+      const labelSpan = label!.querySelector('span') as HTMLElement | null;
+      expect(labelSpan).not.toBeNull();
+      expect(labelSpan!.className).not.toContain('text-white');
+      expect(labelSpan!.style.color).toBe('rgb(255, 255, 255)');
     } finally {
       vi.useRealTimers();
     }
