@@ -127,6 +127,16 @@ export function buildPublicLivePayload(snapshot) {
     })),
     currentRoundMatches: (snapshot.currentRoundMatches || []).map(compactMatch),
     playoffMatches: (snapshot.playoffMatches || []).map(compactMatch),
+    finishedMatches: (snapshot.allMatches || [])
+      .filter((m) => m && m.status === 'FINISHED')
+      .sort((a, b) => {
+        const aPlayoff = a.stage === 'PLAYOFF' ? 1 : 0;
+        const bPlayoff = b.stage === 'PLAYOFF' ? 1 : 0;
+        if (aPlayoff !== bPlayoff) return bPlayoff - aPlayoff;
+        if (a.roundNumber !== b.roundNumber) return b.roundNumber - a.roundNumber;
+        return (toEpochMs(b.finishedAt) || b.id) - (toEpochMs(a.finishedAt) || a.id);
+      })
+      .map(compactMatch),
   };
 }
 

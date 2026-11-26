@@ -1069,6 +1069,85 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(buildPublicLiveUrl('kp_1_abc')).toBe('https://live.djbeezer.su/?live=kp_1_abc');
   });
 
+  it('PublicLiveView renders Прошедшие матчи section from finishedMatches', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const origFetch = globalThis.fetch;
+    try {
+      const livePayload = {
+        v: 1,
+        updatedAt: Date.now(),
+        tournament: {
+          id: 56,
+          name: 'Кубок Прошедших',
+          status: 'QUALIFICATION',
+          currentRound: 2,
+          tablesCount: 1,
+          dypMode: 'monster',
+          targetScore: 7,
+          playoffSize: 4,
+          playoffFormat: 'best_of_1',
+          playoffTargetScore: 7,
+          publicPath: 'kp_56_test',
+        },
+        leaderboard: [],
+        currentRoundMatches: [],
+        playoffMatches: [],
+        finishedMatches: [
+          {
+            id: 901,
+            stage: 'QUALIFICATION',
+            roundNumber: 1,
+            bracketSlot: null,
+            tableNumber: 2,
+            status: 'FINISHED',
+            score1: 7,
+            score2: 4,
+            setsWon1: 0,
+            setsWon2: 0,
+            setsHistory: null,
+            team1Label: 'Егор & Макс',
+            team2Label: 'Оля & Дима',
+            team1Players: [],
+            team2Players: [],
+          },
+        ],
+      };
+      globalThis.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(livePayload),
+      }) as unknown as typeof fetch;
+
+      const { PublicLiveView } = await import('../src/components/PublicLiveView');
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(<PublicLiveView publicPath="kp_56_test" theme="dark" onToggleTheme={() => {}} />);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-testid="live-finished-matches"]')).not.toBeNull();
+      });
+
+      const section = container.querySelector('[data-testid="live-finished-matches"]')!;
+      expect(section.textContent).toContain('Прошедшие матчи');
+      expect(section.textContent).toContain('Раунд 1 · Стол 2');
+      expect(section.textContent).toContain('Егор & Макс');
+      expect(section.textContent).toContain('Оля & Дима');
+      expect(section.textContent).toContain('7 : 4');
+
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
   it('App shows retry screen instead of empty HomeView when initial getState fails', async () => {
     const dom = installTestDom();
     cleanupDom = dom.cleanup;

@@ -15,7 +15,7 @@ import type { LeaderboardRow, PublicLiveData, TableColumnConfig, TableColumnKey 
 import { fetchPublicLive } from '../api/client';
 import type { Theme } from '../utils/theme';
 import { Brand } from './Brand';
-import { MatchCard } from './MatchCard';
+import { MatchCard, formatBracketSlotLabel } from './MatchCard';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { PlayerAvatar } from './PlayerAvatar';
 import { SupportHeaderButton } from './SupportHeaderButton';
@@ -213,6 +213,77 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
     tournament.status === 'FINISHED' ||
     playoffMatches.length > 0;
 
+  const finishedMatches = (() => {
+    if (Array.isArray(data.finishedMatches)) {
+      return data.finishedMatches.filter((m) => m && m.status === 'FINISHED');
+    }
+    const seen = new Set<number>();
+    const list = [];
+    for (const m of [...playoffMatches, ...currentRoundMatches]) {
+      if (!m || m.status !== 'FINISHED' || seen.has(m.id)) continue;
+      seen.add(m.id);
+      list.push(m);
+    }
+    return list;
+  })();
+
+  const finishedSection = (
+    <div className="space-y-2.5 pt-2" data-testid="live-finished-matches">
+      <div className="flex items-center justify-between px-1">
+        <h3 className="text-xs font-semibold text-gray-400">Прошедшие матчи</h3>
+        <span className="text-xs font-semibold text-gray-400 tabular-nums">
+          {finishedMatches.length}
+        </span>
+      </div>
+      {finishedMatches.length === 0 ? (
+        <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-4 text-center text-xs text-gray-400">
+          Завершённых матчей пока нет
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {finishedMatches.map((m) => {
+            const stageLabel =
+              m.stage === 'PLAYOFF'
+                ? formatBracketSlotLabel(m.bracketSlot) || 'Плей-офф'
+                : `Раунд ${m.roundNumber}`;
+            const t1Won =
+              m.stage === 'PLAYOFF'
+                ? m.setsWon1 > m.setsWon2 || (m.setsWon1 === m.setsWon2 && m.score1 > m.score2)
+                : m.score1 > m.score2;
+            const t2Won =
+              m.stage === 'PLAYOFF'
+                ? m.setsWon2 > m.setsWon1 || (m.setsWon1 === m.setsWon2 && m.score2 > m.score1)
+                : m.score2 > m.score1;
+            return (
+              <div
+                key={m.id}
+                className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] text-gray-400">
+                    {stageLabel} · Стол {m.tableNumber}
+                  </div>
+                  <div className="text-xs truncate mt-0.5">
+                    <span className={t1Won ? 'font-bold text-white' : 'font-medium text-gray-300'}>
+                      {m.team1Label}
+                    </span>
+                    <span className="text-gray-500 mx-1">vs</span>
+                    <span className={t2Won ? 'font-bold text-white' : 'font-medium text-gray-300'}>
+                      {m.team2Label}
+                    </span>
+                  </div>
+                </div>
+                <div className="tabular-nums font-bold text-xs px-2.5 py-1 rounded-full bg-[#1c1c1d] text-white shrink-0">
+                  {m.score1} : {m.score2}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   const colConfig =
     Array.isArray(tournament.tableConfig) && tournament.tableConfig.length > 0
       ? tournament.tableConfig
@@ -220,37 +291,41 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
   const visibleCols = colConfig.filter((c) => c.key !== 'name' && c.visible).reverse();
 
   const roundSection = (
-    <div className="space-y-2.5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-gray-400">
-          {tournament.status === 'PLAYOFF' || tournament.status === 'FINISHED'
-            ? `Плей-офф • Раунд ${tournament.currentRound}`
-            : tournament.currentRound > 0
-              ? `Квалификация • Раунд ${tournament.currentRound}`
-              : 'Матчи ещё не начались'}
-        </h3>
-        {currentRoundMatches.length > 0 && (
-          <span className="text-xs font-semibold text-[#2ea6ff]">
-            {
-              currentRoundMatches.filter(
-                (m) => m.status === 'FINISHED' || m.status === 'CANCELLED'
-              ).length
-            }{' '}
-            / {currentRoundMatches.length}
-          </span>
-        )}
+    <div className="space-y-4">
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-gray-400">
+            {tournament.status === 'PLAYOFF' || tournament.status === 'FINISHED'
+              ? `Плей-офф • Раунд ${tournament.currentRound}`
+              : tournament.currentRound > 0
+                ? `Квалификация • Раунд ${tournament.currentRound}`
+                : 'Матчи ещё не начались'}
+          </h3>
+          {currentRoundMatches.length > 0 && (
+            <span className="text-xs font-semibold text-[#2ea6ff]">
+              {
+                currentRoundMatches.filter(
+                  (m) => m.status === 'FINISHED' || m.status === 'CANCELLED'
+                ).length
+              }{' '}
+              / {currentRoundMatches.length}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-2.5">
+          {currentRoundMatches.map((m) => (
+            <MatchCard key={m.id} match={m} myPlayerId={null} />
+          ))}
+          {currentRoundMatches.length === 0 && (
+            <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-6 text-center text-sm text-gray-400">
+              Ожидаем старта первого раунда
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-2.5">
-        {currentRoundMatches.map((m) => (
-          <MatchCard key={m.id} match={m} myPlayerId={null} />
-        ))}
-        {currentRoundMatches.length === 0 && (
-          <div className="bg-[#2c2c2e] border border-[#3a3a3c] rounded-2xl p-6 text-center text-sm text-gray-400">
-            Ожидаем старта первого раунда
-          </div>
-        )}
-      </div>
+      {finishedSection}
     </div>
   );
 

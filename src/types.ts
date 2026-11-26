@@ -187,6 +187,7 @@ export interface PublicLiveData {
   leaderboard: LeaderboardRow[];
   currentRoundMatches: MatchItem[];
   playoffMatches: MatchItem[];
+  finishedMatches?: MatchItem[];
 }
 
 export interface TournamentHistoryItem extends Tournament {
