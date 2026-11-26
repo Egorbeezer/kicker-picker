@@ -344,17 +344,10 @@ export const PlayerMatchView: React.FC<Props> = ({
                         </span>
                         <span className="font-bold text-[var(--text)] truncate">{row.team}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[var(--accent-text)]">
-                        <span>
-                          {row.place === 1
-                            ? 'Поздравляем с победой в плей-офф!'
-                            : `Поздравляем со ${row.place} местом в плей-офф!`}
-                        </span>
-                        {playoffResult && playoffResult.wins + playoffResult.losses > 0 && (
-                          <span className="tabular-nums shrink-0">
-                            {playoffResult.wins}–{playoffResult.losses}
-                          </span>
-                        )}
+                      <div className="text-[11px] font-semibold text-[var(--accent-text)]">
+                        {row.place === 1
+                          ? 'Поздравляем с победой в плей-офф!'
+                          : `Поздравляем со ${row.place} местом в плей-офф!`}
                       </div>
                     </div>
                   );
@@ -387,11 +380,6 @@ export const PlayerMatchView: React.FC<Props> = ({
                   <span className="font-semibold text-[var(--text)] truncate">
                     {playoffResult.headline}
                   </span>
-                  {playoffResult.participated && playoffResult.wins + playoffResult.losses > 0 && (
-                    <span className="font-semibold text-[var(--muted)] tabular-nums shrink-0">
-                      {playoffResult.wins}–{playoffResult.losses}
-                    </span>
-                  )}
                 </div>
               )}
             </div>
