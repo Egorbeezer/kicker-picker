@@ -205,6 +205,32 @@ export const PlayerMatchView: React.FC<Props> = ({
     coinTimersRef.current.push(t1);
   };
 
+  const coinOverlay = coinFlipResult ? (
+    <div
+      data-testid="coin-flip-overlay"
+      onClick={closeCoinOverlay}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] p-6"
+    >
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          if (coinShowLabel) handleCoinFlip();
+        }}
+        className={`flex flex-col items-center justify-center ${
+          coinShowLabel ? 'cursor-pointer' : ''
+        }`}
+      >
+        <RubleCoin
+          key={flipId}
+          animate
+          result={coinFlipResult}
+          size={168}
+          label={coinShowLabel ? `${coinFlipResult}!` : null}
+        />
+      </div>
+    </div>
+  ) : null;
+
   if (tournament.status === 'FINISHED') {
     const podium = getPlayoffPodium(playoffMatches);
     const leader = snapshot.leaderboard[0];
@@ -330,13 +356,34 @@ export const PlayerMatchView: React.FC<Props> = ({
             <h3 className="text-lg font-bold text-[var(--text)] mb-1">Вы отдыхаете в этом раунде</h3>
             <p className="text-[var(--muted)] text-xs max-w-xs leading-relaxed">
               {myPlayerId
-                ? 'Сейчас у вас перерыв (Bye) или ваш матч уже завершён. Следите за результатами других столов ниже.'
+                ? 'Сейчас у вас перерыв или ваш матч уже завершён. Следите за результатами других столов ниже.'
                 : 'Вы не зарегистрированы как участник этого турнира, но можете следить за текущими матчами.'}
             </p>
           </div>
 
           <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
+
+          <button
+            type="button"
+            onClick={handleCoinFlip}
+            className="w-full bg-[var(--card)] rounded-[20px] px-4 py-3.5 flex items-center justify-between gap-3 text-left active:scale-[0.98] transition-transform"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="shrink-0">
+                <RubleCoin animate={false} result="Решка" size={44} showShadow={false} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-[var(--text)]">Бросить монетку</div>
+                <div className="text-xs text-[var(--muted)]">Пока ждёте следующий раунд</div>
+              </div>
+            </div>
+            <span className="px-3.5 py-1.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent-text)] text-xs font-bold shrink-0">
+              Бросить
+            </span>
+          </button>
         </div>
+
+        {coinOverlay}
       </div>
     );
   }
@@ -709,31 +756,7 @@ export const PlayerMatchView: React.FC<Props> = ({
         <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
       </div>
 
-      {coinFlipResult && (
-        <div
-          data-testid="coin-flip-overlay"
-          onClick={closeCoinOverlay}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] p-6"
-        >
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              if (coinShowLabel) handleCoinFlip();
-            }}
-            className={`flex flex-col items-center justify-center ${
-              coinShowLabel ? 'cursor-pointer' : ''
-            }`}
-          >
-            <RubleCoin
-              key={flipId}
-              animate
-              result={coinFlipResult}
-              size={168}
-              label={coinShowLabel ? `${coinFlipResult}!` : null}
-            />
-          </div>
-        </div>
-      )}
+      {coinOverlay}
     </div>
   );
 };

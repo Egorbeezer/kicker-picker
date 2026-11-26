@@ -294,6 +294,55 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     });
   });
 
+  it('renders rest screen without Bye and allows flipping coin in overlay', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+
+    const { PlayerMatchView } = await import('../src/components/PlayerMatchView');
+    const c = document.createElement('div');
+    document.body.appendChild(c);
+    const root = createRoot(c);
+
+    const restSnapshot = {
+      ...makePlayoffSnapshot(),
+      tournament: {
+        ...makePlayoffSnapshot().tournament,
+        status: 'QUALIFICATION' as const,
+      },
+      myCurrentMatch: null,
+    };
+
+    await act(async () => {
+      root.render(
+        <PlayerMatchView
+          snapshot={restSnapshot}
+          onSubmitScore={async () => {}}
+          onConfirmScore={async () => {}}
+          onRemindConfirm={async () => {}}
+          busy={false}
+        />
+      );
+    });
+
+    expect(c.textContent).toContain('Вы отдыхаете в этом раунде');
+    expect(c.textContent).toContain('Сейчас у вас перерыв или ваш матч уже завершён');
+    expect(c.textContent).not.toMatch(/bye/i);
+
+    const coinBtn = Array.from(c.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Бросить монетку')
+    );
+    expect(coinBtn).toBeDefined();
+
+    await act(async () => {
+      coinBtn!.click();
+    });
+    expect(c.querySelector('[data-testid="coin-flip-overlay"]')).not.toBeNull();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it('uses single Main Mini App direct links (?startapp=...) everywhere without duplicate web_app instances', async () => {
     const { getTournamentInviteLink } = await import('../src/utils/share');
     expect(getTournamentInviteLink(77)).toBe('https://t.me/kickerpickerbot?startapp=77');
