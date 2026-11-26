@@ -179,6 +179,13 @@ export const PlayerMatchView: React.FC<Props> = ({
     };
   }, []);
 
+  const closeCoinOverlay = () => {
+    coinTimersRef.current.forEach((id) => window.clearTimeout(id));
+    coinTimersRef.current = [];
+    setCoinFlipResult(null);
+    setCoinShowLabel(false);
+  };
+
   const handleCoinFlip = () => {
     coinTimersRef.current.forEach((id) => window.clearTimeout(id));
     coinTimersRef.current = [];
@@ -582,170 +589,151 @@ export const PlayerMatchView: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
-      <div className="p-4 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg)] sticky top-0 z-10">
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-[var(--text)] truncate max-w-[220px]">
+      <div className="px-3.5 py-2.5 border-b border-[var(--border)] bg-[var(--bg)] sticky top-0 z-10 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-bold tracking-tight text-[var(--text)] truncate">
             {tournament.name}
           </h2>
-          <div className="text-xs text-[var(--muted)]">{stageText}</div>
+          <div className="bg-[var(--accent-soft)] px-3 py-1 rounded-full text-xs font-bold text-[var(--accent-text)] flex items-center shrink-0">
+            Стол {myCurrentMatch.tableNumber}
+          </div>
         </div>
-        <div className="bg-[var(--accent-soft)] px-3.5 py-1.5 rounded-full text-xs font-bold text-[var(--accent-text)] flex items-center shrink-0">
-          Стол {myCurrentMatch.tableNumber}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs text-[var(--muted)] truncate">{stageText}</div>
+          <button
+            type="button"
+            onClick={handleCoinFlip}
+            className="bg-[var(--card)] border border-[var(--border)] rounded-full pl-1.5 pr-3 py-1 flex items-center gap-1.5 text-[var(--text)] text-xs font-bold active:scale-95 transition-transform shrink-0"
+          >
+            <RubleCoin animate={false} result="Решка" size={20} showShadow={false} />
+            <span>Монетка</span>
+          </button>
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        <div className="space-y-3">
-          {/* Team 1 */}
-          <div
-            className={`p-4 rounded-[24px] space-y-3 ${
-              myCurrentMatch.myTeam === 1
-                ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
-                : 'bg-[var(--card)]'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex -space-x-2 shrink-0">
-                  {myCurrentMatch.team1Players.map((p, idx) => (
-                    <PlayerAvatar
-                      key={p.id}
-                      avatarUrl={p.avatarUrl}
-                      initials={p.initials}
-                      name={p.name}
-                      isMe={p.id === myPlayerId}
-                      size="md"
-                      className={idx === 0 ? 'z-10' : 'z-0'}
-                    />
-                  ))}
+      <div className="px-3.5 py-3 space-y-3">
+        <div className="space-y-2">
+          {[
+            {
+              teamNum: 1 as const,
+              playersList: myCurrentMatch.team1Players,
+              score: score1,
+              setScore: setScore1,
+            },
+            {
+              teamNum: 2 as const,
+              playersList: myCurrentMatch.team2Players,
+              score: score2,
+              setScore: setScore2,
+            },
+          ].map((team, teamIdx) => (
+            <React.Fragment key={team.teamNum}>
+              {teamIdx === 1 && (
+                <div className="text-center text-[var(--muted)] font-bold text-[11px] leading-none tracking-widest">
+                  VS
                 </div>
-                <div className="flex flex-col min-w-0">
-                  {myCurrentMatch.team1Players.map((p) => (
-                    <span
-                      key={p.id}
-                      className={`truncate ${
-                        p.id === myPlayerId
-                          ? 'font-bold text-sm text-[var(--accent-text)]'
-                          : 'font-semibold text-xs text-[var(--text)]'
-                      }`}
-                    >
-                      {p.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              )}
               <div
-                className={`text-4xl font-bold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
-                  score1 > 0 ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
+                className={`px-3.5 py-2.5 rounded-[20px] space-y-2 ${
+                  myCurrentMatch.myTeam === team.teamNum
+                    ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+                    : 'bg-[var(--card)]'
                 }`}
               >
-                {score1}
-              </div>
-            </div>
-            <div className="pt-3 border-t border-[var(--border)]">
-              <ScorePickerRow score={score1} maxScore={maxPickerScore} onChange={setScore1} />
-            </div>
-          </div>
-
-          <div className="text-center text-[var(--muted)] font-bold text-xs tracking-widest">
-            VS
-          </div>
-
-          {/* Team 2 */}
-          <div
-            className={`p-4 rounded-[24px] space-y-3 ${
-              myCurrentMatch.myTeam === 2
-                ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
-                : 'bg-[var(--card)]'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex -space-x-2 shrink-0">
-                  {myCurrentMatch.team2Players.map((p, idx) => (
-                    <PlayerAvatar
-                      key={p.id}
-                      avatarUrl={p.avatarUrl}
-                      initials={p.initials}
-                      name={p.name}
-                      isMe={p.id === myPlayerId}
-                      size="md"
-                      className={idx === 0 ? 'z-10' : 'z-0'}
-                    />
-                  ))}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  {myCurrentMatch.team2Players.map((p) => (
-                    <span
-                      key={p.id}
-                      className={`truncate ${
-                        p.id === myPlayerId
-                          ? 'font-bold text-sm text-[var(--accent-text)]'
-                          : 'font-semibold text-xs text-[var(--text)]'
-                      }`}
+                <div className="flex items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex -space-x-1.5 shrink-0">
+                      {team.playersList.map((p, idx) => (
+                        <PlayerAvatar
+                          key={p.id}
+                          avatarUrl={p.avatarUrl}
+                          initials={p.initials}
+                          name={p.name}
+                          isMe={p.id === myPlayerId}
+                          size="sm"
+                          className={idx === 0 ? 'z-10' : 'z-0'}
+                        />
+                      ))}
+                    </div>
+                    <div
+                      className="min-w-0 flex-1 truncate text-sm leading-tight"
+                      data-testid="team-players-line"
                     >
-                      {p.name}
-                    </span>
-                  ))}
+                      {team.playersList.map((p, idx) => (
+                        <React.Fragment key={p.id}>
+                          {idx > 0 && (
+                            <span className="text-[var(--muted)] font-normal mx-1">·</span>
+                          )}
+                          <span
+                            className={
+                              p.id === myPlayerId
+                                ? 'font-bold text-[var(--accent-text)]'
+                                : 'font-semibold text-[var(--text)]'
+                            }
+                          >
+                            {p.name}
+                          </span>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                  <div
+                    className={`text-4xl font-bold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
+                      team.score > 0 ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
+                    }`}
+                  >
+                    {team.score}
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-[var(--border)]">
+                  <ScorePickerRow
+                    score={team.score}
+                    maxScore={maxPickerScore}
+                    onChange={team.setScore}
+                  />
                 </div>
               </div>
-              <div
-                className={`text-4xl font-bold tabular-nums leading-none shrink-0 min-w-[36px] text-right pr-1 ${
-                  score2 > 0 ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
-                }`}
-              >
-                {score2}
-              </div>
-            </div>
-            <div className="pt-3 border-t border-[var(--border)]">
-              <ScorePickerRow score={score2} maxScore={maxPickerScore} onChange={setScore2} />
-            </div>
-          </div>
+            </React.Fragment>
+          ))}
 
           <button
             type="button"
             disabled={busy || !isScoreChanged}
             onClick={() => onSubmitScore(myCurrentMatch.id, score1, score2)}
-            className="w-full py-3.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-[15px] active:scale-[0.98] transition-transform disabled:opacity-40"
+            className="w-full py-3 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-[15px] active:scale-[0.98] transition-transform disabled:opacity-40"
           >
             {busy ? 'Отправка...' : `Сохранить счет: ${score1} : ${score2}`}
           </button>
         </div>
 
-        {/* 3D Russian Ruble Coin Flip */}
-        <div className="flex flex-col items-center justify-center py-2">
-          {coinFlipResult ? (
-            <div
-              onClick={coinShowLabel ? handleCoinFlip : undefined}
-              className={`flex flex-col items-center justify-center gap-2 ${
-                coinShowLabel ? 'cursor-pointer' : ''
-              }`}
-            >
-              <RubleCoin key={flipId} animate result={coinFlipResult} size={112} />
-              <div className="h-8 flex items-center justify-center">
-                {coinShowLabel && (
-                  <div className="text-xl font-bold text-amber-500 tracking-wide animate-fade-slide-up">
-                    {coinFlipResult}!
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleCoinFlip}
-              className="bg-[var(--card)] border border-[var(--border)] rounded-full px-6 py-2.5 flex items-center justify-center gap-3 text-[var(--text)] active:scale-95 transition-colors duration-150 ease-out"
-            >
-              <div>
-                <RubleCoin animate={false} result="Решка" size={36} />
-              </div>
-              <span className="font-bold text-sm">Бросить монетку</span>
-            </button>
-          )}
-        </div>
-
         <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
       </div>
+
+      {coinFlipResult && (
+        <div
+          data-testid="coin-flip-overlay"
+          onClick={closeCoinOverlay}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] p-6"
+        >
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              if (coinShowLabel) handleCoinFlip();
+            }}
+            className={`flex flex-col items-center justify-center ${
+              coinShowLabel ? 'cursor-pointer' : ''
+            }`}
+          >
+            <RubleCoin
+              key={flipId}
+              animate
+              result={coinFlipResult}
+              size={168}
+              label={coinShowLabel ? `${coinFlipResult}!` : null}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

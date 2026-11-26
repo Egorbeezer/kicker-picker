@@ -255,6 +255,40 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(digitBtn!.className).toContain('shadow-[');
     expect(digitBtn!.className).toContain('h-11');
 
+    // Имена пары в одну строчку через «·»
+    const playerLines = c.querySelectorAll('[data-testid="team-players-line"]');
+    expect(playerLines.length).toBe(2);
+    expect(playerLines[0].textContent).toContain('·');
+
+    // Кнопка монетки в шапке открывает центрированный оверлей с результатом внутри монетки
+    const coinBtn = Array.from(c.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Монетка')
+    );
+    expect(coinBtn).toBeDefined();
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        coinBtn!.click();
+      });
+
+      const overlay = c.querySelector('[data-testid="coin-flip-overlay"]');
+      expect(overlay).not.toBeNull();
+      expect(overlay!.className).toContain('fixed inset-0');
+      expect(overlay!.className).toContain('items-center justify-center');
+      expect(c.querySelector('[data-testid="coin-result-label"]')).toBeNull();
+
+      await act(async () => {
+        vi.advanceTimersByTime(4000);
+      });
+
+      const label = c.querySelector('[data-testid="coin-result-label"]');
+      expect(label).not.toBeNull();
+      expect(['Орёл!', 'Решка!']).toContain(label!.textContent?.trim());
+    } finally {
+      vi.useRealTimers();
+    }
+
     await act(async () => {
       root.unmount();
     });

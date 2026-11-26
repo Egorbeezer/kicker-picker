@@ -6,9 +6,17 @@ interface RubleCoinProps {
   animate: boolean;
   result: 'Орёл' | 'Решка';
   size?: number;
+  label?: string | null;
+  showShadow?: boolean;
 }
 
-export const RubleCoin: React.FC<RubleCoinProps> = ({ animate, result, size = 112 }) => {
+export const RubleCoin: React.FC<RubleCoinProps> = ({
+  animate,
+  result,
+  size = 112,
+  label = null,
+  showShadow = true,
+}) => {
   const spinAnimation = animate
     ? `${result === 'Решка' ? 'coinSpinTails' : 'coinSpinHeads'} 4s cubic-bezier(0.12, 0.85, 0.22, 1) forwards`
     : undefined;
@@ -25,15 +33,16 @@ export const RubleCoin: React.FC<RubleCoinProps> = ({ animate, result, size = 11
 
   return (
     <div className="relative flex flex-col items-center select-none" style={{ width: size }}>
-      <div
-        style={{
-          perspective: '1000px',
-          width: size,
-          height: size,
-          animation: arcAnimation,
-          willChange: animate ? 'transform' : undefined,
-        }}
-      >
+      <div className="relative" style={{ width: size, height: size }}>
+        <div
+          style={{
+            perspective: '1000px',
+            width: size,
+            height: size,
+            animation: arcAnimation,
+            willChange: animate ? 'transform' : undefined,
+          }}
+        >
         <div
           className="w-full h-full relative"
           style={{
@@ -87,18 +96,31 @@ export const RubleCoin: React.FC<RubleCoinProps> = ({ animate, result, size = 11
             />
           </div>
         </div>
+        </div>
+        {label && (
+          <div
+            data-testid="coin-result-label"
+            className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
+          >
+            <span className="px-4 py-1.5 rounded-full bg-black/75 text-white text-xl font-extrabold tracking-wide shadow-lg animate-fade-slide-up">
+              {label}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Ground shadow */}
-      <div
-        className="mt-2 rounded-full bg-black/70 blur-[5px]"
-        style={{
-          width: size * 0.68,
-          height: 10,
-          animation: shadowAnimation,
-          opacity: animate ? undefined : 0.45,
-        }}
-      />
+      {showShadow && (
+        <div
+          className="mt-2 rounded-full bg-black/70 blur-[5px]"
+          style={{
+            width: size * 0.68,
+            height: 10,
+            animation: shadowAnimation,
+            opacity: animate ? undefined : 0.45,
+          }}
+        />
+      )}
     </div>
   );
 };
