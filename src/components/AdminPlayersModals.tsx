@@ -103,7 +103,7 @@ export const AddPlayersModal: React.FC<AddPlayersModalProps> = ({
           <div className="space-y-1.5">
             <div className="text-xs font-semibold text-[var(--muted)] flex items-center gap-1.5">
               <BookmarkCheck size={12} className="text-[#2ea6ff]" />
-              Постоянные игроки клуба (выбор в 1 тап)
+              Постоянные игроки (выбор в 1 тап)
             </div>
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto py-0.5">
               {clubPlayers.map((cp) => {
@@ -199,7 +199,7 @@ export const AddPlayersModal: React.FC<AddPlayersModalProps> = ({
         <label className="flex items-center justify-between gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2 cursor-pointer">
           <span className="flex items-center gap-2 text-xs text-[var(--text)]">
             <BookmarkCheck size={14} className="text-emerald-500" />
-            Сохранить новых игроков в базу клуба
+            Сохранить новых игроков в постоянный список
           </span>
           <input
             type="checkbox"

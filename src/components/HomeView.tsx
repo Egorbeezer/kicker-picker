@@ -286,7 +286,7 @@ export const HomeView: React.FC<Props> = ({
                 {playerProfile.badges.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-[var(--muted)]">
-                      Достижения клуба
+                      Достижения
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {playerProfile.badges.map((b) => (

@@ -374,7 +374,7 @@ export function useAppController() {
 
   const handleManageClubPlayer = useCallback(
     (params: { action: 'list' | 'add' | 'delete'; id?: number; name?: string }) =>
-      runLocked('Обновляем список клуба...', async () => {
+      runLocked('Обновляем список игроков...', async () => {
         const res = await apiClient.manageClubPlayer(params);
         setAppState((prev) => (prev ? { ...prev, clubPlayers: res.clubPlayers } : prev));
       }),

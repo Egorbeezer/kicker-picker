@@ -38,7 +38,7 @@ export default async function (input, ctx) {
       .where(eq(clubPlayers.id, id))
       .get();
     if (!existing || existing.ownerTgId !== tgUser.id) {
-      throw new EndpointError('Игрок клуба не найден', { code: 'NOT_FOUND' });
+      throw new EndpointError('Игрок не найден', { code: 'NOT_FOUND' });
     }
     await db.delete(clubPlayers).where(eq(clubPlayers.id, id));
   }

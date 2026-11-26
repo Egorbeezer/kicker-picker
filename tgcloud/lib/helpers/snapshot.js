@@ -441,7 +441,7 @@ export function buildGlobalPlayerProfile({
     badges.push({
       id: 'podium',
       emoji: '🥇',
-      title: 'Призёр клуба',
+      title: 'Призёр турнира',
       description: 'Финиш в топ-3 турнира',
       count: podiumCount,
     });
