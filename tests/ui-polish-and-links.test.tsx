@@ -1070,21 +1070,30 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       );
     });
 
-    const playoffCard = c.querySelector('[data-testid="my-playoff-result-card"]') as HTMLElement | null;
+    const playoffBlock = c.querySelector('[data-testid="playoff-results-card"]') as HTMLElement | null;
+    const myPodiumRow = c.querySelector('[data-testid="my-playoff-podium-row"]') as HTMLElement | null;
     const groupCard = c.querySelector('[data-testid="my-group-result-card"]') as HTMLElement | null;
-    expect(playoffCard).not.toBeNull();
+    expect(playoffBlock).not.toBeNull();
+    expect(myPodiumRow).not.toBeNull();
     expect(groupCard).not.toBeNull();
 
-    expect(playoffCard!.className).toContain('bg-[var(--accent-soft)]');
-    expect(playoffCard!.textContent).toContain('Ваш результат в плей-офф');
-    expect(playoffCard!.textContent).toContain('Вы заняли 2 место в плей-офф');
+    // Плей-офф блок не дублируется, содержит подиум, поздравление и выделенную строку игрока
+    expect(playoffBlock!.textContent).toContain('Результат в плей-офф');
+    expect(playoffBlock!.textContent).toContain('Поздравляем!');
+    expect(myPodiumRow!.className).toContain('bg-[var(--accent-soft)]');
+    expect(myPodiumRow!.textContent).toContain('2 место');
+    expect(myPodiumRow!.textContent).toContain('Поздравляем со 2 местом в плей-офф!');
+    expect(c.textContent).not.toContain('Призёры турнира');
+    expect(c.textContent).not.toContain('Вы заняли 2 место в плей-офф');
 
-    expect(groupCard!.className).toContain('bg-[var(--card)]');
-    expect(groupCard!.className).not.toContain('bg-[var(--accent-soft)]');
+    // Топ-3 в групповом этапе тоже подсвечивается и поздравляет
+    expect(groupCard!.className).toContain('bg-[var(--accent-soft)]');
     expect(groupCard!.textContent).toContain('Ваш результат на групповом этапе');
+    expect(groupCard!.textContent).toContain('Топ-1');
+    expect(groupCard!.textContent).toContain('Поздравляем! 1 место в группе');
     expect(groupCard!.textContent).toContain('#1');
 
-    // Когда игрок не попал в плей-офф — обе карточки нейтральные
+    // Когда игрок не попал в плей-офф и занял 5 место в группе — без зелёного выделения
     const missedPlayoffSnapshot = {
       ...finishedPodiumSnapshot,
       myPlayerId: 99,
@@ -1116,12 +1125,13 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       );
     });
 
-    const playoffCardMissed = c.querySelector('[data-testid="my-playoff-result-card"]') as HTMLElement;
+    const nonPodiumRow = c.querySelector('[data-testid="my-playoff-nonpodium-row"]') as HTMLElement;
     const groupCardMissed = c.querySelector('[data-testid="my-group-result-card"]') as HTMLElement;
-    expect(playoffCardMissed.className).toContain('bg-[var(--card)]');
-    expect(playoffCardMissed.className).not.toContain('bg-[var(--accent-soft)]');
-    expect(playoffCardMissed.textContent).toContain('Не прошли в плей-офф');
+    expect(c.querySelector('[data-testid="my-playoff-podium-row"]')).toBeNull();
+    expect(nonPodiumRow.className).toContain('bg-[var(--bg)]');
+    expect(nonPodiumRow.textContent).toContain('Не прошли в плей-офф');
     expect(groupCardMissed.className).toContain('bg-[var(--card)]');
+    expect(groupCardMissed.className).not.toContain('bg-[var(--accent-soft)]');
 
     await act(async () => {
       r.unmount();

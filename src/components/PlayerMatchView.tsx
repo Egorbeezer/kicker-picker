@@ -265,14 +265,41 @@ export const PlayerMatchView: React.FC<Props> = ({
       ? snapshot.leaderboard.find((r) => r.playerId === myPlayerId) || null
       : null;
     const showGroupResult = Boolean(myRow && !(tournament.skipQualification && myRow.games === 0));
-    const playoffMedal =
-      playoffResult?.place === 1
-        ? '🥇'
-        : playoffResult?.place === 2
-          ? '🥈'
-          : playoffResult?.place === 3
-            ? '🥉'
+    const isGroupTop3 = Boolean(myRow && myRow.rank <= 3);
+    const groupCongratsText =
+      myRow?.rank === 1
+        ? '🥇 Поздравляем! 1 место в группе — крутой результат!'
+        : myRow?.rank === 2
+          ? '🥈 Поздравляем! 2 место в группе — отличная игра!'
+          : myRow?.rank === 3
+            ? '🥉 Поздравляем! 3 место в группе — достойный результат!'
             : null;
+
+    const podiumRows = [
+      {
+        place: 1 as const,
+        medal: '🥇',
+        label: '1 место',
+        team: podium.first,
+        placeCls: 'text-amber-500',
+      },
+      {
+        place: 2 as const,
+        medal: '🥈',
+        label: '2 место',
+        team: podium.second,
+        placeCls: 'text-[var(--muted)]',
+      },
+      {
+        place: 3 as const,
+        medal: '🥉',
+        label: '3 место',
+        team: podium.third,
+        placeCls: 'text-amber-500',
+      },
+    ].filter((r) => Boolean(r.team));
+
+    const hasPlayoffBlock = podiumRows.length > 0 || playoffResult !== null;
 
     return (
       <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
@@ -288,27 +315,83 @@ export const PlayerMatchView: React.FC<Props> = ({
             </div>
           </div>
 
-          {(podium.first || podium.second || podium.third) ? (
-            <div className="bg-[var(--card)] rounded-[24px] p-4 space-y-2">
-              <div className="text-xs font-bold text-[var(--muted)] px-1">
-                Призёры турнира
+          {hasPlayoffBlock ? (
+            <div
+              data-testid="playoff-results-card"
+              className="bg-[var(--card)] rounded-[24px] p-4 space-y-2"
+            >
+              <div className="flex items-center justify-between gap-2 px-1">
+                <span className="text-xs font-bold text-[var(--muted)]">Результат в плей-офф</span>
+                {playoffResult?.isPodium && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-[10px] font-bold">
+                    Поздравляем!
+                  </span>
+                )}
               </div>
-              {podium.first && (
-                <div className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-amber-500 font-bold shrink-0">🥇 1 место</span>
-                  <span className="font-bold text-[var(--text)] truncate">{podium.first}</span>
-                </div>
-              )}
-              {podium.second && (
-                <div className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-[var(--muted)] font-bold shrink-0">🥈 2 место</span>
-                  <span className="font-semibold text-[var(--text)] truncate">{podium.second}</span>
-                </div>
-              )}
-              {podium.third && (
-                <div className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-amber-500 font-bold shrink-0">🥉 3 место</span>
-                  <span className="font-semibold text-[var(--text)] truncate">{podium.third}</span>
+
+              {podiumRows.map((row) => {
+                const isMine = playoffResult?.place === row.place;
+                if (isMine) {
+                  return (
+                    <div
+                      key={row.place}
+                      data-testid="my-playoff-podium-row"
+                      className="bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35 rounded-2xl px-3.5 py-2.5 space-y-1 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[var(--accent-text)] font-bold shrink-0">
+                          {row.medal} {row.label}
+                        </span>
+                        <span className="font-bold text-[var(--text)] truncate">{row.team}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[var(--accent-text)]">
+                        <span>
+                          {row.place === 1
+                            ? 'Поздравляем с победой в плей-офф!'
+                            : `Поздравляем со ${row.place} местом в плей-офф!`}
+                        </span>
+                        {playoffResult && playoffResult.wins + playoffResult.losses > 0 && (
+                          <span className="tabular-nums shrink-0">
+                            {playoffResult.wins}–{playoffResult.losses}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={row.place}
+                    className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs"
+                  >
+                    <span className={`${row.placeCls} font-bold shrink-0`}>
+                      {row.medal} {row.label}
+                    </span>
+                    <span
+                      className={`${
+                        row.place === 1 ? 'font-bold' : 'font-semibold'
+                      } text-[var(--text)] truncate`}
+                    >
+                      {row.team}
+                    </span>
+                  </div>
+                );
+              })}
+
+              {playoffResult && !playoffResult.isPodium && (
+                <div
+                  data-testid="my-playoff-nonpodium-row"
+                  className="bg-[var(--bg)] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs"
+                >
+                  <span className="font-semibold text-[var(--text)] truncate">
+                    {playoffResult.headline}
+                  </span>
+                  {playoffResult.participated && playoffResult.wins + playoffResult.losses > 0 && (
+                    <span className="font-semibold text-[var(--muted)] tabular-nums shrink-0">
+                      {playoffResult.wins}–{playoffResult.losses}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -319,43 +402,39 @@ export const PlayerMatchView: React.FC<Props> = ({
             </div>
           ) : null}
 
-          {playoffResult && (
-            <div
-              data-testid="my-playoff-result-card"
-              className={`${
-                playoffResult.isPodium ? 'bg-[var(--accent-soft)]' : 'bg-[var(--card)]'
-              } rounded-[24px] p-4 space-y-2`}
-            >
-              <div className="text-xs font-semibold text-[var(--muted)]">Ваш результат в плей-офф</div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  {playoffMedal && <span className="text-lg leading-none shrink-0">{playoffMedal}</span>}
-                  <span
-                    className={`text-sm font-bold truncate ${
-                      playoffResult.isPodium ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
-                    }`}
-                  >
-                    {playoffResult.headline}
-                  </span>
-                </div>
-                {playoffResult.participated && playoffResult.wins + playoffResult.losses > 0 && (
-                  <span className="text-xs font-semibold text-[var(--muted)] tabular-nums shrink-0">
-                    {playoffResult.wins}–{playoffResult.losses}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
           {showGroupResult && myRow && (
             <div
               data-testid="my-group-result-card"
-              className="bg-[var(--card)] rounded-[24px] p-4 space-y-2"
+              className={`${
+                isGroupTop3
+                  ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/30'
+                  : 'bg-[var(--card)]'
+              } rounded-[24px] p-4 space-y-2.5`}
             >
-              <div className="text-xs font-semibold text-[var(--muted)]">Ваш результат на групповом этапе</div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-[var(--muted)]">
+                  Ваш результат на групповом этапе
+                </span>
+                {isGroupTop3 && (
+                  <span className="px-2 py-0.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-[10px] font-bold shrink-0">
+                    Топ-{myRow.rank}
+                  </span>
+                )}
+              </div>
+              {groupCongratsText && (
+                <div className="text-xs font-bold text-[var(--accent-text)]">
+                  {groupCongratsText}
+                </div>
+              )}
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
-                  <div className="text-base font-bold text-[var(--text)] tabular-nums">#{myRow.rank}</div>
+                  <div
+                    className={`text-base font-bold tabular-nums ${
+                      isGroupTop3 ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
+                    }`}
+                  >
+                    #{myRow.rank}
+                  </div>
                   <div className="text-[10px] text-[var(--muted)]">Место</div>
                 </div>
                 <div>
