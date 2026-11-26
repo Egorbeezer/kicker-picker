@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, AlertTriangle, Coffee, Bell, Medal } from 'lucide-react';
+import { Clock, AlertTriangle, Coffee, Bell, Medal, ChevronDown } from 'lucide-react';
 import type { MatchItem, TournamentSnapshot } from '../types';
 import { formatDateRu, getPlayoffPodium } from '../utils/date';
 import { PlayerAvatar } from './PlayerAvatar';
@@ -76,18 +76,32 @@ const UnifiedTournamentMatchesFeed: React.FC<{
   matches: MatchItem[];
   myPlayerId: number | null;
 }> = ({ matches, myPlayerId }) => {
+  const [expanded, setExpanded] = useState(false);
   if (matches.length === 0) return null;
 
   return (
     <div className="space-y-2.5 pt-2" data-testid="tournament-matches-history">
-      <div className="flex items-center justify-between px-1">
+      <button
+        type="button"
+        data-testid="tournament-matches-history-toggle"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((prev) => !prev)}
+        className="w-full flex items-center justify-between px-1 py-1 text-left active:opacity-75 transition-opacity"
+      >
         <h3 className="text-xs font-bold text-[var(--muted)]">
           История матчей в текущем турнире
         </h3>
-        <span className="text-[11px] font-semibold text-[var(--muted)]">{matches.length}</span>
-      </div>
-      <div className="space-y-2">
-        {matches.map((match) => {
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--muted)]">
+          <span>{matches.length}</span>
+          <ChevronDown
+            size={15}
+            className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+          />
+        </span>
+      </button>
+      {expanded && (
+        <div className="space-y-2">
+          {matches.map((match) => {
           const isMine = isPlayerMatch(match, myPlayerId);
           const won = isMine ? didPlayerWin(match, myPlayerId) : null;
           const isWaiting = match.status === 'WAITING_CONFIRM';
@@ -147,7 +161,8 @@ const UnifiedTournamentMatchesFeed: React.FC<{
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

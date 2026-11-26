@@ -1315,6 +1315,18 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       );
     });
     expect(container.textContent).toContain('История матчей в текущем турнире');
+    const historyToggle = container.querySelector(
+      '[data-testid="tournament-matches-history-toggle"]'
+    ) as HTMLButtonElement | null;
+    expect(historyToggle).not.toBeNull();
+    expect(historyToggle!.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector('[data-testid="my-tournament-match"]')).toBeNull();
+    expect(container.querySelector('[data-testid="tournament-match"]')).toBeNull();
+
+    await act(async () => {
+      historyToggle!.click();
+    });
+    expect(historyToggle!.getAttribute('aria-expanded')).toBe('true');
     expect(container.querySelector('[data-testid="my-tournament-match"]')?.textContent).toContain('Ваш матч');
     expect(container.querySelector('[data-testid="tournament-match"]')?.textContent).toContain('Оля');
     expect(container.textContent).not.toContain('Открыть таблицу и сетку');
