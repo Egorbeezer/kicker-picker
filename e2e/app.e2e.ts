@@ -193,8 +193,8 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     await page.setViewportSize({ width: 375, height: 480 });
     await page.getByRole('button', { name: 'Игрок', exact: true }).click();
     await page.getByRole('button', { name: /Профиль/i }).click();
-    // Единая карточка турнира
-    await page.getByRole('button', { name: /Открыть/i }).first().click();
+    // Строка турнира в WiseProfileView
+    await page.getByRole('button', { name: /Турнир \d{2}\.\d{2}\.\d{4}/i }).first().click();
 
     await expect(page.getByText('Статистика турнира')).toBeVisible();
     const scrollBox = page.getByTestId('profile-tournament-stats-scroll');

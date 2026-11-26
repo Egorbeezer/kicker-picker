@@ -6,7 +6,7 @@ import { isWiseV2User } from '../src/utils/wiseFeature';
 import App from '../src/App';
 import { apiClient } from '../src/api/client';
 
-describe('Wise v2 canary rollout (@egor_beezer only)', () => {
+describe('Wise v2 100% rollout', () => {
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   });
@@ -16,14 +16,12 @@ describe('Wise v2 canary rollout (@egor_beezer only)', () => {
     delete document.documentElement.dataset.wiseV2;
   });
 
-  it('isWiseV2User returns true only for egor_beezer (case-insensitive)', () => {
+  it('isWiseV2User returns true for all users', () => {
     expect(isWiseV2User('egor_beezer')).toBe(true);
-    expect(isWiseV2User('Egor_Beezer')).toBe(true);
-    expect(isWiseV2User('@egor_beezer')).toBe(true);
-    expect(isWiseV2User('other_player')).toBe(false);
-    expect(isWiseV2User('')).toBe(false);
-    expect(isWiseV2User(null)).toBe(false);
-    expect(isWiseV2User(undefined)).toBe(false);
+    expect(isWiseV2User('other_player')).toBe(true);
+    expect(isWiseV2User('')).toBe(true);
+    expect(isWiseV2User(null)).toBe(true);
+    expect(isWiseV2User(undefined)).toBe(true);
   });
 
   it('sets data-wise-v2="true" in App only when user.username is egor_beezer', async () => {
@@ -61,7 +59,7 @@ describe('Wise v2 canary rollout (@egor_beezer only)', () => {
     container.remove();
   });
 
-  it('keeps data-wise-v2="false" for other users', async () => {
+  it('sets data-wise-v2="true" for regular users as well', async () => {
     (window as { Telegram?: unknown }).Telegram = {
       WebApp: {
         initData: 'test',
@@ -87,7 +85,7 @@ describe('Wise v2 canary rollout (@egor_beezer only)', () => {
       root.render(<App />);
     });
     await vi.waitFor(() => {
-      expect(document.documentElement.dataset.wiseV2).toBe('false');
+      expect(document.documentElement.dataset.wiseV2).toBe('true');
     });
 
     await act(async () => {
