@@ -188,6 +188,7 @@ export async function getTournamentSnapshot(
     timings,
     currentRoundMatches,
     playoffMatches: enrichedMatches.filter((m) => m.stage === 'PLAYOFF'),
+    allMatches: enrichedMatches.filter((m) => m.status !== 'CANCELLED'),
     myCurrentMatch,
     myHistory,
   };

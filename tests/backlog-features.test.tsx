@@ -345,11 +345,17 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     expect(profileCard?.getAttribute('aria-expanded')).toBe('false');
     const avatarImg = profileCard?.querySelector('img[alt="Егор Балагуров"]') as HTMLImageElement | null;
     expect(avatarImg?.getAttribute('src')).toBe('https://example.com/avatar.jpg');
-    expect(container.textContent).toContain('Твой винрейт');
+    expect(container.textContent).toContain('Твой винрейт по всем турнирам');
     expect(container.textContent).toContain('75%');
-    expect(container.textContent).toContain('18 побед из 24 игр');
-    expect(container.textContent).toContain('6 турн.');
-    expect(container.textContent).toContain('4.5 гол/матч');
+    expect(container.textContent).toContain('18');
+    expect(container.textContent).toContain('Победы');
+    expect(container.textContent).toContain('6');
+    expect(container.textContent).toContain('Поражения');
+    expect(container.textContent).toContain('4.5');
+    expect(container.textContent).toContain('Ср. гол');
+    expect(container.textContent).toContain('Турниры');
+    expect(container.textContent).toContain('Создать турнир');
+    expect(container.textContent).not.toContain('Активный');
     expect(profileCard!.querySelectorAll('.rounded-full').length).toBeGreaterThanOrEqual(3);
     const detailsEl = container.querySelector('[data-testid="home-profile-details"]') as HTMLElement | null;
     expect(detailsEl).not.toBeNull();
@@ -704,34 +710,25 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     });
   });
 
-  it('ProfileView asks confirmation before leaving an unfinished tournament and invokes onLeave on confirm', async () => {
+  it('LeaderboardView allows leaving only in REGISTRATION/QUALIFICATION with confirmation and hides leave button in PLAYOFF/FINISHED', async () => {
     const dom = installTestDom();
     cleanupDom = dom.cleanup;
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
     const onLeave = vi.fn().mockResolvedValue(undefined);
+    const { LeaderboardView } = await import('../src/components/LeaderboardView');
 
-    const snapshot = makeSnapshot({
+    const qualSnapshot = makeSnapshot({
       tournament: {
         ...makeSnapshot().tournament,
-        status: 'PLAYOFF',
+        status: 'QUALIFICATION',
       },
       myPlayerId: 1,
     });
 
     await act(async () => {
-      root.render(
-        <ProfileView
-          snapshot={snapshot}
-          tournamentHistory={[]}
-          theme="light"
-          onChangeTheme={() => {}}
-          onSelectTournament={() => {}}
-          onLeave={onLeave}
-          busy={false}
-        />
-      );
+      root.render(<LeaderboardView snapshot={qualSnapshot} onLeave={onLeave} busy={false} />);
     });
 
     const leaveBtn = Array.from(container.querySelectorAll('button')).find((b) =>
@@ -765,6 +762,26 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       confirmLeaveBtn!.click();
     });
     expect(onLeave).toHaveBeenCalledTimes(1);
+
+    // In PLAYOFF and FINISHED, leave button must NOT be rendered
+    for (const status of ['PLAYOFF', 'FINISHED'] as const) {
+      await act(async () => {
+        root.render(
+          <LeaderboardView
+            snapshot={makeSnapshot({
+              tournament: { ...makeSnapshot().tournament, status },
+              myPlayerId: 1,
+            })}
+            onLeave={onLeave}
+            busy={false}
+          />
+        );
+      });
+      const hiddenBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Выписаться из турнира')
+      );
+      expect(hiddenBtn).toBeUndefined();
+    }
 
     await act(async () => {
       root.unmount();
@@ -1158,6 +1175,65 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
       remindBtn.click();
     });
     expect(onRemind).toHaveBeenCalledWith(waitMatch.id);
+
+    // Unified tournament matches feed highlights player's own matches in FINISHED view
+    const finishedSnap = makeSnapshot({
+      tournament: { ...makeSnapshot().tournament, status: 'FINISHED' },
+      myPlayerId: 1,
+      allMatches: [
+        {
+          id: 501,
+          stage: 'QUALIFICATION',
+          roundNumber: 1,
+          bracketSlot: null,
+          tableNumber: 1,
+          team1Players: [{ id: 1, name: 'Егор', initials: 'ЕГ' }],
+          team2Players: [{ id: 2, name: 'Макс', initials: 'МК' }],
+          team1Label: 'Егор',
+          team2Label: 'Макс',
+          myTeam: 1,
+          status: 'FINISHED',
+          score1: 7,
+          score2: 3,
+          setsWon1: 0,
+          setsWon2: 0,
+          setsHistory: null,
+        },
+        {
+          id: 502,
+          stage: 'QUALIFICATION',
+          roundNumber: 1,
+          bracketSlot: null,
+          tableNumber: 2,
+          team1Players: [{ id: 3, name: 'Оля', initials: 'ОЛ' }],
+          team2Players: [{ id: 4, name: 'Дима', initials: 'ДМ' }],
+          team1Label: 'Оля',
+          team2Label: 'Дима',
+          myTeam: null,
+          status: 'FINISHED',
+          score1: 5,
+          score2: 7,
+          setsWon1: 0,
+          setsWon2: 0,
+          setsHistory: null,
+        },
+      ],
+    });
+    await act(async () => {
+      root.render(
+        <PlayerMatchView
+          snapshot={finishedSnap}
+          busy={false}
+          onSubmitScore={async () => {}}
+          onConfirmScore={async () => {}}
+          onRemindConfirm={async () => {}}
+        />
+      );
+    });
+    expect(container.textContent).toContain('История матчей в текущем турнире');
+    expect(container.querySelector('[data-testid="my-tournament-match"]')?.textContent).toContain('Ваш матч');
+    expect(container.querySelector('[data-testid="tournament-match"]')?.textContent).toContain('Оля');
+    expect(container.textContent).not.toContain('Открыть таблицу и сетку');
 
     await act(async () => {
       root.unmount();

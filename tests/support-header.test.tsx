@@ -183,21 +183,20 @@ describe('Support header button (@kickerpickersupportbot)', () => {
     expect(rightGroup!.textContent).toContain('Игрок');
     expect(rightGroup!.textContent).toContain('Админ');
 
-    // Click Home button in dock -> on Home screen Support sits in header-right-group (at the right edge)
+    // Click Home button in dock -> on Home screen Support and Theme toggle sit in header-right-group
     await act(async () => {
       homeBtn.click();
     });
     const homeHeader = container.querySelector('[data-testid="home-header"]');
     expect(homeHeader).not.toBeNull();
-    // Home screen should NOT have a Home button or theme button in the header
     expect(homeHeader!.querySelector('button[aria-label="Главный экран"]')).toBeNull();
-    expect(homeHeader!.querySelector('button[aria-label*="тема" i]')).toBeNull();
     const homeRightGroup = homeHeader!.querySelector('[data-testid="header-right-group"]');
+    expect(homeRightGroup?.querySelector('[data-testid="header-theme-btn"]')).not.toBeNull();
     expect(homeRightGroup?.querySelector('[data-testid="header-support-btn"]')).not.toBeNull();
 
     // Open Create Tournament -> has header-support-btn AND Back button
     const createBtn = Array.from(container.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Создать новый турнир')
+      b.textContent?.includes('Создать турнир')
     );
     expect(createBtn).toBeDefined();
     await act(async () => {
@@ -240,6 +239,12 @@ describe('Support header button (@kickerpickersupportbot)', () => {
     const playerRightGroup = c3.querySelector('[data-testid="app-header"] [data-testid="header-right-group"]');
     expect(playerRightGroup?.querySelector('[data-testid="header-support-btn"]')).not.toBeNull();
     expect(playerRightGroup?.textContent).not.toContain('Игрок');
+
+    // Player bottom nav has 3 tabs (Домой, Матч, Таблица) and no Профиль tab
+    const playerDockLabels = Array.from(c3.querySelectorAll('nav.dock button')).map((b) =>
+      b.textContent?.trim()
+    );
+    expect(playerDockLabels).toEqual(['Домой', 'Матч', 'Таблица']);
 
     await act(async () => {
       r3.unmount();

@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import {
   Trophy,
   Gamepad2,
-  User,
   Settings,
   Users,
   Home,
@@ -11,6 +10,8 @@ import {
   LayoutGrid,
   ArrowLeft,
   Radio,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { apiClient, isTelegramEnv } from './api/client';
 import {
@@ -25,7 +26,6 @@ import { useAppController } from './hooks/useAppController';
 import { ActionStatusBanner } from './components/ActionStatusBanner';
 import { PlayerMatchView } from './components/PlayerMatchView';
 import { LeaderboardView } from './components/LeaderboardView';
-import { WiseProfileView } from './components/wise/WiseProfileView';
 import { WiseAdminDashboardView } from './components/wise/WiseAdminDashboardView';
 import { WiseAdminPlayersView } from './components/wise/WiseAdminPlayersView';
 import { WiseAdminSettingsView } from './components/wise/WiseAdminSettingsView';
@@ -46,7 +46,6 @@ export default function App() {
     busy,
     pendingStatus,
     theme,
-    changeTheme,
     toggleTheme,
     appState,
     setClubPlayers,
@@ -219,30 +218,7 @@ export default function App() {
   const isHomeVisible = !snapshot || showHome;
 
   const navItems: BottomNavItem[] = !snapshot
-    ? [
-        {
-          id: 'home',
-          label: 'Домой',
-          icon: <Home size={20} />,
-          active: playerTab !== 'profile',
-          onClick: () => {
-            haptic('light');
-            setPlayerTab('match');
-            setShowHome(true);
-          },
-        },
-        {
-          id: 'profile',
-          label: 'Профиль',
-          icon: <User size={20} />,
-          active: playerTab === 'profile',
-          onClick: () => {
-            haptic('light');
-            setPlayerTab('profile');
-            setShowHome(false);
-          },
-        },
-      ]
+    ? []
     : mode === 'PLAYER'
       ? [
           {
@@ -276,17 +252,6 @@ export default function App() {
               haptic('light');
               setShowHome(false);
               setPlayerTab('table');
-            },
-          },
-          {
-            id: 'profile',
-            label: 'Профиль',
-            icon: <User size={20} />,
-            active: !showHome && playerTab === 'profile',
-            onClick: () => {
-              haptic('light');
-              setShowHome(false);
-              setPlayerTab('profile');
             },
           },
         ]
@@ -361,6 +326,21 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0" data-testid="header-right-group">
+          {isHomeVisible && (
+            <button
+              type="button"
+              onClick={() => {
+                haptic('light');
+                toggleTheme();
+              }}
+              className="w-10 h-10 rounded-full bg-[var(--bg-3)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text)] active:scale-95 shrink-0"
+              aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+              title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+              data-testid="header-theme-btn"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          )}
           <SupportHeaderButton />
 
           {snapshot?.isAdmin && (
@@ -396,34 +376,17 @@ export default function App() {
 
       <div className={`flex-1 min-h-0 overflow-hidden relative ${hideBottomNav ? 'no-dock' : ''}`}>
         {!snapshot ? (
-          playerTab === 'profile' ? (
-            <WiseProfileView
-              snapshot={null}
+          <div className="h-full overflow-y-auto px-3 pt-4 pb-6">
+            <HomeView
+              tournaments={homeTournaments}
+              currentTournamentId={null}
+              playerProfile={appState?.playerProfile ?? null}
               userName={fullUserName}
               userAvatarUrl={userAvatarUrl}
-              tournamentHistory={homeTournaments}
-              busy={busy}
-              theme={theme}
-              onChangeTheme={(nextTheme) => {
-                haptic('light');
-                changeTheme(nextTheme);
-              }}
               onSelectTournament={handleSelectTournament}
-              onLeave={async () => {}}
+              onCreateTournament={() => setIsCreating(true)}
             />
-          ) : (
-            <div className="h-full overflow-y-auto px-3 pt-4 content-dock-pad">
-              <HomeView
-                tournaments={homeTournaments}
-                currentTournamentId={null}
-                playerProfile={appState?.playerProfile ?? null}
-                userName={fullUserName}
-                userAvatarUrl={userAvatarUrl}
-                onSelectTournament={handleSelectTournament}
-                onCreateTournament={() => setIsCreating(true)}
-              />
-            </div>
-          )
+          </div>
         ) : showHome ? (
           <div className="h-full overflow-y-auto px-3 pt-4 content-dock-pad">
             <HomeView
@@ -442,14 +405,6 @@ export default function App() {
               <PlayerMatchView
                 snapshot={snapshot}
                 busy={busy}
-                onOpenTable={() => {
-                  haptic('light');
-                  setPlayerTab('table');
-                }}
-                onGoHome={() => {
-                  haptic('light');
-                  setShowHome(true);
-                }}
                 onSubmitScore={(matchId, score1, score2) =>
                   runAction(
                     async () => {
@@ -499,23 +454,9 @@ export default function App() {
               />
             )}
             {playerTab === 'table' && (
-              <LeaderboardView snapshot={snapshot} busy={busy} />
-            )}
-            {playerTab === 'profile' && (
-              <WiseProfileView
+              <LeaderboardView
                 snapshot={snapshot}
-                tournamentHistory={appState?.tournamentHistory || []}
                 busy={busy}
-                theme={theme}
-                onChangeTheme={(nextTheme) => {
-                  haptic('light');
-                  changeTheme(nextTheme);
-                }}
-                onSelectTournament={(tId) => {
-                  setSelectedTournamentId(tId);
-                  setPlayerTab('match');
-                  fetchState(tId);
-                }}
                 onLeave={() =>
                   runLocked('Выписываем из турнира...', async () => {
                     await apiClient.leaveTournament(snapshot.tournament.id);

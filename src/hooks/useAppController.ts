@@ -33,7 +33,7 @@ export function useAppController() {
   } | null>(null);
 
   const [mode, setMode] = useState<'PLAYER' | 'ADMIN'>('PLAYER');
-  const [playerTab, setPlayerTab] = useState<'match' | 'table' | 'profile'>('match');
+  const [playerTab, setPlayerTab] = useState<'match' | 'table'>('match');
   const [adminTab, setAdminTab] = useState<'dashboard' | 'players' | 'table' | 'settings'>('dashboard');
 
   const startHandledRef = useRef(false);
@@ -415,7 +415,7 @@ export function useAppController() {
   );
 
   const snapshot = appState?.activeTournament ?? null;
-  const hideBottomNav = false;
+  const hideBottomNav = !snapshot;
 
   return {
     livePath,

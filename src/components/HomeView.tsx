@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Plus,
-  Trophy,
   Users,
   ChevronDown,
   ChevronUp,
@@ -157,7 +156,7 @@ export const HomeView: React.FC<Props> = ({
               setProfileExpanded((v) => !v);
             }
           }}
-          className="pt-1 cursor-pointer select-none"
+          className="bg-[var(--card)] rounded-[24px] p-4 cursor-pointer select-none"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -166,7 +165,7 @@ export const HomeView: React.FC<Props> = ({
                 initials={getInitials(userName)}
                 name={userName || 'Игрок кикера'}
                 size="sm"
-                className="bg-[var(--card)] text-[var(--text)] border-transparent"
+                className="bg-[var(--bg)] text-[var(--text)] border-transparent"
               />
               <span className="text-sm font-bold text-[var(--text)] truncate">
                 {userName || 'Игрок кикера'}
@@ -189,13 +188,36 @@ export const HomeView: React.FC<Props> = ({
           </div>
 
           <div className="mt-3 space-y-1">
-            <div className="text-xs font-semibold text-[var(--muted)]">Твой винрейт</div>
+            <div className="text-xs font-semibold text-[var(--muted)]">Твой винрейт по всем турнирам</div>
             <div className="text-[36px] leading-none font-bold tracking-tight tabular-nums text-[var(--text)]">
               {playerProfile.winRate}%
             </div>
-            <div className="text-xs font-medium text-[var(--muted)] pt-0.5">
-              {playerProfile.totalWins} побед из {playerProfile.totalMatches} игр ·{' '}
-              {playerProfile.tournamentsPlayed} турн. · {playerProfile.avgGoalsPerMatch} гол/матч
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 pt-3 mt-3 border-t border-[var(--border)] text-center">
+            <div>
+              <div className="text-sm font-bold tabular-nums text-[var(--ok)]">
+                {playerProfile.totalWins}
+              </div>
+              <div className="text-[10px] font-medium text-[var(--muted)]">Победы</div>
+            </div>
+            <div>
+              <div className="text-sm font-bold tabular-nums text-[var(--danger)]">
+                {Math.max(0, playerProfile.totalMatches - playerProfile.totalWins)}
+              </div>
+              <div className="text-[10px] font-medium text-[var(--muted)]">Поражения</div>
+            </div>
+            <div>
+              <div className="text-sm font-bold tabular-nums text-[var(--text)]">
+                {playerProfile.avgGoalsPerMatch}
+              </div>
+              <div className="text-[10px] font-medium text-[var(--muted)]">Ср. гол</div>
+            </div>
+            <div>
+              <div className="text-sm font-bold tabular-nums text-[var(--text)]">
+                {playerProfile.tournamentsPlayed}
+              </div>
+              <div className="text-[10px] font-medium text-[var(--muted)]">Турниры</div>
             </div>
           </div>
 
@@ -289,71 +311,18 @@ export const HomeView: React.FC<Props> = ({
         </section>
       )}
 
-      {/* Круглые быстрые действия в стиле Wise iOS */}
-      <section className="grid grid-cols-4 gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            haptic('light');
-            onCreateTournament();
-          }}
-          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
-        >
-          <span className="w-12 h-12 rounded-full bg-[var(--accent)] text-[var(--on-accent)] flex items-center justify-center">
-            <Plus size={22} strokeWidth={2.4} />
-          </span>
-          <span className="text-[11px] font-semibold text-[var(--text)]">
-            Турнир<span className="sr-only"> Создать новый турнир</span>
-          </span>
-        </button>
-
-        <button
-          type="button"
-          disabled={activeTournaments.length === 0}
-          onClick={() => {
-            if (activeTournaments[0]) {
-              haptic('light');
-              onSelectTournament(activeTournaments[0].id);
-            }
-          }}
-          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-45"
-        >
-          <span className="w-12 h-12 rounded-full bg-[var(--card)] text-[var(--text)] flex items-center justify-center">
-            <Trophy size={19} />
-          </span>
-          <span className="text-[11px] font-semibold text-[var(--text)]">Активный</span>
-        </button>
-
-        <button
-          type="button"
-          disabled={!playerProfile}
-          onClick={() => {
-            haptic('light');
-            setProfileExpanded((v) => !v);
-          }}
-          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-45"
-        >
-          <span className="w-12 h-12 rounded-full bg-[var(--card)] text-[var(--text)] flex items-center justify-center">
-            <TrendingUp size={19} />
-          </span>
-          <span className="text-[11px] font-semibold text-[var(--text)]">Статистика</span>
-        </button>
-
-        <button
-          type="button"
-          disabled={finishedTournaments.length === 0}
-          onClick={() => {
-            haptic('light');
-            setPastOpen((v) => !v);
-          }}
-          className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-45"
-        >
-          <span className="w-12 h-12 rounded-full bg-[var(--card)] text-[var(--text)] flex items-center justify-center">
-            <Users size={19} />
-          </span>
-          <span className="text-[11px] font-semibold text-[var(--text)]">История</span>
-        </button>
-      </section>
+      {/* Основное действие — создание турнира */}
+      <button
+        type="button"
+        onClick={() => {
+          haptic('light');
+          onCreateTournament();
+        }}
+        className="w-full py-3.5 px-4 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-bold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+      >
+        <Plus size={18} strokeWidth={2.4} />
+        Создать турнир
+      </button>
 
       {/* Текущие турниры */}
       <section className="space-y-2.5">
@@ -362,7 +331,7 @@ export const HomeView: React.FC<Props> = ({
         </div>
         {activeTournaments.length === 0 ? (
           <div className="bg-[var(--card)] rounded-[24px] p-5 text-center text-xs text-[var(--muted)]">
-            Сейчас нет активных турниров. Нажмите «+» выше, чтобы создать новый!
+            Сейчас нет активных турниров. Нажмите «Создать турнир» выше, чтобы начать новый!
           </div>
         ) : (
           <div className="space-y-2.5">{activeTournaments.map(renderCard)}</div>

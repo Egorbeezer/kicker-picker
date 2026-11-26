@@ -1,40 +1,152 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, AlertTriangle, Coffee, Trophy, Bell, Medal, Home } from 'lucide-react';
+import { Clock, AlertTriangle, Coffee, Bell, Medal } from 'lucide-react';
 import type { MatchItem, TournamentSnapshot } from '../types';
 import { formatDateRu, getPlayoffPodium } from '../utils/date';
 import { PlayerAvatar } from './PlayerAvatar';
 import { RubleCoin } from './RubleCoin';
 import { ScorePickerRow } from './ScorePickerRow';
-import { MatchCard, formatBracketSlotLabel } from './MatchCard';
+import { formatBracketSlotLabel } from './MatchCard';
 
 interface Props {
   snapshot: TournamentSnapshot;
   onSubmitScore: (matchId: number, score1: number, score2: number) => Promise<void>;
   onConfirmScore: (matchId: number, action: 'confirm' | 'dispute') => Promise<void>;
   onRemindConfirm: (matchId: number) => Promise<void>;
-  onOpenTable?: () => void;
-  onGoHome?: () => void;
   busy: boolean;
 }
 
-const CurrentMatchesFeed: React.FC<{
-  matches: MatchItem[];
-  title: string;
-  myPlayerId: number | null;
-}> = ({ matches, title, myPlayerId }) => {
-  if (matches.length === 0) return null;
+function getUnifiedTournamentMatches(snapshot: TournamentSnapshot): MatchItem[] {
+  const source =
+    Array.isArray(snapshot.allMatches) && snapshot.allMatches.length > 0
+      ? snapshot.allMatches
+      : [
+          ...snapshot.currentRoundMatches,
+          ...snapshot.playoffMatches,
+          ...(snapshot.myHistory || []),
+        ];
+
+  const seen = new Set<number>();
+  const excludeId = snapshot.myCurrentMatch?.id ?? null;
+  const list: MatchItem[] = [];
+
+  for (const m of source) {
+    if (!m || m.status === 'CANCELLED' || m.id === excludeId || seen.has(m.id)) continue;
+    seen.add(m.id);
+    list.push(m);
+  }
+
+  return list.sort((a, b) => {
+    const aActive = a.status !== 'FINISHED' ? 0 : 1;
+    const bActive = b.status !== 'FINISHED' ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    const aPlayoff = a.stage === 'PLAYOFF' ? 1 : 0;
+    const bPlayoff = b.stage === 'PLAYOFF' ? 1 : 0;
+    if (aPlayoff !== bPlayoff) return bPlayoff - aPlayoff;
+    if (a.roundNumber !== b.roundNumber) return b.roundNumber - a.roundNumber;
+    return b.id - a.id;
+  });
+}
+
+function isPlayerMatch(match: MatchItem, myPlayerId: number | null): boolean {
+  if (match.myTeam === 1 || match.myTeam === 2) return true;
+  if (myPlayerId == null) return false;
   return (
-    <div className="space-y-2.5 pt-2">
+    match.team1Players.some((p) => p.id === myPlayerId) ||
+    match.team2Players.some((p) => p.id === myPlayerId)
+  );
+}
+
+function didPlayerWin(match: MatchItem, myPlayerId: number | null): boolean | null {
+  if (match.status !== 'FINISHED') return null;
+  let team: 1 | 2 | null = match.myTeam ?? null;
+  if (!team && myPlayerId != null) {
+    if (match.team1Players.some((p) => p.id === myPlayerId)) team = 1;
+    else if (match.team2Players.some((p) => p.id === myPlayerId)) team = 2;
+  }
+  if (!team) return null;
+  const t1Won =
+    match.stage === 'PLAYOFF'
+      ? match.setsWon1 > match.setsWon2 ||
+        (match.setsWon1 === match.setsWon2 && match.score1 > match.score2)
+      : match.score1 > match.score2;
+  return team === 1 ? t1Won : !t1Won;
+}
+
+const UnifiedTournamentMatchesFeed: React.FC<{
+  matches: MatchItem[];
+  myPlayerId: number | null;
+}> = ({ matches, myPlayerId }) => {
+  if (matches.length === 0) return null;
+
+  return (
+    <div className="space-y-2.5 pt-2" data-testid="tournament-matches-history">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-bold text-[var(--muted)]">{title}</h3>
-        <span className="text-[11px] font-semibold text-[var(--muted)]">
-          {matches.filter((m) => m.status === 'FINISHED').length}/{matches.length} завершено
-        </span>
+        <h3 className="text-xs font-bold text-[var(--muted)]">
+          История матчей в текущем турнире
+        </h3>
+        <span className="text-[11px] font-semibold text-[var(--muted)]">{matches.length}</span>
       </div>
-      <div className="space-y-2.5">
-        {matches.map((match) => (
-          <MatchCard key={match.id} match={match} myPlayerId={myPlayerId} />
-        ))}
+      <div className="space-y-2">
+        {matches.map((match) => {
+          const isMine = isPlayerMatch(match, myPlayerId);
+          const won = isMine ? didPlayerWin(match, myPlayerId) : null;
+          const isWaiting = match.status === 'WAITING_CONFIRM';
+          const isPlaying = match.status === 'PLAYING';
+          const stageLabel =
+            match.stage === 'PLAYOFF'
+              ? formatBracketSlotLabel(match.bracketSlot) || 'Плей-офф'
+              : `Раунд ${match.roundNumber}`;
+
+          const cardCls = isMine
+            ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent-text)]/35'
+            : 'bg-[var(--card)]';
+
+          const scoreCls =
+            won === true
+              ? 'bg-[var(--ok-soft)] text-[var(--ok)]'
+              : won === false
+                ? 'bg-[var(--danger-soft)] text-[var(--danger)]'
+                : isWaiting
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                  : isPlaying
+                    ? 'bg-[var(--bg)] text-[var(--text)]'
+                    : 'bg-[var(--bg)] text-[var(--muted)]';
+
+          return (
+            <div
+              key={match.id}
+              data-testid={isMine ? 'my-tournament-match' : 'tournament-match'}
+              className={`${cardCls} rounded-[20px] px-3.5 py-2.5 flex items-center justify-between gap-2.5`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center flex-wrap gap-1.5 text-[11px] text-[var(--muted)]">
+                  <span>
+                    {stageLabel} · Стол {match.tableNumber}
+                  </span>
+                  {isMine && (
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-[10px] font-bold">
+                      Ваш матч
+                    </span>
+                  )}
+                  {isPlaying && (
+                    <span className="text-[10px] font-bold text-amber-500">· Идёт</span>
+                  )}
+                  {isWaiting && (
+                    <span className="text-[10px] font-bold text-[var(--accent-text)]">· Подтверждение</span>
+                  )}
+                </div>
+                <div className="text-xs font-semibold text-[var(--text)] truncate mt-0.5">
+                  {match.team1Label} <span className="text-[var(--muted)]">vs</span> {match.team2Label}
+                </div>
+              </div>
+              <div
+                className={`px-3 py-1 rounded-full font-bold text-xs tabular-nums shrink-0 ${scoreCls}`}
+              >
+                {match.score1} : {match.score2}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -45,12 +157,10 @@ export const PlayerMatchView: React.FC<Props> = ({
   onSubmitScore,
   onConfirmScore,
   onRemindConfirm,
-  onOpenTable,
-  onGoHome,
   busy,
 }) => {
-  const { tournament, myCurrentMatch, myPlayerId, players, currentRoundMatches, playoffMatches } =
-    snapshot;
+  const { tournament, myCurrentMatch, myPlayerId, players, playoffMatches } = snapshot;
+  const unifiedMatches = getUnifiedTournamentMatches(snapshot);
   const [score1, setScore1] = useState(0);
   const [score2, setScore2] = useState(0);
   const [coinFlipResult, setCoinFlipResult] = useState<'Орёл' | 'Решка' | null>(null);
@@ -141,42 +251,34 @@ export const PlayerMatchView: React.FC<Props> = ({
           ) : null}
 
           {myRow && (
-            <div className="bg-[var(--accent-soft)] rounded-[24px] p-4 flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs text-[var(--muted)]">Ваш результат</div>
-                <div className="font-bold text-base text-[var(--text)] mt-0.5">
-                  {myRow.rank} место в рейтинге
+            <div className="bg-[var(--accent-soft)] rounded-[24px] p-4 space-y-2">
+              <div className="text-xs font-semibold text-[var(--muted)]">Ваш результат</div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div>
+                  <div className="text-base font-bold text-amber-500 tabular-nums">#{myRow.rank}</div>
+                  <div className="text-[10px] text-[var(--muted)]">Место</div>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-bold text-[var(--accent-text)]">{myRow.points} очк.</div>
-                <div className="text-[11px] text-[var(--muted)]">
-                  {myRow.wins} поб. / {myRow.games} игр
+                <div>
+                  <div className="text-base font-bold text-[var(--text)] tabular-nums">{myRow.points}</div>
+                  <div className="text-[10px] text-[var(--muted)]">Очки</div>
+                </div>
+                <div>
+                  <div className="text-base font-bold text-[var(--accent-text)] tabular-nums">
+                    {myRow.wins}–{myRow.losses ?? Math.max(0, myRow.games - myRow.wins)}
+                  </div>
+                  <div className="text-[10px] text-[var(--muted)]">Поб–Пор</div>
+                </div>
+                <div>
+                  <div className="text-base font-bold text-[var(--text)] tabular-nums">
+                    {myRow.diff > 0 ? `+${myRow.diff}` : myRow.diff}
+                  </div>
+                  <div className="text-[10px] text-[var(--muted)]">+/-</div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="flex flex-col gap-2.5 pt-1">
-            {onOpenTable && (
-              <button
-                type="button"
-                onClick={onOpenTable}
-                className="btn btn-primary w-full py-3.5 rounded-full font-bold text-sm"
-              >
-                <Trophy size={16} /> Открыть таблицу и сетку
-              </button>
-            )}
-            {onGoHome && (
-              <button
-                type="button"
-                onClick={onGoHome}
-                className="btn btn-ghost w-full py-3.5 rounded-full font-semibold text-sm"
-              >
-                <Home size={16} /> На главный экран
-              </button>
-            )}
-          </div>
+          <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
         </div>
       </div>
     );
@@ -196,19 +298,6 @@ export const PlayerMatchView: React.FC<Props> = ({
       </div>
     );
   }
-
-  const otherMatches = myCurrentMatch
-    ? currentRoundMatches.filter((m) => m.id !== myCurrentMatch.id)
-    : currentRoundMatches;
-
-  const roundFeedTitle =
-    tournament.status === 'PLAYOFF'
-      ? myCurrentMatch
-        ? 'Другие матчи плей-офф'
-        : `Матчи плей-офф (Раунд ${tournament.currentRound})`
-      : myCurrentMatch
-        ? `Другие матчи раунда ${tournament.currentRound}`
-        : `Матчи раунда ${tournament.currentRound}`;
 
   if (!myCurrentMatch) {
     return (
@@ -239,11 +328,7 @@ export const PlayerMatchView: React.FC<Props> = ({
             </p>
           </div>
 
-          <CurrentMatchesFeed
-            matches={otherMatches}
-            title={roundFeedTitle}
-            myPlayerId={myPlayerId}
-          />
+          <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
         </div>
       </div>
     );
@@ -359,11 +444,7 @@ export const PlayerMatchView: React.FC<Props> = ({
             </button>
           </div>
 
-          <CurrentMatchesFeed
-            matches={otherMatches}
-            title={roundFeedTitle}
-            myPlayerId={myPlayerId}
-          />
+          <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
         </div>
       </div>
     );
@@ -478,11 +559,7 @@ export const PlayerMatchView: React.FC<Props> = ({
             </div>
           </div>
 
-          <CurrentMatchesFeed
-            matches={otherMatches}
-            title={roundFeedTitle}
-            myPlayerId={myPlayerId}
-          />
+          <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
         </div>
       </div>
     );
@@ -667,11 +744,7 @@ export const PlayerMatchView: React.FC<Props> = ({
           )}
         </div>
 
-        <CurrentMatchesFeed
-          matches={otherMatches}
-          title={roundFeedTitle}
-          myPlayerId={myPlayerId}
-        />
+        <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
       </div>
     </div>
   );

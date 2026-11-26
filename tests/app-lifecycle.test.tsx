@@ -262,7 +262,7 @@ describe('App lifecycle & React Hook order regression', () => {
     expect(containerB.textContent).toContain('Таблица');
     expect(containerB.querySelector('.no-dock')).toBeNull();
     const dockButtons = Array.from(containerB.querySelectorAll('nav.dock button'));
-    expect(dockButtons.length).toBeGreaterThanOrEqual(4);
+    expect(dockButtons.length).toBe(3);
     expect(dockButtons[0]?.textContent).toContain('Домой');
 
     // Clicking Home in bottom dock opens HomeView with collapsed past tournaments section
@@ -271,7 +271,7 @@ describe('App lifecycle & React Hook order regression', () => {
       homeBtn.click();
     });
     expect(containerB.textContent).toContain('Прошедшие турниры');
-    expect(containerB.textContent).toContain('Создать новый турнир');
+    expect(containerB.textContent).toContain('Создать турнир');
 
     await act(async () => {
       rootB.unmount();

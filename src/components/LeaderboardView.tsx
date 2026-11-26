@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, Clock, Share2, Radio, ExternalLink } from 'lucide-react';
+import { SlidersHorizontal, Clock, Share2, Radio, ExternalLink, LogOut } from 'lucide-react';
 import type { LeaderboardRow, TableColumnConfig, TableColumnKey, TournamentSnapshot } from '../types';
 import { buildPublicLiveUrl } from '../api/client';
 import { haptic, notify } from '../utils/telegram';
@@ -18,6 +18,7 @@ interface Props {
   snapshot: TournamentSnapshot;
   busy?: boolean;
   onSaveTableConfig?: (config: TableColumnConfig[]) => Promise<void>;
+  onLeave?: () => Promise<void>;
 }
 
 const DEFAULT_META: TableColumnMeta[] = [
@@ -108,9 +109,20 @@ function renderStatCell(key: TableColumnKey, row: LeaderboardRow, isPrimary: boo
   return null;
 }
 
-export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSaveTableConfig }) => {
+export const LeaderboardView: React.FC<Props> = ({
+  snapshot,
+  busy = false,
+  onSaveTableConfig,
+  onLeave,
+}) => {
   const { leaderboard, myPlayerId, tournament, isAdmin, playoffMatches } = snapshot;
   const activeConfig = getNormalizedConfig(tournament.tableConfig);
+  const canLeave = Boolean(
+    onLeave &&
+      myPlayerId &&
+      (tournament.status === 'REGISTRATION' || tournament.status === 'QUALIFICATION')
+  );
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const hasPlayoff =
     tournament.status === 'PLAYOFF' ||
     tournament.status === 'FINISHED' ||
@@ -469,7 +481,55 @@ export const LeaderboardView: React.FC<Props> = ({ snapshot, busy = false, onSav
             )}
           </>
         )}
+
+        {canLeave && (
+          <div className="px-3 pt-4 pb-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirmLeaveOpen(true)}
+              className="w-full py-3.5 px-6 rounded-full bg-[var(--danger-soft)] text-[var(--danger)] font-bold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-45"
+            >
+              <LogOut size={16} /> Выписаться из турнира
+            </button>
+          </div>
+        )}
       </div>
+
+      {confirmLeaveOpen && (
+        <Modal
+          title="Выписаться из турнира?"
+          onClose={() => setConfirmLeaveOpen(false)}
+          hideClose
+          footer={
+            <div className="btn-row">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirmLeaveOpen(false)}
+                className="btn btn-ghost disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  setConfirmLeaveOpen(false);
+                  await onLeave?.();
+                }}
+                className="btn bg-red-600 text-white font-bold disabled:opacity-50"
+              >
+                {busy ? 'Выписываем...' : 'Выписаться'}
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm text-[var(--muted)] leading-relaxed">
+            Точно уверен? Весь прогресс потеряется
+          </p>
+        </Modal>
+      )}
 
       {/* Live-трансляция для игрока */}
       {showLiveModal && tournament.publicPath && (

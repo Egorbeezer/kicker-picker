@@ -65,7 +65,7 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     await expect(nav.locator('button').first()).toHaveText(/Домой/);
     await nav.getByRole('button', { name: 'Домой' }).click();
     await expect(page.getByTestId('home-header')).not.toContainText('Главный экран');
-    await expect(page.getByTestId('home-header').getByRole('button', { name: /тема/i })).toHaveCount(0);
+    await expect(page.getByTestId('home-header').getByRole('button', { name: /тема/i })).toHaveCount(1);
 
     const profileCard = page.getByTestId('home-profile-card');
     await expect(profileCard).toBeVisible();
@@ -104,13 +104,14 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
       .poll(async () => (await details.boundingBox())?.height ?? 999)
       .toBeLessThanOrEqual(1);
 
-    // Переключаемся в Профиль игрока и проверяем кнопку переключения темы
+    // Переключаемся в режим игрока и проверяем 3-вкладочную навигацию, затем на Главную — кнопку смены темы
     await page.getByRole('button', { name: 'Игрок', exact: true }).click();
+    await expect(nav.locator('button')).toHaveCount(3);
     await expect(nav.locator('button').first()).toHaveText(/Домой/);
-    await nav.getByRole('button', { name: 'Профиль' }).click();
+    await nav.getByRole('button', { name: 'Домой' }).click();
 
     const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    await page.getByTestId('profile-theme-btn').click();
+    await page.getByTestId('header-theme-btn').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(lightBg).not.toBe(darkBg);
@@ -127,7 +128,7 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     await page.goto('/');
 
     // 1. Создание турнира (4-шаговый мастер)
-    await page.getByRole('button', { name: /Создать новый турнир/i }).click();
+    await page.getByRole('button', { name: /Создать турнир/i }).click();
     await expect(page.getByText('Шаг 1 из 4')).toBeVisible();
     await page.getByRole('button', { name: 'Далее', exact: true }).click();
 
@@ -189,29 +190,15 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     expect(canvasOk).toBe(true);
     await page.getByRole('dialog').getByRole('button', { name: 'Закрыть' }).last().click();
 
-    // 5. Проверка скролла в Профиле -> «Статистика турнира» на узком 375x480 экране
+    // 5. Проверка экрана игрока: 3 вкладки (Домой | Матч | Таблица), единая история матчей турнира и кнопка Выписаться в Таблице
     await page.setViewportSize({ width: 375, height: 480 });
     await page.getByRole('button', { name: 'Игрок', exact: true }).click();
-    await page.getByRole('button', { name: /Профиль/i }).click();
-    // Строка турнира в WiseProfileView
-    await page.getByRole('button', { name: /Турнир \d{2}\.\d{2}\.\d{4}/i }).first().click();
-
-    await expect(page.getByText('Статистика турнира')).toBeVisible();
-    const scrollBox = page.getByTestId('profile-tournament-stats-scroll');
-    await expect(scrollBox).toBeVisible();
-
-    const scrollMetrics = await scrollBox.evaluate((el) => {
-      el.scrollTop = 180;
-      return {
-        overflowY: getComputedStyle(el).overflowY,
-        clientHeight: el.clientHeight,
-        scrollHeight: el.scrollHeight,
-        scrollTop: el.scrollTop,
-      };
-    });
-    expect(scrollMetrics.overflowY).toBe('auto');
-    expect(scrollMetrics.scrollHeight).toBeGreaterThan(scrollMetrics.clientHeight);
-    expect(scrollMetrics.scrollTop).toBeGreaterThan(0);
+    const playerNav = page.getByRole('navigation', { name: 'Навигация' });
+    await expect(playerNav.locator('button')).toHaveCount(3);
+    await playerNav.getByRole('button', { name: 'Матч' }).click();
+    await expect(page.getByText('История матчей в текущем турнире')).toBeVisible();
+    await playerNav.getByRole('button', { name: 'Таблица' }).click();
+    await expect(page.getByRole('button', { name: /Выписаться из турнира/i })).toBeVisible();
 
     expect(bridge.consoleErrors).toEqual([]);
     expect(bridge.pageErrors).toEqual([]);
@@ -346,15 +333,13 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     await nav.getByRole('button', { name: 'Настройки' }).click();
     await expect(page.getByRole('button', { name: /Сохранить изменения/i })).toBeVisible();
 
-    // 4. Игрок: Профиль и переключение темы
+    // 4. Игрок: 3 вкладки и переход на Домой со сменой темы
     await page.getByRole('button', { name: 'Игрок', exact: true }).click();
-    await nav.getByRole('button', { name: 'Профиль' }).click();
-    await page.getByTestId('profile-theme-btn').click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-
-    // 5. Домой
+    await expect(nav.locator('button')).toHaveCount(3);
     await nav.getByRole('button', { name: 'Домой' }).click();
     await expect(page.getByText('Текущие турниры')).toBeVisible();
+    await page.getByTestId('header-theme-btn').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
     expect(bridge.consoleErrors).toEqual([]);
     expect(bridge.pageErrors).toEqual([]);

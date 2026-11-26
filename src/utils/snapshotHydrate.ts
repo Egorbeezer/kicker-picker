@@ -54,6 +54,9 @@ export function hydrateSnapshotAvatars(
       hydrateMatch(m, avatarById)
     ),
     playoffMatches: (snap.playoffMatches || []).map((m) => hydrateMatch(m, avatarById)),
+    ...(snap.allMatches
+      ? { allMatches: snap.allMatches.map((m) => hydrateMatch(m, avatarById)) }
+      : {}),
     myCurrentMatch: snap.myCurrentMatch ? hydrateMatch(snap.myCurrentMatch, avatarById) : null,
     myHistory: (snap.myHistory || []).map((m) => hydrateMatch(m, avatarById)),
   };

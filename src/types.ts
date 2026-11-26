@@ -174,6 +174,7 @@ export interface TournamentSnapshot {
   timings?: TournamentTimings;
   currentRoundMatches: MatchItem[];
   playoffMatches: MatchItem[];
+  allMatches?: MatchItem[];
   myCurrentMatch: MatchItem | null;
   myHistory: MatchItem[];
 }
