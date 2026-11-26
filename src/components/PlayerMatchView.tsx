@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, AlertTriangle, Coffee, Bell, Medal, ChevronDown } from 'lucide-react';
+import { Clock, AlertTriangle, Coffee, Bell, CheckCircle2, ChevronDown } from 'lucide-react';
 import type { MatchItem, TournamentSnapshot } from '../types';
-import { formatDateRu, getPlayoffPodium } from '../utils/date';
+import { formatDateRu, getPlayoffPodium, getPlayerPlayoffResult } from '../utils/date';
 import { PlayerAvatar } from './PlayerAvatar';
 import { RubleCoin } from './RubleCoin';
 import { ScorePickerRow } from './ScorePickerRow';
@@ -259,17 +259,27 @@ export const PlayerMatchView: React.FC<Props> = ({
 
   if (tournament.status === 'FINISHED') {
     const podium = getPlayoffPodium(playoffMatches);
+    const playoffResult = getPlayerPlayoffResult(playoffMatches, myPlayerId);
     const leader = snapshot.leaderboard[0];
     const myRow = myPlayerId
       ? snapshot.leaderboard.find((r) => r.playerId === myPlayerId) || null
       : null;
+    const showGroupResult = Boolean(myRow && !(tournament.skipQualification && myRow.games === 0));
+    const playoffMedal =
+      playoffResult?.place === 1
+        ? '🥇'
+        : playoffResult?.place === 2
+          ? '🥈'
+          : playoffResult?.place === 3
+            ? '🥉'
+            : null;
 
     return (
       <div className="flex flex-col h-full overflow-y-auto content-dock-pad">
         <div className="p-4 pt-6 pb-8 space-y-4">
           <div className="bg-[var(--card)] rounded-[24px] p-5 text-center space-y-2">
-            <div className="w-14 h-14 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center mx-auto">
-              <Medal size={30} />
+            <div className="w-14 h-14 rounded-full bg-[var(--accent-soft)] text-[var(--accent-text)] flex items-center justify-center mx-auto">
+              <CheckCircle2 size={30} />
             </div>
             <h2 className="text-xl font-bold text-[var(--text)]">Турнир завершён!</h2>
             <div className="text-sm font-semibold text-[var(--muted)] truncate">{tournament.name}</div>
@@ -309,12 +319,43 @@ export const PlayerMatchView: React.FC<Props> = ({
             </div>
           ) : null}
 
-          {myRow && (
-            <div className="bg-[var(--accent-soft)] rounded-[24px] p-4 space-y-2">
-              <div className="text-xs font-semibold text-[var(--muted)]">Ваш результат</div>
+          {playoffResult && (
+            <div
+              data-testid="my-playoff-result-card"
+              className={`${
+                playoffResult.isPodium ? 'bg-[var(--accent-soft)]' : 'bg-[var(--card)]'
+              } rounded-[24px] p-4 space-y-2`}
+            >
+              <div className="text-xs font-semibold text-[var(--muted)]">Ваш результат в плей-офф</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  {playoffMedal && <span className="text-lg leading-none shrink-0">{playoffMedal}</span>}
+                  <span
+                    className={`text-sm font-bold truncate ${
+                      playoffResult.isPodium ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'
+                    }`}
+                  >
+                    {playoffResult.headline}
+                  </span>
+                </div>
+                {playoffResult.participated && playoffResult.wins + playoffResult.losses > 0 && (
+                  <span className="text-xs font-semibold text-[var(--muted)] tabular-nums shrink-0">
+                    {playoffResult.wins}–{playoffResult.losses}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {showGroupResult && myRow && (
+            <div
+              data-testid="my-group-result-card"
+              className="bg-[var(--card)] rounded-[24px] p-4 space-y-2"
+            >
+              <div className="text-xs font-semibold text-[var(--muted)]">Ваш результат на групповом этапе</div>
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
-                  <div className="text-base font-bold text-amber-500 tabular-nums">#{myRow.rank}</div>
+                  <div className="text-base font-bold text-[var(--text)] tabular-nums">#{myRow.rank}</div>
                   <div className="text-[10px] text-[var(--muted)]">Место</div>
                 </div>
                 <div>
@@ -322,7 +363,7 @@ export const PlayerMatchView: React.FC<Props> = ({
                   <div className="text-[10px] text-[var(--muted)]">Очки</div>
                 </div>
                 <div>
-                  <div className="text-base font-bold text-[var(--accent-text)] tabular-nums">
+                  <div className="text-base font-bold text-[var(--text)] tabular-nums">
                     {myRow.wins}–{myRow.losses ?? Math.max(0, myRow.games - myRow.wins)}
                   </div>
                   <div className="text-[10px] text-[var(--muted)]">Поб–Пор</div>

@@ -77,3 +77,133 @@ export function getPlayoffPodium(playoffMatches: MatchItem[]): PodiumPlaces {
 
   return { first, second, third };
 }
+
+export interface PlayerPlayoffResult {
+  participated: boolean;
+  place: 1 | 2 | 3 | 4 | null;
+  isPodium: boolean;
+  headline: string;
+  wins: number;
+  losses: number;
+}
+
+function isMatchParticipant(m: MatchItem, playerId: number): boolean {
+  if (m.myTeam === 1 || m.myTeam === 2) return true;
+  return (
+    m.team1Players.some((p) => p.id === playerId) ||
+    m.team2Players.some((p) => p.id === playerId)
+  );
+}
+
+function getPlayerMatchTeam(m: MatchItem, playerId: number): 1 | 2 | null {
+  if (m.myTeam === 1 || m.myTeam === 2) return m.myTeam;
+  if (m.team1Players.some((p) => p.id === playerId)) return 1;
+  if (m.team2Players.some((p) => p.id === playerId)) return 2;
+  return null;
+}
+
+function getPlayoffStageHeadline(slot: string | null): string {
+  if (!slot) return 'Участие в плей-офф';
+  if (slot.startsWith('SF')) return 'Дошли до полуфинала';
+  if (slot.startsWith('QF')) return 'Дошли до четвертьфинала';
+  if (slot.startsWith('EF')) return 'Дошли до 1/8 финала';
+  if (slot.startsWith('R32_')) return 'Дошли до 1/16 финала';
+  return 'Участие в плей-офф';
+}
+
+function getSlotDepthWeight(slot: string | null): number {
+  if (!slot) return 0;
+  if (slot === 'FINAL') return 6;
+  if (slot === 'THIRD_PLACE') return 5;
+  if (slot.startsWith('SF')) return 4;
+  if (slot.startsWith('QF')) return 3;
+  if (slot.startsWith('EF')) return 2;
+  if (slot.startsWith('R32_')) return 1;
+  return 0;
+}
+
+export function getPlayerPlayoffResult(
+  playoffMatches: MatchItem[],
+  myPlayerId: number | null
+): PlayerPlayoffResult | null {
+  if (myPlayerId == null || playoffMatches.length === 0) return null;
+
+  const myMatches = playoffMatches.filter(
+    (m) => m.status !== 'CANCELLED' && isMatchParticipant(m, myPlayerId)
+  );
+
+  if (myMatches.length === 0) {
+    return {
+      participated: false,
+      place: null,
+      isPodium: false,
+      headline: 'Не прошли в плей-офф',
+      wins: 0,
+      losses: 0,
+    };
+  }
+
+  let wins = 0;
+  let losses = 0;
+  for (const m of myMatches) {
+    if (m.status !== 'FINISHED') continue;
+    const team = getPlayerMatchTeam(m, myPlayerId);
+    if (!team) continue;
+    if (getWinnerTeam(m) === team) wins += 1;
+    else losses += 1;
+  }
+
+  const finalMatch = myMatches.find(
+    (m) => m.bracketSlot === 'FINAL' && m.status === 'FINISHED'
+  );
+  if (finalMatch) {
+    const won = getWinnerTeam(finalMatch) === getPlayerMatchTeam(finalMatch, myPlayerId);
+    const place = won ? 1 : 2;
+    return {
+      participated: true,
+      place,
+      isPodium: true,
+      headline: `Вы заняли ${place} место в плей-офф`,
+      wins,
+      losses,
+    };
+  }
+
+  const thirdMatch = myMatches.find(
+    (m) => m.bracketSlot === 'THIRD_PLACE' && m.status === 'FINISHED'
+  );
+  if (thirdMatch) {
+    const won = getWinnerTeam(thirdMatch) === getPlayerMatchTeam(thirdMatch, myPlayerId);
+    if (won) {
+      return {
+        participated: true,
+        place: 3,
+        isPodium: true,
+        headline: 'Вы заняли 3 место в плей-офф',
+        wins,
+        losses,
+      };
+    }
+    return {
+      participated: true,
+      place: 4,
+      isPodium: false,
+      headline: 'Вы заняли 4 место в плей-офф',
+      wins,
+      losses,
+    };
+  }
+
+  const deepestMatch = [...myMatches].sort(
+    (a, b) => getSlotDepthWeight(b.bracketSlot) - getSlotDepthWeight(a.bracketSlot)
+  )[0];
+
+  return {
+    participated: true,
+    place: null,
+    isPodium: false,
+    headline: getPlayoffStageHeadline(deepestMatch?.bracketSlot ?? null),
+    wins,
+    losses,
+  };
+}

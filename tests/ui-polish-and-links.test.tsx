@@ -1005,4 +1005,126 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       r.unmount();
     });
   });
+
+  it('PlayerMatchView separates finished playoff and group results without green highlight on group stage', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+    const { PlayerMatchView } = await import('../src/components/PlayerMatchView');
+
+    const base = makePlayoffSnapshot({ isAdmin: false });
+    const finishedPodiumSnapshot = {
+      ...base,
+      tournament: { ...base.tournament, status: 'FINISHED' as const },
+      myPlayerId: 1,
+      myCurrentMatch: null,
+      leaderboard: [
+        {
+          rank: 1,
+          playerId: 1,
+          name: 'Алиса',
+          initials: 'АЛ',
+          isActive: true,
+          byesCount: 0,
+          games: 4,
+          wins: 3,
+          losses: 1,
+          points: 6,
+          goalsFor: 20,
+          goalsAgainst: 13,
+          diff: 7,
+          ppm: 1.5,
+        },
+      ],
+      playoffMatches: [
+        {
+          ...base.playoffMatches[0],
+          id: 901,
+          stage: 'PLAYOFF' as const,
+          bracketSlot: 'FINAL',
+          status: 'FINISHED' as const,
+          team1Players: [{ id: 2, name: 'Борис', initials: 'БР' }],
+          team2Players: [{ id: 1, name: 'Алиса', initials: 'АЛ' }],
+          team1Label: 'Борис',
+          team2Label: 'Алиса',
+          myTeam: 2 as const,
+          score1: 5,
+          score2: 3,
+          setsWon1: 2,
+          setsWon2: 0,
+        },
+      ],
+    };
+
+    const c = document.createElement('div');
+    document.body.appendChild(c);
+    const r = createRoot(c);
+    await act(async () => {
+      r.render(
+        <PlayerMatchView
+          snapshot={finishedPodiumSnapshot}
+          onSubmitScore={async () => {}}
+          onConfirmScore={async () => {}}
+          onRemindConfirm={async () => {}}
+          busy={false}
+        />
+      );
+    });
+
+    const playoffCard = c.querySelector('[data-testid="my-playoff-result-card"]') as HTMLElement | null;
+    const groupCard = c.querySelector('[data-testid="my-group-result-card"]') as HTMLElement | null;
+    expect(playoffCard).not.toBeNull();
+    expect(groupCard).not.toBeNull();
+
+    expect(playoffCard!.className).toContain('bg-[var(--accent-soft)]');
+    expect(playoffCard!.textContent).toContain('Ваш результат в плей-офф');
+    expect(playoffCard!.textContent).toContain('Вы заняли 2 место в плей-офф');
+
+    expect(groupCard!.className).toContain('bg-[var(--card)]');
+    expect(groupCard!.className).not.toContain('bg-[var(--accent-soft)]');
+    expect(groupCard!.textContent).toContain('Ваш результат на групповом этапе');
+    expect(groupCard!.textContent).toContain('#1');
+
+    // Когда игрок не попал в плей-офф — обе карточки нейтральные
+    const missedPlayoffSnapshot = {
+      ...finishedPodiumSnapshot,
+      myPlayerId: 99,
+      leaderboard: [
+        {
+          ...finishedPodiumSnapshot.leaderboard[0],
+          playerId: 99,
+          rank: 5,
+          name: 'Гость',
+        },
+      ],
+      playoffMatches: [
+        {
+          ...finishedPodiumSnapshot.playoffMatches[0],
+          myTeam: null,
+        },
+      ],
+    };
+
+    await act(async () => {
+      r.render(
+        <PlayerMatchView
+          snapshot={missedPlayoffSnapshot}
+          onSubmitScore={async () => {}}
+          onConfirmScore={async () => {}}
+          onRemindConfirm={async () => {}}
+          busy={false}
+        />
+      );
+    });
+
+    const playoffCardMissed = c.querySelector('[data-testid="my-playoff-result-card"]') as HTMLElement;
+    const groupCardMissed = c.querySelector('[data-testid="my-group-result-card"]') as HTMLElement;
+    expect(playoffCardMissed.className).toContain('bg-[var(--card)]');
+    expect(playoffCardMissed.className).not.toContain('bg-[var(--accent-soft)]');
+    expect(playoffCardMissed.textContent).toContain('Не прошли в плей-офф');
+    expect(groupCardMissed.className).toContain('bg-[var(--card)]');
+
+    await act(async () => {
+      r.unmount();
+    });
+  });
 });
