@@ -49,6 +49,19 @@ export function formatBracketSlotLabel(slot: string | null): string | null {
   return slot;
 }
 
+export function formatMatchDisplayScore(match: MatchItem): string {
+  const isPlayoffSeries =
+    match.stage === 'PLAYOFF' &&
+    (match.setsWon1 > 0 || match.setsWon2 > 0) &&
+    (match.setsWon1 + match.setsWon2 > 1 ||
+      (Array.isArray(match.setsHistory) && match.setsHistory.length > 1) ||
+      match.status !== 'FINISHED');
+  if (isPlayoffSeries) {
+    return `${match.setsWon1} : ${match.setsWon2}`;
+  }
+  return `${match.score1} : ${match.score2}`;
+}
+
 export const MatchCard: React.FC<Props> = ({
   match,
   myPlayerId = null,

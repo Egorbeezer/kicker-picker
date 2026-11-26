@@ -63,22 +63,94 @@ function formatScoreChip(match: MatchItem, team: 1 | 2): string {
   return String(team === 1 ? match.score1 : match.score2);
 }
 
+interface PendingTeam {
+  label: string;
+  players: MatchItem['team1Players'];
+}
+
+function getMatchWinnerTeam(match: MatchItem | undefined): PendingTeam | null {
+  if (!match || match.status !== 'FINISHED') return null;
+  if (isTeamWinner(match, 1)) {
+    return { label: match.team1Label, players: match.team1Players };
+  }
+  return { label: match.team2Label, players: match.team2Players };
+}
+
+function getMatchLoserTeam(match: MatchItem | undefined): PendingTeam | null {
+  if (!match || match.status !== 'FINISHED') return null;
+  if (isTeamWinner(match, 1)) {
+    return { label: match.team2Label, players: match.team2Players };
+  }
+  return { label: match.team1Label, players: match.team1Players };
+}
+
 const BracketNodeCard: React.FC<{
   match: MatchItem | null;
   slotLabel: string;
   myPlayerId: number | null;
   isFinal?: boolean;
-}> = ({ match, slotLabel, myPlayerId, isFinal = false }) => {
+  pendingTeam1?: PendingTeam | null;
+  pendingTeam2?: PendingTeam | null;
+  placeholder1?: string;
+  placeholder2?: string;
+}> = ({
+  match,
+  slotLabel,
+  myPlayerId,
+  isFinal = false,
+  pendingTeam1 = null,
+  pendingTeam2 = null,
+  placeholder1 = 'Победитель пары 1',
+  placeholder2 = 'Победитель пары 2',
+}) => {
   if (!match) {
+    const renderPendingRow = (team: PendingTeam | null, placeholder: string) => {
+      if (!team) {
+        return (
+          <div className="h-[34px] flex items-center rounded-xl px-2 bg-[var(--bg)]/40 text-[11px] text-gray-500">
+            <span className="truncate">{placeholder}</span>
+          </div>
+        );
+      }
+      const hasMe = myPlayerId != null && team.players.some((p) => p.id === myPlayerId);
+      return (
+        <div
+          className={`h-[34px] flex items-center gap-1.5 rounded-xl px-2 min-w-0 overflow-hidden ${
+            hasMe ? 'bg-[var(--accent-soft)]' : 'bg-[var(--bg)]/60'
+          }`}
+        >
+          <div className="flex -space-x-1.5 shrink-0">
+            {team.players.map((p) => (
+              <PlayerAvatar
+                key={p.id}
+                avatarUrl={p.avatarUrl}
+                initials={p.initials}
+                name={p.name}
+                isMe={p.id === myPlayerId}
+                size="xs"
+              />
+            ))}
+          </div>
+          <span
+            className={`text-[11px] leading-tight truncate ${
+              hasMe ? 'font-bold text-[var(--accent-text)]' : 'font-semibold text-[var(--text)]'
+            }`}
+          >
+            {team.label}
+          </span>
+        </div>
+      );
+    };
+
     return (
-      <div className="h-full w-full rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-2)]/50 px-3 py-2 flex flex-col justify-between">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase text-gray-500">
-          <span>{slotLabel}</span>
+      <div className="h-full w-full rounded-[20px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-2)]/50 px-2.5 py-2 flex flex-col justify-between overflow-hidden">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase text-gray-500 h-4 leading-none shrink-0">
+          <span className="truncate">{slotLabel}</span>
           <span>Ожидание</span>
         </div>
-        <div className="space-y-1.5 text-[11px] text-gray-500">
-          <div className="truncate">Победитель пары 1</div>
-          <div className="border-t border-[var(--border)] pt-1 truncate">Победитель пары 2</div>
+        <div className="space-y-1.5">
+          {renderPendingRow(pendingTeam1, placeholder1)}
+          {renderPendingRow(pendingTeam2, placeholder2)}
         </div>
       </div>
     );
@@ -318,7 +390,7 @@ export const PlayoffBracketView: React.FC<Props> = ({
 
       {viewMode === 'list' ? (
         <div className="space-y-4">
-          {rounds.map((round) => (
+          {rounds.map((round, rIdx) => (
             <div key={round.prefix} className="space-y-2">
               <div className="text-xs font-semibold text-[var(--muted)] px-1 flex items-center gap-1.5">
                 {round.prefix === 'FINAL' && <Trophy size={12} className="text-amber-500" />}
@@ -328,6 +400,15 @@ export const PlayoffBracketView: React.FC<Props> = ({
                 {Array.from({ length: round.matchCount }, (_, mIdx) => {
                   const slotKey = getSlotKey(round.prefix, mIdx);
                   const match = bySlot.get(slotKey) || null;
+                  const prevRound = rIdx > 0 ? rounds[rIdx - 1] : null;
+                  const pendingTeam1 =
+                    !match && prevRound
+                      ? getMatchWinnerTeam(bySlot.get(getSlotKey(prevRound.prefix, mIdx * 2)))
+                      : null;
+                  const pendingTeam2 =
+                    !match && prevRound
+                      ? getMatchWinnerTeam(bySlot.get(getSlotKey(prevRound.prefix, mIdx * 2 + 1)))
+                      : null;
                   return (
                     <div key={slotKey} className="h-[110px]">
                       <BracketNodeCard
@@ -335,6 +416,8 @@ export const PlayoffBracketView: React.FC<Props> = ({
                         slotLabel={getSlotTitle(round.prefix, mIdx)}
                         myPlayerId={myPlayerId}
                         isFinal={round.prefix === 'FINAL'}
+                        pendingTeam1={pendingTeam1}
+                        pendingTeam2={pendingTeam2}
                       />
                     </div>
                   );
@@ -433,10 +516,19 @@ export const PlayoffBracketView: React.FC<Props> = ({
 
             {rounds.map((round, rIdx) => {
               const left = rIdx * (COL_W + GAP_W);
+              const prevRound = rIdx > 0 ? rounds[rIdx - 1] : null;
               return Array.from({ length: round.matchCount }, (_, mIdx) => {
                 const slotKey = getSlotKey(round.prefix, mIdx);
                 const match = bySlot.get(slotKey) || null;
                 const top = getCenterY(rIdx, mIdx) - CARD_H / 2;
+                const pendingTeam1 =
+                  !match && prevRound
+                    ? getMatchWinnerTeam(bySlot.get(getSlotKey(prevRound.prefix, mIdx * 2)))
+                    : null;
+                const pendingTeam2 =
+                  !match && prevRound
+                    ? getMatchWinnerTeam(bySlot.get(getSlotKey(prevRound.prefix, mIdx * 2 + 1)))
+                    : null;
 
                 return (
                   <div
@@ -449,6 +541,8 @@ export const PlayoffBracketView: React.FC<Props> = ({
                       slotLabel={getSlotTitle(round.prefix, mIdx)}
                       myPlayerId={myPlayerId}
                       isFinal={round.prefix === 'FINAL'}
+                      pendingTeam1={pendingTeam1}
+                      pendingTeam2={pendingTeam2}
                     />
                   </div>
                 );
@@ -471,6 +565,10 @@ export const PlayoffBracketView: React.FC<Props> = ({
               match={thirdMatch}
               slotLabel="За 3-е место"
               myPlayerId={myPlayerId}
+              pendingTeam1={!thirdMatch ? getMatchLoserTeam(bySlot.get('SF1')) : null}
+              pendingTeam2={!thirdMatch ? getMatchLoserTeam(bySlot.get('SF2')) : null}
+              placeholder1="Проигравший пары 1"
+              placeholder2="Проигравший пары 2"
             />
           </div>
         </div>

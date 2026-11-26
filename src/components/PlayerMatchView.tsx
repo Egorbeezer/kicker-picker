@@ -5,7 +5,7 @@ import { formatDateRu, getPlayoffPodium } from '../utils/date';
 import { PlayerAvatar } from './PlayerAvatar';
 import { RubleCoin } from './RubleCoin';
 import { ScorePickerRow } from './ScorePickerRow';
-import { formatBracketSlotLabel } from './MatchCard';
+import { formatBracketSlotLabel, formatMatchDisplayScore } from './MatchCard';
 
 interface Props {
   snapshot: TournamentSnapshot;
@@ -156,7 +156,7 @@ const UnifiedTournamentMatchesFeed: React.FC<{
               <div
                 className={`px-3 py-1 rounded-full font-bold text-xs tabular-nums shrink-0 ${scoreCls}`}
               >
-                {match.score1} : {match.score2}
+                {formatMatchDisplayScore(match)}
               </div>
             </div>
           );

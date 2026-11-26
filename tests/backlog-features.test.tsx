@@ -1336,6 +1336,153 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     });
   });
 
+  it('UnifiedTournamentMatchesFeed shows sets score (2 : 1) for BO3 playoff series instead of last set score', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const { PlayerMatchView } = await import('../src/components/PlayerMatchView');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const snap = makeSnapshot({
+      tournament: {
+        ...makeSnapshot().tournament,
+        status: 'PLAYOFF',
+        currentRound: 1,
+        playoffFormat: 'best_of_3',
+      },
+      myCurrentMatch: null,
+      currentRoundMatches: [],
+      playoffMatches: [
+        {
+          id: 301,
+          tournamentId: 101,
+          stage: 'PLAYOFF',
+          roundNumber: 1,
+          bracketSlot: 'SF1',
+          tableNumber: 1,
+          team1Label: 'Egor B. & Макс',
+          team2Label: 'Оля & Дима',
+          team1Players: [{ id: 1, name: 'Egor B.', initials: 'EB', avatarUrl: null }],
+          team2Players: [{ id: 2, name: 'Оля', initials: 'ОЛ', avatarUrl: null }],
+          myTeam: 1,
+          status: 'FINISHED',
+          score1: 5,
+          score2: 4,
+          setsWon1: 2,
+          setsWon2: 1,
+          setsHistory: [
+            { setNumber: 1, score1: 5, score2: 3 },
+            { setNumber: 2, score1: 3, score2: 5 },
+            { setNumber: 3, score1: 5, score2: 4 },
+          ],
+        },
+      ],
+    });
+
+    await act(async () => {
+      root.render(
+        <PlayerMatchView
+          snapshot={snap}
+          busy={false}
+          onSubmitScore={async () => {}}
+          onConfirmScore={async () => {}}
+          onRemindConfirm={async () => {}}
+        />
+      );
+    });
+
+    const toggle = container.querySelector(
+      '[data-testid="tournament-matches-history-toggle"]'
+    ) as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+
+    const myMatchEl = container.querySelector('[data-testid="my-tournament-match"]');
+    expect(myMatchEl?.textContent).toContain('2 : 1');
+    expect(myMatchEl?.textContent).not.toContain('5 : 4');
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('PlayoffBracketView immediately shows SF1 winner in Final and SF1 loser in 3rd place before SF2 finishes', async () => {
+    const dom = installTestDom();
+    cleanupDom = dom.cleanup;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const sf1Finished = {
+      id: 401,
+      tournamentId: 101,
+      stage: 'PLAYOFF' as const,
+      roundNumber: 1,
+      bracketSlot: 'SF1',
+      tableNumber: 1,
+      team1Label: 'Egor B. & Макс',
+      team2Label: 'Оля & Дима',
+      team1Players: [{ id: 1, name: 'Egor B.', initials: 'EB', avatarUrl: null }],
+      team2Players: [{ id: 2, name: 'Оля', initials: 'ОЛ', avatarUrl: null }],
+      myTeam: 1 as const,
+      status: 'FINISHED' as const,
+      score1: 5,
+      score2: 4,
+      setsWon1: 2,
+      setsWon2: 1,
+      setsHistory: [
+        { setNumber: 1, score1: 5, score2: 3 },
+        { setNumber: 2, score1: 3, score2: 5 },
+        { setNumber: 3, score1: 5, score2: 4 },
+      ],
+    };
+    const sf2Playing = {
+      id: 402,
+      tournamentId: 101,
+      stage: 'PLAYOFF' as const,
+      roundNumber: 1,
+      bracketSlot: 'SF2',
+      tableNumber: 2,
+      team1Label: 'Костя & Юля',
+      team2Label: 'Аня & Петя',
+      team1Players: [{ id: 3, name: 'Костя', initials: 'КО', avatarUrl: null }],
+      team2Players: [{ id: 4, name: 'Юля', initials: 'ЮЛ', avatarUrl: null }],
+      myTeam: null,
+      status: 'PLAYING' as const,
+      score1: 0,
+      score2: 0,
+      setsWon1: 0,
+      setsWon2: 0,
+      setsHistory: null,
+    };
+
+    await act(async () => {
+      root.render(
+        <PlayoffBracketView
+          matches={[sf1Finished, sf2Playing]}
+          playoffSize={4}
+          thirdPlaceMatch={true}
+          myPlayerId={1}
+        />
+      );
+    });
+
+    const text = container.textContent || '';
+    expect(text).not.toContain('Победитель пары 1');
+    expect(text).toContain('Победитель пары 2');
+    expect(text).not.toContain('Проигравший пары 1');
+    expect(text).toContain('Проигравший пары 2');
+    // Победитель SF1 (Egor B. & Макс) и проигравший SF1 (Оля & Дима) встречаются дважды: в SF1 и в Финале / За 3-е место
+    expect(text.match(/Egor B\. & Макс/g)?.length).toBe(2);
+    expect(text.match(/Оля & Дима/g)?.length).toBe(2);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it('TournamentTimersCard allows clearing and typing multi-digit numbers without snapping and supports +/- steppers', async () => {
     const dom = installTestDom();
     cleanupDom = dom.cleanup;

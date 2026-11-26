@@ -15,7 +15,7 @@ import type { LeaderboardRow, PublicLiveData, TableColumnConfig, TableColumnKey 
 import { fetchPublicLive } from '../api/client';
 import type { Theme } from '../utils/theme';
 import { Brand } from './Brand';
-import { MatchCard, formatBracketSlotLabel } from './MatchCard';
+import { MatchCard, formatBracketSlotLabel, formatMatchDisplayScore } from './MatchCard';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { PlayerAvatar } from './PlayerAvatar';
 import { SupportHeaderButton } from './SupportHeaderButton';
@@ -274,7 +274,7 @@ export const PublicLiveView: React.FC<Props> = ({ publicPath, theme, onToggleThe
                   </div>
                 </div>
                 <div className="tabular-nums font-bold text-xs px-2.5 py-1 rounded-full bg-[#1c1c1d] text-white shrink-0">
-                  {m.score1} : {m.score2}
+                  {formatMatchDisplayScore(m)}
                 </div>
               </div>
             );
