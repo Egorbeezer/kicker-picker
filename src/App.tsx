@@ -55,6 +55,7 @@ export default function App() {
     setSelectedTournamentId,
     showHome,
     setShowHome,
+    handleGoHome,
     isCreating,
     setIsCreating,
     createdInvite,
@@ -228,7 +229,7 @@ export default function App() {
             active: showHome,
             onClick: () => {
               haptic('light');
-              setShowHome(true);
+              handleGoHome();
             },
           },
           {
@@ -263,7 +264,7 @@ export default function App() {
             active: showHome,
             onClick: () => {
               haptic('light');
-              setShowHome(true);
+              handleGoHome();
             },
           },
           {

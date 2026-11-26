@@ -60,10 +60,9 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     const bridge = await attachTelegramBridge(page, backend, { user: adminUser });
     await page.goto('/');
 
-    // Переходим на главный экран через кнопку Домой слева в нижнем меню
+    // Без активных турниров сразу открывается главный экран Домой без нижнего меню
     const nav = page.getByRole('navigation', { name: 'Навигация' });
-    await expect(nav.locator('button').first()).toHaveText(/Домой/);
-    await nav.getByRole('button', { name: 'Домой' }).click();
+    await expect(nav).toHaveCount(0);
     await expect(page.getByTestId('home-header')).not.toContainText('Главный экран');
     await expect(page.getByTestId('home-header').getByRole('button', { name: /тема/i })).toHaveCount(1);
 
@@ -104,11 +103,17 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
       .poll(async () => (await details.boundingBox())?.height ?? 999)
       .toBeLessThanOrEqual(1);
 
-    // Переключаемся в режим игрока и проверяем 3-вкладочную навигацию, затем на Главную — кнопку смены темы
+    // Открываем прошедший турнир явно -> появляются нижние вкладки и переключатель Игрок/Админ
+    await page.getByRole('button', { name: /Прошедшие турниры/i }).click();
+    await page.getByRole('button', { name: /Кубок Тест/i }).click();
     await page.getByRole('button', { name: 'Игрок', exact: true }).click();
     await expect(nav.locator('button')).toHaveCount(3);
     await expect(nav.locator('button').first()).toHaveText(/Домой/);
+    await expect(nav.locator('button').nth(1)).toHaveText(/Итоги/);
+
+    // Возврат Домой из завершённого турнира отвязывает его и скрывает нижнее меню
     await nav.getByRole('button', { name: 'Домой' }).click();
+    await expect(nav).toHaveCount(0);
 
     const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     await page.getByTestId('header-theme-btn').click();

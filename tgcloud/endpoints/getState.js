@@ -223,7 +223,10 @@ export default async function (input, ctx) {
   });
 
   if (!targetTournamentId && myTournaments.length > 0) {
-    targetTournamentId = myTournaments[0].id;
+    const firstActive = myTournaments.find((t) => t.status !== 'FINISHED');
+    if (firstActive) {
+      targetTournamentId = firstActive.id;
+    }
   }
 
   // Trigger long-match alert reminders (15m + 3m score reminder) on active tournament during polling

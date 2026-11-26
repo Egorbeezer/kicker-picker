@@ -136,7 +136,11 @@ export function useAppController() {
           setAppState(res);
         }
 
-        if (res.activeTournament && !selectedTournamentIdRef.current) {
+        if (
+          res.activeTournament &&
+          !selectedTournamentIdRef.current &&
+          res.activeTournament.tournament.status !== 'FINISHED'
+        ) {
           selectedTournamentIdRef.current = res.activeTournament.tournament.id;
           setSelectedTournamentId(res.activeTournament.tournament.id);
           if (res.activeTournament.isAdmin) {
@@ -414,6 +418,18 @@ export function useAppController() {
     [appState, fetchState]
   );
 
+  const handleGoHome = useCallback(() => {
+    const currentStatus = appStateRef.current?.activeTournament?.tournament.status;
+    if (currentStatus === 'FINISHED') {
+      selectedTournamentIdRef.current = null;
+      setSelectedTournamentId(null);
+      setAppState((prev) => (prev ? { ...prev, activeTournament: null } : prev));
+      setShowHome(false);
+      return;
+    }
+    setShowHome(true);
+  }, []);
+
   const snapshot = appState?.activeTournament ?? null;
   const hideBottomNav = !snapshot;
 
@@ -435,6 +451,7 @@ export function useAppController() {
     setSelectedTournamentId,
     showHome,
     setShowHome,
+    handleGoHome,
     isCreating,
     setIsCreating,
     createdInvite,
