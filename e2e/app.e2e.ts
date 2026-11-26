@@ -153,7 +153,7 @@ test.describe('Kicker Picker — Headless Browser E2E (Chromium)', () => {
     await expect(createdDialog.getByText('Турнир создан!')).toBeVisible();
     await createdDialog.getByRole('button', { name: 'Пригласить', exact: true }).click();
     await expect
-      .poll(() => bridge.openedLinks.some((u) => decodeURIComponent(u).includes('?startapp=')))
+      .poll(() => bridge.sharedMessages.includes('prep_e2e_1'))
       .toBe(true);
     await createdDialog.getByRole('button', { name: /Перейти к участникам/i }).click();
 

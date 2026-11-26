@@ -89,6 +89,7 @@ export async function attachTelegramBridge(
   };
 
   const openedLinks: string[] = [];
+  const sharedMessages: string[] = [];
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
 
@@ -124,6 +125,10 @@ export async function attachTelegramBridge(
 
   await page.exposeFunction('__kpE2eTrackLink', (url: string) => {
     openedLinks.push(url);
+  });
+
+  await page.exposeFunction('__kpE2eTrackShareMessage', (msgId: string) => {
+    sharedMessages.push(msgId);
   });
 
   // Не даём внешнему telegram-web-app.js перезаписывать E2E-мок Telegram.WebApp
@@ -172,7 +177,10 @@ export async function attachTelegramBridge(
           openTelegramLink: (url: string) => {
             void (win.__kpE2eTrackLink as (u: string) => Promise<void>)(url);
           },
-          shareMessage: (_msgId: string, cb?: (sent: boolean) => void) => cb?.(true),
+          shareMessage: (msgId: string, cb?: (sent: boolean) => void) => {
+            void (win.__kpE2eTrackShareMessage as (id: string) => Promise<void>)(msgId);
+            cb?.(true);
+          },
           Serverless: {
             call: (
               endpoint: string,
@@ -200,6 +208,7 @@ export async function attachTelegramBridge(
 
   return {
     openedLinks,
+    sharedMessages,
     consoleErrors,
     pageErrors,
   };

@@ -215,11 +215,86 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
     expect(openTelegramLink).toHaveBeenCalledTimes(1);
     expect(openTelegramLink.mock.calls[0][0]).toContain('https://t.me/share/url?');
     expect(openTelegramLink.mock.calls[0][0]).toContain(encodeURIComponent('kp_77_abc'));
+    const liveShareUrl = new URL(openTelegramLink.mock.calls[0][0]);
+    const liveTextParam = liveShareUrl.searchParams.get('text') || '';
+    expect(liveTextParam.startsWith('📺 Live-трансляция турнира «')).toBe(true);
+    expect(liveTextParam.indexOf('📺 Live-трансляция')).toBeLessThan(
+      liveTextParam.indexOf('https://live.djbeezer.su/')
+    );
 
     await act(async () => {
       r1.unmount();
       r2.unmount();
     });
+  });
+
+  it('uses savePreparedInlineMessage + WebApp.shareMessage when available and falls back on null id', async () => {
+    const env = installTestDom();
+    cleanupDom = env.cleanup;
+
+    const openTelegramLink = vi.fn();
+    const shareMessage = vi.fn();
+    const serverlessCall = vi.fn(
+      (
+        _name: string,
+        _input: Record<string, unknown>,
+        cb: (err: null, result: { id: string | null }) => void
+      ) => {
+        cb(null, { id: 'prep_123' });
+      }
+    );
+
+    window.Telegram = {
+      WebApp: {
+        initData: 'init_ok',
+        openTelegramLink,
+        shareMessage,
+        Serverless: { call: serverlessCall },
+      },
+    };
+
+    const { shareLiveUrlInTelegram, shareTournamentInTelegram } = await import('../src/utils/share');
+
+    shareLiveUrlInTelegram({ name: 'Вечерний DYP', publicPath: 'kp_1_xyz' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(serverlessCall).toHaveBeenCalledWith(
+      'prepareShareMessage',
+      {
+        kind: 'live',
+        name: 'Вечерний DYP',
+        url: 'https://live.djbeezer.su/?live=kp_1_xyz',
+      },
+      expect.any(Function)
+    );
+    expect(shareMessage).toHaveBeenCalledWith('prep_123');
+    expect(openTelegramLink).not.toHaveBeenCalled();
+
+    // Fallback when prepared id is null
+    serverlessCall.mockImplementationOnce(
+      (
+        _name: string,
+        _input: Record<string, unknown>,
+        cb: (err: null, result: { id: string | null }) => void
+      ) => {
+        cb(null, { id: null });
+      }
+    );
+
+    shareTournamentInTelegram({ id: 77, name: 'Вечерний DYP' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(openTelegramLink).toHaveBeenCalledTimes(1);
+    const inviteShareUrl = new URL(openTelegramLink.mock.calls[0][0]);
+    const inviteTextParam = inviteShareUrl.searchParams.get('text') || '';
+    expect(inviteTextParam.startsWith('⚽ Приглашение в турнир «Вечерний DYP»')).toBe(true);
+    expect(inviteTextParam.indexOf('⚽ Приглашение')).toBeLessThan(
+      inviteTextParam.indexOf('https://t.me/kickerpickerbot?startapp=77')
+    );
   });
 
   it('renders large borderless score numerals separated from shadowed ScorePickerRow buttons', async () => {

@@ -1,4 +1,4 @@
-import { buildPublicLiveUrl } from '../api/client';
+import { buildPublicLiveUrl, callEndpoint, isTelegramEnv } from '../api/client';
 
 export const BOT_USERNAME = 'kickerpickerbot';
 
@@ -7,7 +7,7 @@ export function getTournamentInviteLink(tournamentId: number): string {
 }
 
 function openTelegramShareUrl(url: string, text: string): void {
-  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(' ')}&text=${encodeURIComponent(`${text}\n${url}`)}`;
 
   const tgWebApp = window.Telegram?.WebApp;
   if (tgWebApp?.openTelegramLink) {
@@ -18,17 +18,58 @@ function openTelegramShareUrl(url: string, text: string): void {
   window.open(shareUrl, '_blank', 'noopener,noreferrer');
 }
 
+function sharePreparedOrFallback(params: {
+  kind: 'live' | 'invite';
+  name: string;
+  url: string;
+  fallbackText: string;
+}): void {
+  const { kind, name, url, fallbackText } = params;
+  const tgWebApp = window.Telegram?.WebApp;
+
+  if (isTelegramEnv() && typeof tgWebApp?.shareMessage === 'function') {
+    void callEndpoint<{ id?: string | null }>(
+      'prepareShareMessage',
+      { kind, name, url },
+      { timeoutMs: 5000 }
+    )
+      .then((res) => {
+        if (res?.id && tgWebApp.shareMessage) {
+          tgWebApp.shareMessage(res.id);
+          return;
+        }
+        openTelegramShareUrl(url, fallbackText);
+      })
+      .catch(() => {
+        openTelegramShareUrl(url, fallbackText);
+      });
+    return;
+  }
+
+  openTelegramShareUrl(url, fallbackText);
+}
+
 export function shareTournamentInTelegram(params: { id: number; name: string }): void {
   const inviteLink = getTournamentInviteLink(params.id);
-  const text = `Присоединяйся к турниру по кикеру «${params.name}»!`;
-  openTelegramShareUrl(inviteLink, text);
+  const fallbackText = `⚽ Приглашение в турнир «${params.name}»`;
+  sharePreparedOrFallback({
+    kind: 'invite',
+    name: params.name,
+    url: inviteLink,
+    fallbackText,
+  });
 }
 
 /** Открывает системное окно отправки Live-ссылки в Telegram без показа сырой ссылки в UI. */
 export function shareLiveUrlInTelegram(params: { name: string; publicPath: string }): void {
   const liveUrl = buildPublicLiveUrl(params.publicPath);
-  const text = `Live-трансляция турнира «${params.name}»`;
-  openTelegramShareUrl(liveUrl, text);
+  const fallbackText = `📺 Live-трансляция турнира «${params.name}»`;
+  sharePreparedOrFallback({
+    kind: 'live',
+    name: params.name,
+    url: liveUrl,
+    fallbackText,
+  });
 }
 
 export type ShareImageOutcome = 'shared' | 'copied' | 'downloaded' | 'cancelled' | 'unsupported';
