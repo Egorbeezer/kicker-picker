@@ -375,8 +375,6 @@ export const PlayerMatchView: React.FC<Props> = ({
         </div>
 
         <div className="px-3.5 py-3 space-y-3">
-          {coinPillButton}
-
           <div className="bg-[var(--card)] rounded-[24px] p-5 flex flex-col items-center text-center">
             <div className="w-12 h-12 rounded-full bg-[var(--bg)] text-[var(--muted)] flex items-center justify-center mb-3">
               <Coffee size={24} />
@@ -388,6 +386,8 @@ export const PlayerMatchView: React.FC<Props> = ({
                 : 'Вы не зарегистрированы как участник этого турнира, но можете следить за текущими матчами.'}
             </p>
           </div>
+
+          {coinPillButton}
 
           <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
         </div>
@@ -658,8 +658,6 @@ export const PlayerMatchView: React.FC<Props> = ({
       </div>
 
       <div className="px-3.5 py-3 space-y-2.5">
-        {coinPillButton}
-
         <div className="space-y-2">
           {[
             {
@@ -753,6 +751,8 @@ export const PlayerMatchView: React.FC<Props> = ({
             {busy ? 'Отправка...' : `Сохранить счет: ${score1} : ${score2}`}
           </button>
         </div>
+
+        {coinPillButton}
 
         <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
       </div>
