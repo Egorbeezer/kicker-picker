@@ -413,6 +413,11 @@ describe('UI polish, light-theme contrast, LIVE button & single-instance Telegra
       b.textContent?.includes('Бросить монетку')
     );
     expect(coinBtn).toBeDefined();
+    expect(coinBtn!.textContent?.trim()).toBe('Бросить монетку');
+    const text = c.textContent || '';
+    expect(text.indexOf('Бросить монетку')).toBeLessThan(
+      text.indexOf('Вы отдыхаете в этом раунде')
+    );
 
     await act(async () => {
       coinBtn!.click();

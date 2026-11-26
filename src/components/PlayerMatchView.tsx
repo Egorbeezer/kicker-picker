@@ -231,6 +231,17 @@ export const PlayerMatchView: React.FC<Props> = ({
     </div>
   ) : null;
 
+  const coinPillButton = (
+    <button
+      type="button"
+      onClick={handleCoinFlip}
+      className="w-full bg-[var(--card)] border border-[var(--border)] rounded-full px-4 py-2.5 flex items-center justify-center gap-2.5 text-[var(--text)] active:scale-[0.98] transition-transform"
+    >
+      <RubleCoin animate={false} result="Решка" size={26} showShadow={false} />
+      <span className="font-bold text-sm">Бросить монетку</span>
+    </button>
+  );
+
   if (tournament.status === 'FINISHED') {
     const podium = getPlayoffPodium(playoffMatches);
     const leader = snapshot.leaderboard[0];
@@ -348,7 +359,9 @@ export const PlayerMatchView: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="p-4 space-y-5">
+        <div className="px-3.5 py-3 space-y-3">
+          {coinPillButton}
+
           <div className="bg-[var(--card)] rounded-[24px] p-5 flex flex-col items-center text-center">
             <div className="w-12 h-12 rounded-full bg-[var(--bg)] text-[var(--muted)] flex items-center justify-center mb-3">
               <Coffee size={24} />
@@ -362,25 +375,6 @@ export const PlayerMatchView: React.FC<Props> = ({
           </div>
 
           <UnifiedTournamentMatchesFeed matches={unifiedMatches} myPlayerId={myPlayerId} />
-
-          <button
-            type="button"
-            onClick={handleCoinFlip}
-            className="w-full bg-[var(--card)] rounded-[20px] px-4 py-3.5 flex items-center justify-between gap-3 text-left active:scale-[0.98] transition-transform"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="shrink-0">
-                <RubleCoin animate={false} result="Решка" size={44} showShadow={false} />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-[var(--text)]">Бросить монетку</div>
-                <div className="text-xs text-[var(--muted)]">Пока ждёте следующий раунд</div>
-              </div>
-            </div>
-            <span className="px-3.5 py-1.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent-text)] text-xs font-bold shrink-0">
-              Бросить
-            </span>
-          </button>
         </div>
 
         {coinOverlay}
@@ -649,14 +643,7 @@ export const PlayerMatchView: React.FC<Props> = ({
       </div>
 
       <div className="px-3.5 py-3 space-y-2.5">
-        <button
-          type="button"
-          onClick={handleCoinFlip}
-          className="w-full bg-[var(--card)] border border-[var(--border)] rounded-full px-4 py-2.5 flex items-center justify-center gap-2.5 text-[var(--text)] active:scale-[0.98] transition-transform"
-        >
-          <RubleCoin animate={false} result="Решка" size={26} showShadow={false} />
-          <span className="font-bold text-sm">Бросить монетку</span>
-        </button>
+        {coinPillButton}
 
         <div className="space-y-2">
           {[
