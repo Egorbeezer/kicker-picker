@@ -20,6 +20,11 @@ concurrency:
   group: deploy-prod
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -34,6 +39,18 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+      - name: Prepare GitHub Pages artifact
+        run: |
+          rm -rf _pages
+          cp -r dist _pages
+          printf 'live.djbeezer.su\n' > _pages/CNAME
+          cp _pages/index.html _pages/404.html
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _pages
 
       - name: Deploy main bot & Mini App
         env:
@@ -74,3 +91,14 @@ jobs:
           chmod 600 support-bot/.tgcloud/credentials
           (cd support-bot && ../node_modules/.bin/tgcloud fetch || true)
           npm run deploy:support
+
+  deploy-pages:
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

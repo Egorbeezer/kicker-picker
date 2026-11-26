@@ -13,7 +13,17 @@
       href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var isPublicLive =
+          Boolean((params.get('live') || '').trim()) ||
+          window.location.hostname === 'live.djbeezer.su';
+        if (!isPublicLive) {
+          document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');
+        }
+      })();
+    </script>
   </head>
   <body class="antialiased">
     <div id="root"></div>

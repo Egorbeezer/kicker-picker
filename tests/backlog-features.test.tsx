@@ -1064,6 +1064,11 @@ describe('P1 + P2 + Home Profile backlog UI features', () => {
     }
   });
 
+  it('buildPublicLiveUrl uses live.djbeezer.su origin', async () => {
+    const { buildPublicLiveUrl } = await import('../src/api/client');
+    expect(buildPublicLiveUrl('kp_1_abc')).toBe('https://live.djbeezer.su/?live=kp_1_abc');
+  });
+
   it('App shows retry screen instead of empty HomeView when initial getState fails', async () => {
     const dom = installTestDom();
     cleanupDom = dom.cleanup;

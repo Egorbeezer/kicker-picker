@@ -62,8 +62,10 @@ export function getLivePathFromUrl(): string | null {
   return trimmed ? trimmed : null;
 }
 
+export const PUBLIC_LIVE_ORIGIN = 'https://live.djbeezer.su';
+
 export function buildPublicLiveUrl(publicPath: string): string {
-  return `${window.location.origin}/?live=${encodeURIComponent(publicPath)}`;
+  return `${PUBLIC_LIVE_ORIGIN}/?live=${encodeURIComponent(publicPath)}`;
 }
 
 function extractTextFromTelegraphNode(node: unknown): string {
